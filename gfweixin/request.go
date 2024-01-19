@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 22:39:31
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-19 23:09:48
+ * @LastEditTime: 2024-01-19 23:28:05
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -23,10 +23,10 @@ import (
 )
 
 // Get 通用Get
-func Get(ctx context.Context, url, params string) (resMap map[string]any, err error) {
+func Get(ctx context.Context, url string, params url.Values) (resMap map[string]any, err error) {
 	// 发起请求
 	var result *gclient.Response
-	result, err = g.Client().Get(ctx, url, params)
+	result, err = g.Client().Get(ctx, url, gurl.BuildQuery(params))
 	if err != nil {
 		return
 	}
