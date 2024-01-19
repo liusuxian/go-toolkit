@@ -13,8 +13,8 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/liusuxian/go-toolkit/gfredis"
 	"github.com/stretchr/testify/assert"
-	"go-toolkit/gfredis"
 	"testing"
 )
 

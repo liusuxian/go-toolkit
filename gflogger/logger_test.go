@@ -11,7 +11,7 @@ package gflogger_test
 
 import (
 	"context"
-	"go-toolkit/gflogger"
+	"github.com/liusuxian/go-toolkit/gflogger"
 	"testing"
 )
 

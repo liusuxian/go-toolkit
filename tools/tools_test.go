@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 22:57:39
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-19 23:15:54
+ * @LastEditTime: 2024-01-20 00:37:10
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,7 +10,7 @@
 package tools_test
 
 import (
-	"go-toolkit/tools"
+	"github.com/liusuxian/go-toolkit/tools"
 	"testing"
 )
 

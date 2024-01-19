@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 22:29:06
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-19 23:39:26
+ * @LastEditTime: 2024-01-20 00:36:27
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gfweixin_test
 
 import (
 	"context"
-	"go-toolkit/gfweixin"
+	"github.com/liusuxian/go-toolkit/gfweixin"
 	"testing"
 )
 

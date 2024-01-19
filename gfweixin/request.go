@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 22:39:31
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-19 23:28:05
+ * @LastEditTime: 2024-01-20 00:36:19
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,7 +18,7 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/gclient"
 	"github.com/gogf/gf/v2/util/gconv"
-	"go-toolkit/tools"
+	"github.com/liusuxian/go-toolkit/tools"
 	"net/url"
 )
 

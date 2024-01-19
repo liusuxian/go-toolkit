@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-11-27 20:32:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-19 21:33:54
+ * @LastEditTime: 2024-01-20 00:37:03
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,8 +10,8 @@
 package reflection_test
 
 import (
+	"github.com/liusuxian/go-toolkit/reflection"
 	"github.com/stretchr/testify/assert"
-	"go-toolkit/reflection"
 	"reflect"
 	"testing"
 )

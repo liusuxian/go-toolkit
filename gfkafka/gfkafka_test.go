@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-20 00:08:58
+ * @LastEditTime: 2024-01-20 00:38:10
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,7 +12,7 @@ package gfkafka_test
 import (
 	"context"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"go-toolkit/gfkafka"
+	"github.com/liusuxian/go-toolkit/gfkafka"
 	"testing"
 )
 
