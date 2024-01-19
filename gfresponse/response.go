@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 21:04:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-19 21:12:26
+ * @LastEditTime: 2024-01-19 21:14:32
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -109,4 +109,10 @@ func SuccCtxExit(ctx context.Context, data ...any) {
 // SuccExit 成功并退出
 func SuccExit(req *ghttp.Request, data ...any) {
 	RespJsonExit(req, gcode.CodeOK.Code(), gcode.CodeOK.Message(), gcode.CodeOK.Detail(), data...)
+}
+
+// Redirect 重定向
+func Redirect(req *ghttp.Request, link string) {
+	req.Response.Header().Set("Location", link)
+	req.Response.WriteHeader(302)
 }
