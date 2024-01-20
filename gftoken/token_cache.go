@@ -34,7 +34,7 @@ func (m *Token) setCache(ctx context.Context, cacheKey string, userCache g.Map) 
 			gflogger.Error(ctx, "[gftoken]cache json encode error", err1)
 			return Error("cache json encode error")
 		}
-		_, err := g.Redis().Do(ctx, "SETEX", cacheKey, m.Timeout/1000, cacheValueJson)
+		_, err := g.Redis(m.RedisGroupName).Do(ctx, "SETEX", cacheKey, m.Timeout/1000, cacheValueJson)
 		if err != nil {
 			gflogger.Error(ctx, "[gftoken]cache set error", err)
 			return Error("cache set error")
@@ -61,7 +61,7 @@ func (m *Token) getCache(ctx context.Context, cacheKey string) Resp {
 		}
 		userCache = gconv.Map(userCacheValue)
 	case CacheModeRedis:
-		userCacheJson, err := g.Redis().Do(ctx, "GET", cacheKey)
+		userCacheJson, err := g.Redis(m.RedisGroupName).Do(ctx, "GET", cacheKey)
 		if err != nil {
 			gflogger.Error(ctx, "[gftoken]cache get error", err)
 			return Error("cache get error")
@@ -95,7 +95,7 @@ func (m *Token) removeCache(ctx context.Context, cacheKey string) Resp {
 		}
 	case CacheModeRedis:
 		var err error
-		_, err = g.Redis().Do(ctx, "DEL", cacheKey)
+		_, err = g.Redis(m.RedisGroupName).Do(ctx, "DEL", cacheKey)
 		if err != nil {
 			gflogger.Error(ctx, "[gftoken]cache remove error", err)
 			return Error("cache remove error")

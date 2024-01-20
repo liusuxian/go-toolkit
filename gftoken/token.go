@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-20 16:22:41
+ * @LastEditTime: 2024-01-20 21:22:45
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"github.com/gogf/gf/v2/crypto/gaes"
 	"github.com/gogf/gf/v2/crypto/gmd5"
+	"github.com/gogf/gf/v2/database/gredis"
 	"github.com/gogf/gf/v2/encoding/gbase64"
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -33,6 +34,8 @@ type Token struct {
 	ServerName string
 	// 缓存模式 1:gcache 2:gredis 3:fileCache 默认1
 	CacheMode int8
+	// gredis 组名称
+	RedisGroupName string
 	// 缓存 key
 	CacheKey string
 	// 超时时间 默认10天（毫秒）
@@ -385,6 +388,10 @@ func (m *Token) InitConfig() bool {
 		m.CacheMode = CacheModeCache
 	}
 
+	if m.RedisGroupName == "" {
+		m.RedisGroupName = gredis.DefaultGroupName
+	}
+
 	if m.CacheKey == "" {
 		m.CacheKey = DefaultCacheKey
 	}
@@ -554,6 +561,7 @@ func (m *Token) String() string {
 	return gconv.String(g.Map{
 		// 缓存模式 1:gcache 2:gredis 3:fileCache 默认1
 		"CacheMode":        m.CacheMode,
+		"RedisGroupName":   m.RedisGroupName,
 		"CacheKey":         m.CacheKey,
 		"Timeout":          m.Timeout,
 		"TokenDelimiter":   m.TokenDelimiter,
