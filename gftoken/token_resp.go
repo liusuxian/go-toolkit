@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-20 16:16:18
+ * @LastEditTime: 2024-01-20 17:57:39
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,13 +13,14 @@ import (
 	"encoding/json"
 	"github.com/gogf/gf/v2/container/gvar"
 	"github.com/gogf/gf/v2/util/gconv"
+	"net/http"
 )
 
 const (
 	SUCCESS      = 0
 	FAIL         = -1
 	ERROR        = -99
-	UNAUTHORIZED = -401
+	UNAUTHORIZED = http.StatusUnauthorized
 )
 
 type Resp struct {
