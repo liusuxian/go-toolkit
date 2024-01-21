@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 21:04:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-19 21:14:32
+ * @LastEditTime: 2024-01-21 23:06:58
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -46,19 +46,19 @@ func RespJson(req *ghttp.Request, code int, msg string, detail any, data ...any)
 }
 
 // RespJsonCtxByGcode 标准返回结果数据
-func RespJsonCtxByGcode(ctx context.Context, ggcode gcode.Code, err error, data ...any) {
+func RespJsonCtxByGcode(ctx context.Context, code gcode.Code, err error, data ...any) {
 	if err != nil {
-		ggcode = gcode.WithCode(ggcode, err.Error())
+		code = gcode.WithCode(code, err.Error())
 	}
-	RespJsonCtx(ctx, ggcode.Code(), ggcode.Message(), ggcode.Detail(), data...)
+	RespJsonCtx(ctx, code.Code(), code.Message(), code.Detail(), data...)
 }
 
 // RespJsonByGcode 标准返回结果数据
-func RespJsonByGcode(req *ghttp.Request, ggcode gcode.Code, err error, data ...any) {
+func RespJsonByGcode(req *ghttp.Request, code gcode.Code, err error, data ...any) {
 	if err != nil {
-		ggcode = gcode.WithCode(ggcode, err.Error())
+		code = gcode.WithCode(code, err.Error())
 	}
-	RespJson(req, ggcode.Code(), ggcode.Message(), ggcode.Detail(), data...)
+	RespJson(req, code.Code(), code.Message(), code.Detail(), data...)
 }
 
 // RespJsonCtxExit 标准返回结果数据并退出
@@ -74,20 +74,20 @@ func RespJsonExit(req *ghttp.Request, code int, msg string, detail any, data ...
 }
 
 // RespJsonCtxExitByGcode 标准返回结果数据并退出
-func RespJsonCtxExitByGcode(ctx context.Context, ggcode gcode.Code, err error, data ...any) {
+func RespJsonCtxExitByGcode(ctx context.Context, code gcode.Code, err error, data ...any) {
 	if err != nil {
-		ggcode = gcode.WithCode(ggcode, err.Error())
+		code = gcode.WithCode(code, err.Error())
 	}
-	RespJsonCtx(ctx, ggcode.Code(), ggcode.Message(), ggcode.Detail(), data...)
+	RespJsonCtx(ctx, code.Code(), code.Message(), code.Detail(), data...)
 	g.RequestFromCtx(ctx).Exit()
 }
 
 // RespJsonExitByGcode 标准返回结果数据并退出
-func RespJsonExitByGcode(req *ghttp.Request, ggcode gcode.Code, err error, data ...any) {
+func RespJsonExitByGcode(req *ghttp.Request, code gcode.Code, err error, data ...any) {
 	if err != nil {
-		ggcode = gcode.WithCode(ggcode, err.Error())
+		code = gcode.WithCode(code, err.Error())
 	}
-	RespJson(req, ggcode.Code(), ggcode.Message(), ggcode.Detail(), data...)
+	RespJson(req, code.Code(), code.Message(), code.Detail(), data...)
 	req.Exit()
 }
 
