@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 21:15:17
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 18:32:37
+ * @LastEditTime: 2024-01-22 18:56:57
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -55,8 +55,9 @@ func HandlerResponse(req *ghttp.Request) {
 			default:
 				rCode = gcode.CodeUnknown
 			}
+			rCode = gcode.WithCode(rCode, detail)
 			// It creates error as it can be retrieved by other middlewares.
-			err = gerror.NewCode(rCode, detail)
+			err = gerror.NewCode(rCode)
 			req.SetError(err)
 		} else {
 			rCode = gcode.CodeOK
