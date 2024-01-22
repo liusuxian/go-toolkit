@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 13:26:31
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:35:11
+ * @LastEditTime: 2024-01-23 00:27:08
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,6 +12,7 @@ package gtkconv
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 )
 
 // ToBoolE 将 any 转换为 bool 类型
@@ -52,6 +53,9 @@ func ToBoolE(i any) (bl bool, err error) {
 	case string:
 		if val == "" {
 			return false, nil
+		}
+		if strings.ToUpper(val) == "OK" {
+			return true, nil
 		}
 		iv, err := strconv.ParseBool(val)
 		if err == nil {
