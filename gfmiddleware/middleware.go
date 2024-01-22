@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 21:15:17
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-20 00:37:39
+ * @LastEditTime: 2024-01-22 18:32:37
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -26,24 +26,27 @@ func CORS(req *ghttp.Request) {
 // HandlerResponse 自定义返回中间件
 func HandlerResponse(req *ghttp.Request) {
 	req.Middleware.Next()
+
+	// There's custom buffer content, it then exits current handler.
 	if req.Response.BufferLength() > 0 {
 		return
 	}
 
 	var (
-		msg   string = "OK"
-		err          = req.GetError()
-		res          = req.GetHandlerResponse()
-		rCode        = gerror.Code(err)
+		detail   string
+		err      = req.GetError()
+		respData = req.GetHandlerResponse()
+		rCode    = gerror.Code(err)
 	)
 	if err != nil {
 		if rCode == gcode.CodeNil {
 			rCode = gcode.CodeInternalError
 		}
-		msg = err.Error()
+		detail = err.Error()
+		rCode = gcode.WithCode(rCode, detail)
 	} else {
 		if req.Response.Status > 0 && req.Response.Status != http.StatusOK {
-			msg = http.StatusText(req.Response.Status)
+			detail = http.StatusText(req.Response.Status)
 			switch req.Response.Status {
 			case http.StatusNotFound:
 				rCode = gcode.CodeNotFound
@@ -52,8 +55,8 @@ func HandlerResponse(req *ghttp.Request) {
 			default:
 				rCode = gcode.CodeUnknown
 			}
-
-			err = gerror.NewCode(rCode, msg)
+			// It creates error as it can be retrieved by other middlewares.
+			err = gerror.NewCode(rCode, detail)
 			req.SetError(err)
 		} else {
 			rCode = gcode.CodeOK
@@ -62,8 +65,8 @@ func HandlerResponse(req *ghttp.Request) {
 
 	req.Response.WriteJson(gfresponse.Resp{
 		Code:   rCode.Code(),
-		Msg:    msg,
+		Msg:    rCode.Message(),
 		Detail: rCode.Detail(),
-		Data:   res,
+		Data:   respData,
 	})
 }
