@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 21:15:17
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 18:56:57
+ * @LastEditTime: 2024-01-22 19:56:41
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,7 +13,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/net/ghttp"
-	"github.com/liusuxian/go-toolkit/gfresponse"
+	"github.com/liusuxian/go-toolkit/gflogger"
 	"net/http"
 )
 
@@ -33,20 +33,18 @@ func HandlerResponse(req *ghttp.Request) {
 	}
 
 	var (
-		detail   string
-		err      = req.GetError()
-		respData = req.GetHandlerResponse()
-		rCode    = gerror.Code(err)
+		err   = req.GetError()
+		res   = req.GetHandlerResponse()
+		rCode = gerror.Code(err)
 	)
 	if err != nil {
 		if rCode == gcode.CodeNil {
 			rCode = gcode.CodeInternalError
 		}
-		detail = err.Error()
-		rCode = gcode.WithCode(rCode, detail)
+		gflogger.Errorf(req.GetCtx(), "HandlerResponse Error: %+v", err)
 	} else {
 		if req.Response.Status > 0 && req.Response.Status != http.StatusOK {
-			detail = http.StatusText(req.Response.Status)
+			msg := http.StatusText(req.Response.Status)
 			switch req.Response.Status {
 			case http.StatusNotFound:
 				rCode = gcode.CodeNotFound
@@ -55,19 +53,18 @@ func HandlerResponse(req *ghttp.Request) {
 			default:
 				rCode = gcode.CodeUnknown
 			}
-			rCode = gcode.WithCode(rCode, detail)
 			// It creates error as it can be retrieved by other middlewares.
-			err = gerror.NewCode(rCode)
+			err = gerror.NewCode(rCode, msg)
 			req.SetError(err)
+			gflogger.Errorf(req.GetCtx(), "HandlerResponse Error: %+v", err)
 		} else {
 			rCode = gcode.CodeOK
 		}
 	}
 
-	req.Response.WriteJson(gfresponse.Resp{
-		Code:   rCode.Code(),
-		Msg:    rCode.Message(),
-		Detail: rCode.Detail(),
-		Data:   respData,
+	req.Response.WriteJson(ghttp.DefaultHandlerResponse{
+		Code:    rCode.Code(),
+		Message: rCode.Message(),
+		Data:    res,
 	})
 }
