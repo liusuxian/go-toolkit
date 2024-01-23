@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 23:31:52
+ * @LastEditTime: 2024-01-23 14:05:59
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -17,8 +17,8 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/liusuxian/go-toolkit/gf/gflogger"
+	"github.com/liusuxian/go-toolkit/gtk/gtkarr"
 	"github.com/liusuxian/go-toolkit/gtk/gtkjson"
-	"github.com/liusuxian/go-toolkit/gtk/gtkslice"
 	"hash/fnv"
 	"math"
 	"time"
@@ -544,7 +544,7 @@ func (kc *KafkaClient) sendData(ctx context.Context, producerConsumerName string
 	}
 	// 环境检测
 	if list, ok := kc.config.ExcludeEnvTopicMap[kc.config.Env]; ok {
-		if gtkslice.IsContains(list, originTopic) {
+		if gtkarr.ContainsStr(list, originTopic) {
 			gflogger.Debugf(ctx, "%s producer sendData msg: %s, data: %s", producerName, gtkjson.MustString(msg), string(data))
 			return
 		}

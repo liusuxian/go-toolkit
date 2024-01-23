@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-03 00:32:05
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 23:45:36
+ * @LastEditTime: 2024-01-23 15:31:20
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,9 +12,9 @@ package gtklog
 import (
 	"bytes"
 	"fmt"
+	"github.com/liusuxian/go-toolkit/gtk/gtkarr"
 	"github.com/liusuxian/go-toolkit/gtk/gtkconf"
 	"github.com/liusuxian/go-toolkit/gtk/gtkfile"
-	"github.com/liusuxian/go-toolkit/gtk/gtkslice"
 	"github.com/liusuxian/go-toolkit/gtk/gtkstr"
 	"github.com/natefinch/lumberjack"
 	"github.com/pkg/errors"
@@ -267,7 +267,7 @@ func getWriter(logPath string, conf LogDetailConfig) (writeSyncer zapcore.WriteS
 func Write(p []byte, withoutLogType ...int) (err error) {
 	for index, writer := range logger.logWriter {
 		conf := logger.logConfig.Details[index]
-		if !gtkslice.IsContains(withoutLogType, conf.Type) {
+		if !gtkarr.ContainsInt(withoutLogType, conf.Type) {
 			if _, err = writer.Write(p); err != nil {
 				return
 			}

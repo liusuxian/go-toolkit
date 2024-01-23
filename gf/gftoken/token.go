@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:16:52
+ * @LastEditTime: 2024-01-23 16:46:57
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -24,6 +24,7 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/gogf/gf/v2/util/grand"
 	"github.com/liusuxian/go-toolkit/gf/gflogger"
+	"github.com/liusuxian/go-toolkit/gf/gfresp"
 	"net/http"
 	"strings"
 )
@@ -60,13 +61,13 @@ type Token struct {
 	// 登录验证方法 return userKey 用户标识 如果 userKey 为空，结束执行
 	LoginBeforeFunc func(r *ghttp.Request) (string, any)
 	// 登录返回方法
-	LoginAfterFunc func(r *ghttp.Request, respData Resp)
+	LoginAfterFunc func(r *ghttp.Request, respData gfresp.Response)
 	// 登出地址
 	LogoutPath string
 	// 登出验证方法 return true 继续执行，否则结束执行
 	LogoutBeforeFunc func(r *ghttp.Request) bool
 	// 登出返回方法
-	LogoutAfterFunc func(r *ghttp.Request, respData Resp)
+	LogoutAfterFunc func(r *ghttp.Request, respData gfresp.Response)
 
 	// 拦截地址
 	AuthPaths g.SliceStr
@@ -75,7 +76,7 @@ type Token struct {
 	// 认证验证方法 return true 继续执行，否则结束执行
 	AuthBeforeFunc func(r *ghttp.Request) bool
 	// 认证返回方法
-	AuthAfterFunc func(r *ghttp.Request, respData Resp)
+	AuthAfterFunc func(r *ghttp.Request, respData gfresp.Response)
 }
 
 // Login 登录
@@ -144,7 +145,7 @@ func (m *Token) authMiddleware(r *ghttp.Request) {
 }
 
 // GetTokenData 通过token获取对象
-func (m *Token) GetTokenData(r *ghttp.Request) Resp {
+func (m *Token) GetTokenData(r *ghttp.Request) gfresp.Response {
 	respData := m.getRequestToken(r)
 	if respData.Success() {
 		// 验证token
@@ -215,31 +216,31 @@ func (m *Token) AuthPath(ctx context.Context, urlPath string) bool {
 }
 
 // getRequestToken 返回请求Token
-func (m *Token) getRequestToken(r *ghttp.Request) Resp {
+func (m *Token) getRequestToken(r *ghttp.Request) gfresp.Response {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if !(len(parts) == 2 && parts[0] == "Bearer") {
 			gflogger.Warning(r.Context(), msgLog(MsgErrAuthHeader, authHeader))
-			return Unauthorized(fmt.Sprintf(MsgErrAuthHeader, authHeader), "")
+			return gfresp.Unauthorized(fmt.Sprintf(MsgErrAuthHeader, authHeader), "")
 		} else if parts[1] == "" {
 			gflogger.Warning(r.Context(), msgLog(MsgErrAuthHeader, authHeader))
-			return Unauthorized(fmt.Sprintf(MsgErrAuthHeader, authHeader), "")
+			return gfresp.Unauthorized(fmt.Sprintf(MsgErrAuthHeader, authHeader), "")
 		}
 
-		return Succ(parts[1])
+		return gfresp.Succ(parts[1])
 	}
 
 	authHeader = r.Get(KeyToken).String()
 	if authHeader == "" {
-		return Unauthorized(MsgErrTokenEmpty, "")
+		return gfresp.Unauthorized(MsgErrTokenEmpty, "")
 	}
-	return Succ(authHeader)
+	return gfresp.Succ(authHeader)
 
 }
 
 // genToken 生成Token
-func (m *Token) genToken(ctx context.Context, userKey string, data any) Resp {
+func (m *Token) genToken(ctx context.Context, userKey string, data any) gfresp.Response {
 	token := m.EncryptToken(ctx, userKey, "")
 	if !token.Success() {
 		return token
@@ -263,9 +264,9 @@ func (m *Token) genToken(ctx context.Context, userKey string, data any) Resp {
 }
 
 // validToken 验证Token
-func (m *Token) validToken(ctx context.Context, token string) Resp {
+func (m *Token) validToken(ctx context.Context, token string) gfresp.Response {
 	if token == "" {
-		return Unauthorized(MsgErrTokenEmpty, "")
+		return gfresp.Unauthorized(MsgErrTokenEmpty, "")
 	}
 
 	decryptToken := m.DecryptToken(ctx, token)
@@ -283,14 +284,14 @@ func (m *Token) validToken(ctx context.Context, token string) Resp {
 
 	if uuid != userCacheResp.GetString(KeyUuid) {
 		gflogger.Debug(ctx, msgLog(MsgErrAuthUuid)+", decryptToken:"+decryptToken.Json()+" cacheValue:"+gconv.String(userCacheResp.Data))
-		return Unauthorized(MsgErrAuthUuid, "")
+		return gfresp.Unauthorized(MsgErrAuthUuid, "")
 	}
 
 	return userCacheResp
 }
 
 // getToken 通过userKey获取Token
-func (m *Token) getToken(ctx context.Context, userKey string) Resp {
+func (m *Token) getToken(ctx context.Context, userKey string) gfresp.Response {
 	cacheKey := m.CacheKey + userKey
 
 	userCacheResp := m.getCache(ctx, cacheKey)
@@ -309,11 +310,11 @@ func (m *Token) getToken(ctx context.Context, userKey string) Resp {
 		return m.setCache(ctx, cacheKey, userCache)
 	}
 
-	return Succ(userCache)
+	return gfresp.Succ(userCache)
 }
 
 // RemoveToken 删除Token
-func (m *Token) RemoveToken(ctx context.Context, token string) Resp {
+func (m *Token) RemoveToken(ctx context.Context, token string) gfresp.Response {
 	decryptToken := m.DecryptToken(ctx, token)
 	if !decryptToken.Success() {
 		return decryptToken
@@ -324,9 +325,9 @@ func (m *Token) RemoveToken(ctx context.Context, token string) Resp {
 }
 
 // EncryptToken token加密方法
-func (m *Token) EncryptToken(ctx context.Context, userKey string, uuid string) Resp {
+func (m *Token) EncryptToken(ctx context.Context, userKey string, uuid string) gfresp.Response {
 	if userKey == "" {
-		return Fail(MsgErrUserKeyEmpty)
+		return gfresp.Fail(MsgErrUserKeyEmpty)
 	}
 
 	if uuid == "" {
@@ -334,7 +335,7 @@ func (m *Token) EncryptToken(ctx context.Context, userKey string, uuid string) R
 		newUuid, err := gmd5.Encrypt(grand.Letters(10))
 		if err != nil {
 			gflogger.Error(ctx, msgLog(MsgErrAuthUuid), err)
-			return Error(MsgErrAuthUuid)
+			return gfresp.Error(MsgErrAuthUuid)
 		}
 		uuid = newUuid
 	}
@@ -344,10 +345,10 @@ func (m *Token) EncryptToken(ctx context.Context, userKey string, uuid string) R
 	token, err := gaes.Encrypt([]byte(tokenStr), m.EncryptKey)
 	if err != nil {
 		gflogger.Error(ctx, msgLog(MsgErrTokenEncrypt), tokenStr, err)
-		return Error(MsgErrTokenEncrypt)
+		return gfresp.Error(MsgErrTokenEncrypt)
 	}
 
-	return Succ(g.Map{
+	return gfresp.Succ(g.Map{
 		KeyUserKey: userKey,
 		KeyUuid:    uuid,
 		KeyToken:   gbase64.EncodeToString(token),
@@ -355,28 +356,28 @@ func (m *Token) EncryptToken(ctx context.Context, userKey string, uuid string) R
 }
 
 // DecryptToken token解密方法
-func (m *Token) DecryptToken(ctx context.Context, token string) Resp {
+func (m *Token) DecryptToken(ctx context.Context, token string) gfresp.Response {
 	if token == "" {
-		return Fail(MsgErrTokenEmpty)
+		return gfresp.Fail(MsgErrTokenEmpty)
 	}
 
 	token64, err := gbase64.Decode([]byte(token))
 	if err != nil {
 		gflogger.Error(ctx, msgLog(MsgErrTokenDecode), token, err)
-		return Error(MsgErrTokenDecode)
+		return gfresp.Error(MsgErrTokenDecode)
 	}
 	decryptToken, err2 := gaes.Decrypt(token64, m.EncryptKey)
 	if err2 != nil {
 		gflogger.Error(ctx, msgLog(MsgErrTokenEncrypt), token, err2)
-		return Error(MsgErrTokenEncrypt)
+		return gfresp.Error(MsgErrTokenEncrypt)
 	}
 	tokenArray := gstr.Split(string(decryptToken), m.TokenDelimiter)
 	if len(tokenArray) < 2 {
 		gflogger.Error(ctx, msgLog(MsgErrTokenLen), token)
-		return Error(MsgErrTokenLen)
+		return gfresp.Error(MsgErrTokenLen)
 	}
 
-	return Succ(g.Map{
+	return gfresp.Succ(g.Map{
 		KeyUserKey: tokenArray[0],
 		KeyUuid:    tokenArray[1],
 	})
@@ -426,11 +427,11 @@ func (m *Token) InitConfig() bool {
 	}
 
 	if m.LoginAfterFunc == nil {
-		m.LoginAfterFunc = func(r *ghttp.Request, respData Resp) {
+		m.LoginAfterFunc = func(r *ghttp.Request, respData gfresp.Response) {
 			if !respData.Success() {
 				r.Response.WriteJson(respData)
 			} else {
-				r.Response.WriteJson(Succ(g.Map{
+				r.Response.WriteJson(gfresp.Succ(g.Map{
 					KeyToken: respData.GetString(KeyToken),
 				}))
 			}
@@ -444,9 +445,9 @@ func (m *Token) InitConfig() bool {
 	}
 
 	if m.LogoutAfterFunc == nil {
-		m.LogoutAfterFunc = func(r *ghttp.Request, respData Resp) {
+		m.LogoutAfterFunc = func(r *ghttp.Request, respData gfresp.Response) {
 			if respData.Success() {
-				r.Response.WriteJson(Succ(MsgLogoutSucc))
+				r.Response.WriteJson(gfresp.Succ(MsgLogoutSucc))
 			} else {
 				r.Response.WriteJson(respData)
 			}
@@ -460,7 +461,7 @@ func (m *Token) InitConfig() bool {
 		}
 	}
 	if m.AuthAfterFunc == nil {
-		m.AuthAfterFunc = func(r *ghttp.Request, respData Resp) {
+		m.AuthAfterFunc = func(r *ghttp.Request, respData gfresp.Response) {
 			if respData.Success() {
 				r.Middleware.Next()
 			} else {
@@ -478,7 +479,7 @@ func (m *Token) InitConfig() bool {
 
 				gflogger.Warning(r.Context(), fmt.Sprintf("[AUTH_%s][url:%s][params:%s][data:%s]",
 					no, r.URL.Path, params, respData.Json()))
-				respData.Msg = m.AuthFailMsg
+				respData.Message = m.AuthFailMsg
 				r.Response.WriteJson(respData)
 				r.ExitAll()
 			}
