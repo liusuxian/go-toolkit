@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-23 17:51:15
+ * @LastEditTime: 2024-01-24 01:15:41
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -116,6 +116,7 @@ func (m *Token) writeFileCache(ctx context.Context) {
 	}
 	gfile.PutContents(file, gjson.New(data).MustToJsonString())
 }
+
 func (m *Token) initFileCache(ctx context.Context) {
 	file := gfile.Temp(CacheModeFileDat)
 	if !gfile.Exists(file) {

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-23 18:07:43
+ * @LastEditTime: 2024-01-24 00:51:58
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,6 @@ package gftoken
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/gogf/gf/v2/crypto/gaes"
 	"github.com/gogf/gf/v2/crypto/gmd5"
@@ -31,8 +30,6 @@ import (
 
 // Token token 结构体
 type Token struct {
-	// 服务名称
-	ServerName string
 	// 缓存模式 1:gcache 2:gredis 3:fileCache 默认1
 	CacheMode int8
 	// gredis 组名称
@@ -51,72 +48,48 @@ type Token struct {
 	AuthFailMsg string
 	// 是否支持多端登录，默认 false
 	MultiLogin bool
-	// 是否是全局认证，兼容历史版本，已废弃
-	GlobalMiddleware bool
 	// 中间件类型 1 GroupMiddleware 2 BindMiddleware  3 GlobalMiddleware
 	MiddlewareType uint
 
-	// 登录路径
-	LoginPath string
-	// 登录验证方法 return userKey 用户标识 如果 userKey 为空，结束执行
-	LoginBeforeFunc func(r *ghttp.Request) (string, any)
-	// 登录返回方法
-	LoginAfterFunc func(r *ghttp.Request, respData gfresp.Response)
-	// 登出地址
-	LogoutPath string
-	// 登出验证方法 return true 继续执行，否则结束执行
-	LogoutBeforeFunc func(r *ghttp.Request) bool
-	// 登出返回方法
-	LogoutAfterFunc func(r *ghttp.Request, respData gfresp.Response)
-
 	// 拦截地址
-	AuthPaths g.SliceStr
+	AuthPaths []string
 	// 拦截排除地址
-	AuthExcludePaths g.SliceStr
+	AuthExcludePaths []string
 	// 认证验证方法 return true 继续执行，否则结束执行
 	AuthBeforeFunc func(r *ghttp.Request) bool
 	// 认证返回方法
 	AuthAfterFunc func(r *ghttp.Request, respData gfresp.Response)
 }
 
-// Login 登录
-func (m *Token) Login(r *ghttp.Request) {
-	userKey, data := m.LoginBeforeFunc(r)
+// GenToken 生成Token
+func (m *Token) GenToken(ctx context.Context, userKey string, data any) (respToken gfresp.Response) {
 	if userKey == "" {
-		gflogger.Error(r.Context(), msgLog(MsgErrUserKeyEmpty))
+		gflogger.Error(ctx, msgLog(MsgErrUserKeyEmpty))
 		return
 	}
 
 	if m.MultiLogin {
 		// 支持多端重复登录，返回相同token
-		userCacheResp := m.getToken(r.Context(), userKey)
+		userCacheResp := m.getToken(ctx, userKey)
 		if userCacheResp.Success() {
-			respToken := m.EncryptToken(r.Context(), userKey, userCacheResp.GetString(KeyUuid))
-			m.LoginAfterFunc(r, respToken)
+			respToken = m.EncryptToken(ctx, userKey, userCacheResp.GetString(KeyUuid))
 			return
 		}
 	}
 
 	// 生成token
-	respToken := m.genToken(r.Context(), userKey, data)
-	m.LoginAfterFunc(r, respToken)
-
+	respToken = m.genToken(ctx, userKey, data)
+	return
 }
 
-// Logout 登出
-func (m *Token) Logout(r *ghttp.Request) {
-	if !m.LogoutBeforeFunc(r) {
-		return
-	}
-
+// RemoveRequestToken 删除请求Token（推荐）
+func (m *Token) RemoveRequestToken(ctx context.Context) {
 	// 获取请求token
-	respData := m.getRequestToken(r)
+	respData := m.getRequestToken(g.RequestFromCtx(ctx))
 	if respData.Success() {
 		// 删除token
-		m.RemoveToken(r.Context(), respData.DataString())
+		m.RemoveToken(ctx, respData.DataString())
 	}
-
-	m.LogoutAfterFunc(r, respData)
 }
 
 // AuthMiddleware 认证拦截
@@ -161,13 +134,6 @@ func (m *Token) AuthPath(ctx context.Context, urlPath string) bool {
 	// 去除后斜杠
 	if strings.HasSuffix(urlPath, "/") {
 		urlPath = gstr.SubStr(urlPath, 0, len(urlPath)-1)
-	}
-	// 分组拦截，登录接口不拦截
-	if m.MiddlewareType == MiddlewareTypeGroup {
-		if (m.LoginPath != "" && gstr.HasSuffix(urlPath, m.LoginPath)) ||
-			(m.LogoutPath != "" && gstr.HasSuffix(urlPath, m.LogoutPath)) {
-			return false
-		}
 	}
 
 	// 全局处理，认证路径拦截处理
@@ -384,7 +350,7 @@ func (m *Token) DecryptToken(ctx context.Context, token string) gfresp.Response 
 }
 
 // InitConfig 初始化配置信息
-func (m *Token) InitConfig() bool {
+func (m *Token) InitConfig() {
 	if m.CacheMode == 0 {
 		m.CacheMode = CacheModeCache
 	}
@@ -417,39 +383,8 @@ func (m *Token) InitConfig() bool {
 		m.AuthFailMsg = DefaultAuthFailMsg
 	}
 
-	// 设置中间件模式，未设置说明历史版本，通过GlobalMiddleware兼容
 	if m.MiddlewareType == 0 {
-		if m.GlobalMiddleware {
-			m.MiddlewareType = MiddlewareTypeGlobal
-		} else {
-			m.MiddlewareType = MiddlewareTypeBind
-		}
-	}
-
-	if m.LoginAfterFunc == nil {
-		m.LoginAfterFunc = func(r *ghttp.Request, respData gfresp.Response) {
-			if !respData.Success() {
-				respData.Resp(r)
-			} else {
-				gfresp.Succ(g.Map{KeyToken: respData.GetString(KeyToken)}).Resp(r)
-			}
-		}
-	}
-
-	if m.LogoutBeforeFunc == nil {
-		m.LogoutBeforeFunc = func(r *ghttp.Request) bool {
-			return true
-		}
-	}
-
-	if m.LogoutAfterFunc == nil {
-		m.LogoutAfterFunc = func(r *ghttp.Request, respData gfresp.Response) {
-			if respData.Success() {
-				gfresp.Succ(MsgLogoutSucc).Resp(r)
-			} else {
-				respData.Resp(r)
-			}
-		}
+		m.MiddlewareType = MiddlewareTypeBind
 	}
 
 	if m.AuthBeforeFunc == nil {
@@ -483,79 +418,9 @@ func (m *Token) InitConfig() bool {
 			}
 		}
 	}
-
-	return true
 }
 
-// Start 启动
-func (m *Token) Start() error {
-	if !m.InitConfig() {
-		return errors.New(MsgErrInitFail)
-	}
-
-	ctx := context.Background()
-	gflogger.Info(ctx, msgLog("[params:"+m.String()+"]start... "))
-
-	s := g.Server(m.ServerName)
-
-	// 缓存模式
-	if m.CacheMode > CacheModeFile {
-		gflogger.Error(ctx, msgLog(MsgErrNotSet, "CacheMode"))
-		return fmt.Errorf(MsgErrNotSet, "CacheMode")
-	}
-
-	// 初始化文件缓存
-	if m.CacheMode == 3 {
-		m.initFileCache(ctx)
-	}
-
-	// 认证拦截器
-	if m.AuthPaths == nil {
-		gflogger.Error(ctx, msgLog(MsgErrNotSet, "AuthPaths"))
-		return fmt.Errorf(MsgErrNotSet, "AuthPaths")
-	}
-
-	// 是否是全局拦截
-	if m.MiddlewareType == MiddlewareTypeGlobal {
-		s.BindMiddlewareDefault(m.authMiddleware)
-	} else {
-		for _, authPath := range m.AuthPaths {
-			tmpPath := authPath
-			if !strings.HasSuffix(authPath, "/*") {
-				tmpPath += "/*"
-			}
-			s.BindMiddleware(tmpPath, m.authMiddleware)
-		}
-	}
-
-	// 登录
-	if m.LoginPath == "" {
-		gflogger.Error(ctx, msgLog(MsgErrNotSet, "LoginPath"))
-		return fmt.Errorf(MsgErrNotSet, "LoginPath")
-	}
-	if m.LoginBeforeFunc == nil {
-		gflogger.Error(ctx, msgLog(MsgErrNotSet, "LoginBeforeFunc"))
-		return fmt.Errorf(MsgErrNotSet, "LoginBeforeFunc")
-	}
-	s.BindHandler(m.LoginPath, m.Login)
-
-	// 登出
-	if m.LogoutPath == "" {
-		gflogger.Error(ctx, msgLog(MsgErrNotSet, "LogoutPath"))
-		return fmt.Errorf(MsgErrNotSet, "LogoutPath")
-	}
-	s.BindHandler(m.LogoutPath, m.Logout)
-
-	return nil
-}
-
-// Stop 结束
-func (m *Token) Stop(ctx context.Context) error {
-	gflogger.Info(ctx, "[GToken]stop. ")
-	return nil
-}
-
-// String token解密方法
+// String
 func (m *Token) String() string {
 	return gconv.String(g.Map{
 		// 缓存模式 1:gcache 2:gredis 3:fileCache 默认1
@@ -567,8 +432,6 @@ func (m *Token) String() string {
 		"AuthFailMsg":      m.AuthFailMsg,
 		"MultiLogin":       m.MultiLogin,
 		"MiddlewareType":   m.MiddlewareType,
-		"LoginPath":        m.LoginPath,
-		"LogoutPath":       m.LogoutPath,
 		"AuthPaths":        gconv.String(m.AuthPaths),
 		"AuthExcludePaths": gconv.String(m.AuthExcludePaths),
 	})

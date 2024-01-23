@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-23 16:11:46
+ * @LastEditTime: 2024-01-24 01:19:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,6 @@ package gftoken_test
 
 import (
 	"context"
-	"github.com/gogf/gf/v2/frame/g"
 	"github.com/liusuxian/go-toolkit/gf/gftoken"
 	"testing"
 )
@@ -23,9 +22,9 @@ func TestAuthPathGlobal(t *testing.T) {
 	// 启动gtoken
 	gfToken := &gftoken.Token{
 		//Timeout:         10 * 1000,
-		AuthPaths:        g.SliceStr{"/user", "/system"},             // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
-		AuthExcludePaths: g.SliceStr{"/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
-		MiddlewareType:   gftoken.MiddlewareTypeGlobal,               // 开启全局拦截
+		AuthPaths:        []string{"/user", "/system"},             // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
+		AuthExcludePaths: []string{"/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
+		MiddlewareType:   gftoken.MiddlewareTypeGlobal,             // 开启全局拦截
 	}
 
 	authPath(gfToken, t)
@@ -41,9 +40,9 @@ func TestBindAuthPath(t *testing.T) {
 	// 启动gtoken
 	gfToken := &gftoken.Token{
 		//Timeout:         10 * 1000,
-		AuthPaths:        g.SliceStr{"/user", "/system"},             // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
-		AuthExcludePaths: g.SliceStr{"/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
-		MiddlewareType:   gftoken.MiddlewareTypeBind,                 // 开启局部拦截
+		AuthPaths:        []string{"/user", "/system"},             // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
+		AuthExcludePaths: []string{"/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
+		MiddlewareType:   gftoken.MiddlewareTypeBind,               // 开启局部拦截
 	}
 
 	authPath(gfToken, t)
@@ -56,9 +55,8 @@ func TestGroupAuthPath(t *testing.T) {
 	// 启动gtoken
 	gfToken := &gftoken.Token{
 		//Timeout:         10 * 1000,
-		AuthExcludePaths: g.SliceStr{"/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
-		LoginPath:        "/login",                                   // 登录路径
-		MiddlewareType:   gftoken.MiddlewareTypeGroup,                // 开启组拦截
+		AuthExcludePaths: []string{"/login", "/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
+		MiddlewareType:   gftoken.MiddlewareTypeGroup,                        // 开启组拦截
 	}
 
 	flag := gfToken.AuthPath(ctx, "/login")
@@ -89,8 +87,8 @@ func TestAuthPathNoExclude(t *testing.T) {
 	// 启动gtoken
 	gfToken := &gftoken.Token{
 		//Timeout:         10 * 1000,
-		AuthPaths:      g.SliceStr{"/user", "/system"}, // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
-		MiddlewareType: gftoken.MiddlewareTypeGlobal,   // 关闭全局拦截
+		AuthPaths:      []string{"/user", "/system"}, // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
+		MiddlewareType: gftoken.MiddlewareTypeGlobal, // 关闭全局拦截
 	}
 
 	authFlag := gfToken.AuthPath
@@ -117,9 +115,9 @@ func TestAuthPathExclude(t *testing.T) {
 	// 启动gtoken
 	gfToken := &gftoken.Token{
 		//Timeout:         10 * 1000,
-		AuthPaths:        g.SliceStr{"/*"},                           // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
-		AuthExcludePaths: g.SliceStr{"/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
-		MiddlewareType:   gftoken.MiddlewareTypeGlobal,               // 开启全局拦截
+		AuthPaths:        []string{"/*"},                           // 这里是按照前缀拦截，拦截/user /user/list /user/add ...
+		AuthExcludePaths: []string{"/user/info", "/system/user/*"}, // 不拦截路径  /user/info,/system/user/info,/system/user,
+		MiddlewareType:   gftoken.MiddlewareTypeGlobal,             // 开启全局拦截
 	}
 
 	authFlag := gfToken.AuthPath

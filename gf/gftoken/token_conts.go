@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-23 17:50:57
+ * @LastEditTime: 2024-01-24 01:10:38
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -44,9 +44,6 @@ const (
 
 const (
 	DefaultLogPrefix   = "[gftoken]" // 日志前缀
-	MsgLogoutSucc      = "Logout success"
-	MsgErrInitFail     = "InitConfig fail"
-	MsgErrNotSet       = "%s not set, error"
 	MsgErrUserKeyEmpty = "userKey is empty"
 	MsgErrReqMethod    = "request method is error! "
 	MsgErrAuthHeader   = "Authorization : %s get token key fail"
