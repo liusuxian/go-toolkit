@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 21:04:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-23 16:41:48
+ * @LastEditTime: 2024-01-23 17:47:10
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,14 +15,7 @@ import (
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/gogf/gf/v2/util/gconv"
-	"github.com/liusuxian/go-toolkit/gf/gflogger"
 	"net/http"
-)
-
-const (
-	FAIL         = -2
-	ERROR        = -3
-	UNAUTHORIZED = http.StatusUnauthorized
 )
 
 // Response 通用响应数据结构
@@ -72,81 +65,54 @@ func (resp Response) Json() (str string) {
 	return string(b)
 }
 
+// Resp 响应数据返回
+func (resp Response) Resp(req *ghttp.Request) {
+	req.Response.WriteJson(resp)
+}
+
+// RespExit 响应数据返回并退出
+func (resp Response) RespExit(req *ghttp.Request) {
+	req.Response.WriteJson(resp)
+	req.Exit()
+}
+
 // Succ 成功
 func Succ(data any) (resp Response) {
 	return Response{gcode.CodeOK.Code(), gcode.CodeOK.Message(), data}
 }
 
 // Fail 失败
-func Fail(msg string) (resp Response) {
-	return Response{FAIL, msg, ""}
-}
-
-// FailData 失败设置Data
-func FailData(msg string, data any) (resp Response) {
-	return Response{FAIL, msg, data}
-}
-
-// Error 错误
-func Error(msg string) (resp Response) {
-	return Response{ERROR, msg, ""}
-}
-
-// ErrorData 错误设置Data
-func ErrorData(msg string, data any) (resp Response) {
-	return Response{ERROR, msg, data}
-}
-
-// Unauthorized 认证失败
-func Unauthorized(msg string, data any) (resp Response) {
-	return Response{UNAUTHORIZED, msg, data}
-}
-
-// Resp 响应数据返回
-func Resp(req *ghttp.Request, rCode gcode.Code, err error, data ...any) {
+func Fail(code int, msg string, data ...any) (resp Response) {
 	var rData any
 	if len(data) > 0 {
 		rData = data[0]
 	}
-
-	if err != nil {
-		gflogger.Errorf(req.GetCtx(), "Response Error: %+v", err)
-	}
-
-	resData := Response{
-		Code:    rCode.Code(),
-		Message: rCode.Message(),
-		Data:    rData,
-	}
-	req.Response.WriteJson(resData)
+	return Response{code, msg, rData}
 }
 
-// RespNoErr 响应数据返回
-func RespNoErr(req *ghttp.Request, rCode gcode.Code, data ...any) {
-	Resp(req, rCode, nil, data...)
+// Unauthorized 认证失败
+func Unauthorized(msg string, data any) (resp Response) {
+	return Response{http.StatusUnauthorized, msg, data}
 }
 
-// RespExit 响应数据返回并退出
-func RespExit(req *ghttp.Request, rCode gcode.Code, err error, data ...any) {
-	Resp(req, rCode, err, data...)
-	req.Exit()
+// RespFail 返回失败
+func RespFail(req *ghttp.Request, rCode gcode.Code, data ...any) {
+	Fail(rCode.Code(), rCode.Message(), data...).Resp(req)
 }
 
-// RespNoErrExit 响应数据返回并退出
-func RespNoErrExit(req *ghttp.Request, rCode gcode.Code, data ...any) {
-	Resp(req, rCode, nil, data...)
-	req.Exit()
+// RespFailExit 返回失败并退出
+func RespFailExit(req *ghttp.Request, rCode gcode.Code, data ...any) {
+	Fail(rCode.Code(), rCode.Message(), data...).RespExit(req)
 }
 
-// RespSucc 成功
-func RespSucc(req *ghttp.Request, data ...any) {
-	Resp(req, gcode.CodeOK, nil, data...)
+// RespSucc 返回成功
+func RespSucc(req *ghttp.Request, data any) {
+	Succ(data).Resp(req)
 }
 
-// RespSuccExit 成功并退出
-func RespSuccExit(req *ghttp.Request, data ...any) {
-	Resp(req, gcode.CodeOK, nil, data...)
-	req.Exit()
+// RespSuccExit 返回成功并退出
+func RespSuccExit(req *ghttp.Request, data any) {
+	Succ(data).RespExit(req)
 }
 
 // Redirect 重定向

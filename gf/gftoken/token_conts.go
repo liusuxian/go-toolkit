@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 15:38:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-23 16:44:37
+ * @LastEditTime: 2024-01-23 17:50:57
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,6 +10,11 @@
 package gftoken
 
 import "fmt"
+
+const (
+	FAIL  = -1
+	ERROR = -99
+)
 
 const (
 	CacheModeCache   = 1
