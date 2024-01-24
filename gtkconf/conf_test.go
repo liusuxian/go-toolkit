@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-03-13 11:04:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 23:35:14
+ * @LastEditTime: 2024-01-24 22:33:19
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,6 +11,8 @@ package gtkconf_test
 
 import (
 	"github.com/liusuxian/go-toolkit/gtkconf"
+	"github.com/liusuxian/go-toolkit/gtkjson"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -41,7 +43,7 @@ type LogConfig struct {
 type LogDetailConfig struct {
 	Type       int    // 日志类型 0:打印所有级别 1:打印 DEBUG、INFO 级别 2:打印 WARN、ERROR、DPANIC、PANIC、FATAL 级别，默认0
 	Level      int    // 日志打印级别 0:DEBUG 1:INFO 2:WARN 3:ERROR 4:DPANIC、5:PANIC、6:FATAL，默认0
-	Format     int    // 输出日志格式 0:logfmt 1:json，默认1
+	Format     int    // 输出日志格式 0:logfmt 1:json，默认0
 	Filename   string // 输出日志文件名称
 	MaxSize    int    // 单个日志文件最多存储量（单位:MB）
 	MaxBackups int    // 日志备份文件最多数量
@@ -57,48 +59,48 @@ type TestCfg struct {
 	TotalTime uint32 `json:"total_time" dc:"total_time"`
 }
 
-func TestConfig(t *testing.T) {
-	var err error
-	serverConf := ServerConfig{}
-	if err = gtkconf.StructKey("server", &serverConf); err != nil {
-		t.Log("StructKey ServerConfig Error:", err)
-		return
+func TestLocalConfig(t *testing.T) {
+	var (
+		err        error
+		assert     = assert.New(t)
+		serverConf = ServerConfig{}
+	)
+	err = gtkconf.StructKey("server", &serverConf)
+	if assert.NoError(err) {
+		assert.Equal("{\"Name\":\"Nova\",\"Network\":\"tcp\",\"Port\":8099,\"HeartBeat\":10000000000,\"MaxHeartBeat\":15000000000,\"MaxConn\":3,\"WorkerPoolSize\":10,\"WorkerPoolSizeOverflow\":5,\"MaxPacketSize\":4096,\"PacketMethod\":1,\"Endian\":1,\"SlowThreshold\":200000000}", gtkjson.MustString(serverConf))
 	}
-	t.Logf("serverConf: %+v\n", serverConf)
-
 	logConfig := LogConfig{}
-	if err = gtkconf.StructKey("logger", &logConfig); err != nil {
-		t.Log("StructKey confSlice Error:", err)
-		return
+	err = gtkconf.StructKey("logger", &logConfig)
+	if assert.NoError(err) {
+		assert.Equal("{\"Path\":\"logs\",\"Details\":[{\"Type\":1,\"Level\":0,\"Format\":0,\"Filename\":\"info.log\",\"MaxSize\":10,\"MaxBackups\":10,\"MaxAge\":7,\"Compress\":false,\"Stdout\":true},{\"Type\":2,\"Level\":2,\"Format\":0,\"Filename\":\"error.log\",\"MaxSize\":10,\"MaxBackups\":10,\"MaxAge\":7,\"Compress\":false,\"Stdout\":true}]}", gtkjson.MustString(logConfig))
 	}
-	t.Logf("logConfig: %+v\n", logConfig)
-
 	var localCfg *gtkconf.Config
-	if localCfg, err = gtkconf.NewConfig("config/test.json"); err != nil {
-		t.Log("NewConfig Error:", err)
-		return
+	localCfg, err = gtkconf.NewConfig("config/test.json")
+	if assert.NoError(err) {
+		testCfg1 := TestCfg{}
+		err = localCfg.StructKey("test", &testCfg1)
+		if assert.NoError(err) {
+			assert.Equal("{\"id\":10000,\"money_real\":20000,\"total_time\":30000}", gtkjson.MustString(testCfg1))
+		}
+		testCfg2 := TestCfg{}
+		err = localCfg.StructKey("test", &testCfg2, func(dc *gtkconf.DecoderConfig) {
+			dc.TagName = "jsonTag"
+		})
+		if assert.NoError(err) {
+			assert.Equal("{\"id\":10000,\"money_real\":0,\"total_time\":0}", gtkjson.MustString(testCfg2))
+		}
 	}
-	testCfg1 := TestCfg{}
-	if err = localCfg.StructKey("test", &testCfg1); err != nil {
-		t.Log("StructKey TestCfg1 Error:", err)
-		return
-	}
-	t.Logf("testCfg1: %+v\n", testCfg1)
-	testCfg2 := TestCfg{}
-	if err = localCfg.StructKey("test", &testCfg2, func(dc *gtkconf.DecoderConfig) {
-		dc.TagName = "json"
-	}); err != nil {
-		t.Log("StructKey TestCfg2 Error:", err)
-		return
-	}
-	t.Logf("testCfg2: %+v\n", testCfg2)
 
-	var cfg *gtkconf.Config
-	if cfg, err = gtkconf.NewRemoteConfig("consul", "127.0.0.1:8500", "config/test", "json"); err != nil {
-		t.Log("NewRemoteConfig Error:", err)
-		return
+}
+
+func TestRemoteConfig(t *testing.T) {
+	var (
+		err    error
+		cfg    *gtkconf.Config
+		assert = assert.New(t)
+	)
+	cfg, err = gtkconf.NewRemoteConfig("consul", "127.0.0.1:8500", "config/test", "json")
+	if assert.Error(err) {
+		assert.Nil(cfg)
 	}
-	t.Logf("a: %+v\n", cfg.GetInt("a"))
-	t.Logf("b: %+v\n", cfg.GetInt("b"))
-	t.Logf("c: %+v\n", cfg.GetIntSlice("c"))
 }

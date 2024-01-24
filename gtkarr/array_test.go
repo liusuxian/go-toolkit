@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 00:20:56
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:39:20
+ * @LastEditTime: 2024-01-24 19:09:56
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-func TestIsContains(t *testing.T) {
+func TestContains(t *testing.T) {
 	assert := assert.New(t)
 	assert.False(gtkarr.ContainsInt([]int{}, 0))
 	assert.True(gtkarr.ContainsInt([]int{0, 1, 2}, 0))

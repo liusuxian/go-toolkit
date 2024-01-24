@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-03 00:32:05
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:52:38
+ * @LastEditTime: 2024-01-24 22:36:04
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -36,7 +36,7 @@ type LogConfig struct {
 type LogDetailConfig struct {
 	Type       int    // 日志类型 0:打印所有级别 1:打印 DEBUG、INFO 级别 2:打印 WARN、ERROR、DPANIC、PANIC、FATAL 级别，默认0
 	Level      int    // 日志打印级别 0:DEBUG 1:INFO 2:WARN 3:ERROR 4:DPANIC、5:PANIC、6:FATAL，默认0
-	Format     int    // 输出日志格式 0:logfmt 1:json，默认1
+	Format     int    // 输出日志格式 0:logfmt 1:json，默认0
 	Filename   string // 输出日志文件名称
 	MaxSize    int    // 单个日志文件最多存储量（单位:MB）
 	MaxBackups int    // 日志备份文件最多数量
@@ -47,13 +47,13 @@ type LogDetailConfig struct {
 
 // stdoutWriter 标准输出
 type stdoutWriter struct {
-	format int // 输出日志格式 0:logfmt 1:json，默认1
+	format int // 输出日志格式 0:logfmt 1:json，默认0
 }
 
 // fileWriter 文件输出
 type fileWriter struct {
 	lumberjack.Logger
-	format int // 输出日志格式 0:logfmt 1:json，默认1
+	format int // 输出日志格式 0:logfmt 1:json，默认0
 }
 
 // nLogger 日志结构
@@ -198,6 +198,7 @@ func getEncoder(conf LogDetailConfig) (encoder zapcore.Encoder, err error) {
 		encoderConfig.EncodeLevel = func(l zapcore.Level, pae zapcore.PrimitiveArrayEncoder) {
 			pae.AppendString("[" + l.CapitalString() + "]")
 		}
+		encoderConfig.FunctionKey = "func"
 		encoderConfig.ConsoleSeparator = " "
 		encoder = zapcore.NewConsoleEncoder(encoderConfig) // 以logfmt格式写入
 		return
@@ -281,7 +282,13 @@ func Write(p []byte, withoutLogType ...int) (err error) {
 
 // Debug
 func Debug(msg string, fields ...logField) {
+	// logger.zapLogger.Debug(msg, withFields(fields...)...)
 	logger.zapLogger.Debug(msg, fields...)
+}
+
+// Debugf
+func Debugf(format string, v ...any) {
+	logger.zapLogger.Debug(fmt.Sprintf(format, v...))
 }
 
 // Info
@@ -289,9 +296,19 @@ func Info(msg string, fields ...logField) {
 	logger.zapLogger.Info(msg, fields...)
 }
 
+// Infof
+func Infof(format string, v ...any) {
+	logger.zapLogger.Info(fmt.Sprintf(format, v...))
+}
+
 // Warn
 func Warn(msg string, fields ...logField) {
 	logger.zapLogger.Warn(msg, fields...)
+}
+
+// Warnf
+func Warnf(format string, v ...any) {
+	logger.zapLogger.Warn(fmt.Sprintf(format, v...))
 }
 
 // Error
@@ -299,9 +316,19 @@ func Error(msg string, fields ...logField) {
 	logger.zapLogger.Error(msg, fields...)
 }
 
+// Errorf
+func Errorf(format string, v ...any) {
+	logger.zapLogger.Error(fmt.Sprintf(format, v...))
+}
+
 // DPanic
 func DPanic(msg string, fields ...logField) {
 	logger.zapLogger.DPanic(msg, fields...)
+}
+
+// DPanicf
+func DPanicf(format string, v ...any) {
+	logger.zapLogger.DPanic(fmt.Sprintf(format, v...))
 }
 
 // Panic
@@ -309,9 +336,19 @@ func Panic(msg string, fields ...logField) {
 	logger.zapLogger.Panic(msg, fields...)
 }
 
+// Panicf
+func Panicf(format string, v ...any) {
+	logger.zapLogger.Panic(fmt.Sprintf(format, v...))
+}
+
 // Fatal
 func Fatal(msg string, fields ...logField) {
 	logger.zapLogger.Fatal(msg, fields...)
+}
+
+// Fatalf
+func Fatalf(format string, v ...any) {
+	logger.zapLogger.Fatal(fmt.Sprintf(format, v...))
 }
 
 // Level
@@ -323,3 +360,12 @@ func Level() zapcore.Level {
 func LevelEnabled(lvl zapcore.Level) bool {
 	return logger.zapLogger.Level().Enabled(lvl)
 }
+
+// withFields
+// func withFields(fields ...logField) (newFields []logField) {
+// 	newFields = make([]logField, 0, len(fields)+1)
+// 	localIP, _ := gtknet.PrivateIPv4()
+// 	newFields = append(newFields, String("LocalIP", localIP.String()))
+// 	newFields = append(newFields, fields...)
+// 	return
+// }

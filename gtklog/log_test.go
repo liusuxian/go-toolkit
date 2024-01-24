@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-02-21 22:15:16
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:43:16
+ * @LastEditTime: 2024-01-24 22:37:09
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -49,6 +49,7 @@ func TestLog(t *testing.T) {
 	gtklog.Debug("I am Debug", gtklog.ObjectValues("TestObject", []TestObject{{Key: "hello", Value: true}, {Key: "world", Value: false}}))
 	gtklog.Debug("I am Debug", gtklog.Objects("TestObject", []TestObject{{Key: "hello", Value: true}, {Key: "world", Value: false}}))
 	gtklog.Debug("I am Debug", gtklog.Int("Int", 1))
+	gtklog.Debugf("I am Debug: %v", "1314")
 	gtklog.Info("I am Info", gtklog.Any("Array", []int{1, 2, 3}))
 	gtklog.Warn("I am Warn")
 	gtklog.Error("I am Error")

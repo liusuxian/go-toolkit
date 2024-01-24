@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-12 18:19:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:39:38
+ * @LastEditTime: 2024-01-24 19:56:12
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -274,7 +274,8 @@ func (c *Config) Sub(key string) (conf *Config) {
 
 // Struct 将配置解析为结构体，确保标签正确设置该结构的字段
 func (c *Config) Struct(rawVal any, opts ...DecoderConfigOption) (err error) {
-	newOpts := make([]viper.DecoderConfigOption, 0, len(opts))
+	newOpts := make([]viper.DecoderConfigOption, 0, len(opts)+1)
+	newOpts = append(newOpts, viper.DecoderConfigOption(defaultDecoderConfig(rawVal)))
 	for _, opt := range opts {
 		newOpts = append(newOpts, viper.DecoderConfigOption(opt))
 	}
@@ -283,16 +284,18 @@ func (c *Config) Struct(rawVal any, opts ...DecoderConfigOption) (err error) {
 
 // StructExact 将配置解析为结构体，如果在目标结构体中字段不存在则报错
 func (c *Config) StructExact(rawVal any, opts ...DecoderConfigOption) (err error) {
-	newOpts := make([]viper.DecoderConfigOption, 0, len(opts))
+	newOpts := make([]viper.DecoderConfigOption, 0, len(opts)+1)
+	newOpts = append(newOpts, viper.DecoderConfigOption(defaultDecoderConfig(rawVal)))
 	for _, opt := range opts {
 		newOpts = append(newOpts, viper.DecoderConfigOption(opt))
 	}
 	return c.v.UnmarshalExact(rawVal, newOpts...)
 }
 
-// StructKey 接收一个键并将其解析到结构体中
+// StructKey 接收一个键并将其解析到结构体中，确保标签正确设置该结构的字段
 func (c *Config) StructKey(key string, rawVal any, opts ...DecoderConfigOption) (err error) {
-	newOpts := make([]viper.DecoderConfigOption, 0, len(opts))
+	newOpts := make([]viper.DecoderConfigOption, 0, len(opts)+1)
+	newOpts = append(newOpts, viper.DecoderConfigOption(defaultDecoderConfig(rawVal)))
 	for _, opt := range opts {
 		newOpts = append(newOpts, viper.DecoderConfigOption(opt))
 	}
@@ -319,12 +322,15 @@ var defaultConfig *Config
 
 func init() {
 	v := viper.New()
-	v.SetConfigName("config")             // 设置配置文件名，不需要配置文件扩展名，配置文件的类型会自动根据扩展名自动匹配
+	v.SetConfigName("config") // 设置配置文件名，不需要配置文件扩展名，配置文件的类型会自动根据扩展名自动匹配
+	if gtkenv.Contains("GTK_CONFIG_NAME") {
+		v.SetConfigName(gtkenv.Get("GTK_CONFIG_NAME")) // 设置配置文件名
+	}
 	v.AddConfigPath("./")                 // 设置配置文件的搜索目录
 	v.AddConfigPath("./config/")          // 设置配置文件的搜索目录
 	v.AddConfigPath("./manifest/config/") // 设置配置文件的搜索目录
-	if gtkenv.Contains("NOVA_CONFIG_FILE_PATH") {
-		v.AddConfigPath(gtkenv.Get("NOVA_CONFIG_FILE_PATH")) // 设置配置文件的搜索目录
+	if gtkenv.Contains("GTK_CONFIG_FILE_PATH") {
+		v.AddConfigPath(gtkenv.Get("GTK_CONFIG_FILE_PATH")) // 设置配置文件的搜索目录
 	}
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -332,32 +338,7 @@ func init() {
 			panic(errors.Wrapf(err, "read default config error"))
 		}
 	}
-	defaultConfig = &Config{
-		v: v,
-	}
-	// 设置默认值
-	// 服务器配置
-	SetDefault("server.name", "Nova")              // 服务器应用名称，默认"Nova"
-	SetDefault("server.heartBeat", "10s")          // 心跳发送间隔时间（一定要小于 maxHeartBeat 配置），默认 10秒
-	SetDefault("server.maxHeartBeat", "15s")       // 最长心跳检测间隔时间（一定要大于 heartBeat 配置），默认 15秒
-	SetDefault("server.maxConn", 3)                // 允许的客户端连接最大数量，默认 3
-	SetDefault("server.workerPoolSize", 10)        // 工作任务池最大工作 Goroutine 数量，默认 10
-	SetDefault("server.workerPoolSizeOverflow", 5) // 当处理任务超过工作任务池的容量时，增加的 Goroutine 数量，默认 5
-	SetDefault("server.maxPacketSize", 4096)       // 数据包的最大值（单位:字节），默认 4096
-	SetDefault("server.packetMethod", 1)           // 封包和拆包方式，1: 消息ID(2字节)-消息体长度(4字节)-消息内容，默认 1
-	SetDefault("server.endian", 1)                 // 字节存储次序，1: 小端 2: 大端，默认 1
-	SetDefault("server.slowThreshold", "200ms")    // 处理请求或执行操作时的慢速阈值
-	// 日志配置
-	SetDefault("logger.path", "logs")             // 输出日志文件路径
-	SetDefault("logger.details.type", 0)          // 日志类型 0:打印所有级别 1:打印 DEBUG、INFO 级别 2:打印 WARN、ERROR、DPANIC、PANIC、FATAL 级别，默认0
-	SetDefault("logger.details.level", 0)         // 日志打印级别 0:DEBUG 1:INFO 2:WARN 3:ERROR 4:DPANIC、5:PANIC、6:FATAL，默认0
-	SetDefault("logger.details.format", 1)        // 输出日志格式 0:logfmt 1:json，默认1
-	SetDefault("logger.details.filename", "nova") // 输出日志文件名称
-	SetDefault("logger.details.maxSize", 10)      // 单个日志文件最多存储量（单位:MB）
-	SetDefault("logger.details.maxBackups", 10)   // 日志备份文件最多数量
-	SetDefault("logger.details.maxAge", 7)        // 日志保留时间（单位:天）
-	SetDefault("logger.details.compress", false)  // 是否压缩日志
-	SetDefault("logger.details.stdout", true)     // 是否输出到控制台
+	defaultConfig = &Config{v: v}
 }
 
 // Get 获取 value
@@ -604,4 +585,23 @@ func safeMul(a, b uint) (s uint) {
 		return 0
 	}
 	return c
+}
+
+// defaultDecoderConfig 默认的解码配置
+func defaultDecoderConfig(output any) (opt DecoderConfigOption) {
+	return func(dc *DecoderConfig) {
+		dc.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			mapstructure.RecursiveStructToMapHookFunc(),
+			mapstructure.StringToIPHookFunc(),
+			mapstructure.StringToIPNetHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToTimeHookFunc("2006-01-02 15:04:05"),
+			mapstructure.TextUnmarshallerHookFunc(),
+		)
+		dc.WeaklyTypedInput = true
+		dc.Metadata = nil
+		dc.Result = output
+		dc.TagName = "json"
+	}
 }

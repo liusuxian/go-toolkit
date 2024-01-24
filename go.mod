@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/alicebob/miniredis/v2 v2.31.1
+	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/mitchellh/mapstructure v1.5.0

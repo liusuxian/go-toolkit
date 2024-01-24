@@ -1,7 +1,7 @@
 {
   "test": {
-    "id": 100,
-    "money_real": 1000,
-    "total_time": 10000
+    "id": 10000,
+    "money_real": 20000,
+    "total_time": 30000
   }
 }

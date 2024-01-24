@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:43:39
+ * @LastEditTime: 2024-01-24 22:42:50
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -113,39 +113,35 @@ func TestRedis(t *testing.T) {
 	var rl *gtkredis.RedisLock
 	rl, err = client.NewRedisLock("test_redis_lock")
 	if assert.NoError(err) {
-		t.Log("new redis lock succ")
+		assert.NotNil(rl)
 	}
 	var ok bool
 	ok, err = rl.TryLock(ctx)
 	if assert.NoError(err) {
-		t.Log("try lock1: ", ok)
+		assert.True(ok)
 	}
 	if ok {
 		rl.Unlock(ctx)
 	}
 	ok, err = rl.TryLock(ctx)
 	if assert.NoError(err) {
-		t.Log("try lock2: ", ok)
+		assert.True(ok)
 	}
 	if ok {
 		rl.Unlock(ctx)
 	}
 	ok, err = rl.SpinLock(ctx, 10)
 	if assert.NoError(err) {
-		t.Log("try lock3: ", ok)
+		assert.True(ok)
 	}
 	if ok {
 		rl.Unlock(ctx)
 	}
 
 	err = client.ScriptLoad(ctx, "lua_script/test1.lua")
-	if assert.Error(err) {
-		t.Log("lua script load failed: ", err)
-	}
+	assert.Error(err)
 	err = client.ScriptLoad(ctx, "lua_script/test.lua")
-	if assert.NoError(err) {
-		t.Log("lua script load succ")
-	}
+	assert.NoError(err)
 	actualObj, err = client.EvalSha(ctx, "test", []string{"lua_key"}, 1)
 	if assert.NoError(err) {
 		assert.Equal(1, gtkconv.ToInt(actualObj))
