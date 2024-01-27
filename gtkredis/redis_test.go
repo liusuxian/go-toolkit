@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 22:42:50
+ * @LastEditTime: 2024-01-28 00:13:46
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -146,4 +146,44 @@ func TestRedis(t *testing.T) {
 	if assert.NoError(err) {
 		assert.Equal(1, gtkconv.ToInt(actualObj))
 	}
+}
+
+func TestRedisLuaScript(t *testing.T) {
+	r := miniredis.RunT(t)
+	client := gtkredis.NewClient(func(cc *gtkredis.ClientConfig) {
+		cc.Addr = r.Addr()
+		cc.Password = ""
+		cc.DB = 1
+	})
+	defer client.Close()
+
+	var (
+		err    error
+		val    any
+		ctx    = context.Background()
+		assert = assert.New(t)
+	)
+	err = client.ScriptLoad(ctx, "lua_script/test_get.lua")
+	assert.NoError(err)
+	val, err = client.Do(ctx, "SADD", "test_get1", 100, 200, 300)
+	assert.NoError(err)
+	assert.Equal(3, gtkconv.ToInt(val))
+	val, err = client.EvalSha(ctx, "test_get", []string{"test_get1"})
+	assert.Error(err)
+	assert.Nil(val)
+	val, err = client.Do(ctx, "SET", "test_get2", 100)
+	assert.NoError(err)
+	assert.Equal("OK", gtkconv.ToString(val))
+	val, err = client.EvalSha(ctx, "test_get", []string{"test_get2", "test_get2"})
+	assert.NoError(err)
+	assert.Equal(3, gtkconv.ToInt(val))
+	val, err = client.EvalSha(ctx, "test_get", []string{"test_get2", "test_get3"})
+	assert.NoError(err)
+	assert.Equal(2, gtkconv.ToInt(val))
+
+	err = client.ScriptLoad(ctx, "lua_script/test_set.lua")
+	assert.NoError(err)
+	val, err = client.EvalSha(ctx, "test_set", []string{"test_set1"}, 100)
+	assert.NoError(err)
+	assert.Equal(1, gtkconv.ToInt(val))
 }

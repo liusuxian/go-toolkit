@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:43:46
+ * @LastEditTime: 2024-01-28 00:33:35
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -54,9 +54,9 @@ const (
 	sleepDur               = 10 * time.Millisecond
 	compareAndDeleteScript = `
 	if redis.call("GET", KEYS[1]) == ARGV[1] then
-    	return redis.call("DEL", KEYS[1])
+		return redis.call("DEL", KEYS[1])
 	else
-    	return 0
+		return 0
 	end
 	`
 )
@@ -168,6 +168,15 @@ func (rc *RedisClient) ScriptLoad(ctx context.Context, scriptFilePath string) (e
 	return
 }
 
+// Eval 执行 lua 脚本
+func (rc *RedisClient) Eval(ctx context.Context, script string, keys []string, args ...any) (value any, err error) {
+	value, err = rc.client.Eval(ctx, script, keys, args...).Result()
+	if err == redis.Nil {
+		err = nil
+	}
+	return
+}
+
 // EvalSha 执行 lua 脚本
 func (rc *RedisClient) EvalSha(ctx context.Context, scriptFileName string, keys []string, args ...any) (value any, err error) {
 	evalsha, ok := rc.luaScriptMap[scriptFileName]
@@ -214,10 +223,10 @@ func (rc *RedisClient) SetCD(ctx context.Context, key string, cd time.Duration) 
 // Cad compare and delete
 func (rc *RedisClient) Cad(ctx context.Context, key string, value any) (ok bool, err error) {
 	var result any
-	if result, err = rc.client.Eval(ctx, compareAndDeleteScript, []string{key}, value).Result(); err != nil {
+	if result, err = rc.Eval(ctx, compareAndDeleteScript, []string{key}, value); err != nil {
 		return
 	}
-	ok = result == 1
+	ok = gtkconv.ToBool(result)
 	return
 }
 
