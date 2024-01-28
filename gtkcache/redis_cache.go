@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 03:03:20
+ * @LastEditTime: 2024-01-28 17:19:09
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,39 +13,62 @@ import (
 	"context"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkredis"
+	"github.com/pkg/errors"
 	"time"
 )
 
-const (
-	getResetScript = `
-	local value = redis.call('GET', KEYS[1])
-	if not value then
+// RedisCache Redis 缓存
+type RedisCache struct {
+	client *gtkredis.RedisClient // redis 客户端
+}
+
+// 内置 lua 脚本
+var internalScriptMap = map[string]string{
+	"GetReset": `
+	local val = redis.call('GET', KEYS[1])
+	if not val then
 		return nil
 	end
 	redis.call('EXPIRE', KEYS[1], ARGV[1])
-	return value
-	`
-	setMapScript = `
+	return val
+	`,
+	"GetMapReset": `
+	local vals = redis.call('MGET', unpack(KEYS))
+	local allKeysExist = true
+	for i, val in ipairs(vals) do
+		if not val then
+			allKeysExist = false
+			break
+    end
+	end
+	if allKeysExist then
+    for i = 1, #KEYS do
+			redis.call('EXPIRE', KEYS[i], ARGV[1])
+    end
+	end
+	return vals
+	`,
+	"SetMap": `
 	local expireTime = ARGV[#ARGV]
 	for i = 1, #KEYS do
 		redis.call('SETEX', KEYS[i], expireTime, ARGV[i])
 	end
 	return 'OK'
-	`
-)
-
-// RedisCache Redis 缓存
-type RedisCache struct {
-	client        *gtkredis.RedisClient // redis 客户端
-	luaScriptList []string              // lua 脚本文件的路径列表
+	`,
 }
 
 // NewRedisCache 创建 RedisCache
-func NewRedisCache(luaScriptList []string, opts ...gtkredis.ClientConfigOption) (cache IRedisCache) {
-	return &RedisCache{
-		client:        gtkredis.NewClient(opts...),
-		luaScriptList: luaScriptList,
+func NewRedisCache(ctx context.Context, opts ...gtkredis.ClientConfigOption) (cache IRedisCache) {
+	client := gtkredis.NewClient(ctx, opts...)
+	cache = &RedisCache{
+		client: client,
 	}
+	for k, v := range internalScriptMap {
+		if err := client.ScriptLoad(ctx, k, v); err != nil {
+			panic(err)
+		}
+	}
+	return
 }
 
 // Client Redis 客户端
@@ -59,13 +82,13 @@ func (rc *RedisCache) Get(ctx context.Context, key string) (val any, err error) 
 	return
 }
 
-// GetReset 获取缓存，并在缓存命中时重置过期时间
+// GetReset 获取缓存，并在缓存命中时重置过期时间（原子操作）
 func (rc *RedisCache) GetReset(ctx context.Context, key string, timeout time.Duration) (val any, err error) {
 	if int64(timeout.Seconds()) <= 0 {
-		val, err = rc.client.Do(ctx, "GET", key)
-	} else {
-		val, err = rc.client.Eval(ctx, getResetScript, []string{key}, int64(timeout.Seconds()))
+		err = errors.New("The `timeout` parameter of type `time.Duration` must be greater than 0.")
+		return
 	}
+	val, err = rc.client.EvalSha(ctx, "GetReset", []string{key}, int64(timeout.Seconds()))
 	return
 }
 
@@ -90,6 +113,31 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys ...string) (data map[stri
 	return
 }
 
+// GetMapReset 批量获取缓存，并在所有缓存都命中时重置所有缓存的过期时间（原子操作）
+func (rc *RedisCache) GetMapReset(ctx context.Context, timeout time.Duration, keys ...string) (data map[string]any, err error) {
+	data = make(map[string]any)
+	if len(keys) == 0 {
+		return
+	}
+	if int64(timeout.Seconds()) <= 0 {
+		err = errors.New("The `timeout` parameter of type `time.Duration` must be greater than 0.")
+		return
+	}
+	var (
+		keyList = make([]string, 0, len(keys))
+		result  any
+	)
+	keyList = append(keyList, keys...)
+	if result, err = rc.client.EvalSha(ctx, "GetMapReset", keyList, int64(timeout.Seconds())); err != nil {
+		return
+	}
+	resultList := gtkconv.ToSlice(result)
+	for k, v := range keys {
+		data[v] = resultList[k]
+	}
+	return
+}
+
 // Set 设置缓存
 func (rc *RedisCache) Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) {
 	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
@@ -100,7 +148,7 @@ func (rc *RedisCache) Set(ctx context.Context, key string, val any, timeout ...t
 	return
 }
 
-// SetMap 批量设置缓存（原子操作）
+// SetMap 批量设置缓存，且所有 key 的过期时间相同（原子操作）
 func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error) {
 	if len(data) == 0 {
 		return
@@ -119,7 +167,7 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 			args = append(args, v)
 		}
 		args = append(args, int64(timeout[0].Seconds()))
-		_, err = rc.client.Eval(ctx, setMapScript, keys, args...)
+		_, err = rc.client.EvalSha(ctx, "SetMap", keys, args...)
 	}
 	return
 }

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 00:33:35
+ * @LastEditTime: 2024-01-28 17:05:53
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -31,8 +31,8 @@ type ClientConfigOption func(cc *ClientConfig)
 
 // RedisClient redis 客户端结构
 type RedisClient struct {
-	client       *redis.Client     // redis 客户端
-	luaScriptMap map[string]string // lua 脚本
+	client        *redis.Client // redis 客户端
+	luaEvalShaMap map[string]string
 }
 
 // PipelineResult 管道返回值
@@ -50,26 +50,35 @@ type RedisLock struct {
 }
 
 const (
-	defaultExpiration      = 10 // 单位，秒
-	sleepDur               = 10 * time.Millisecond
-	compareAndDeleteScript = `
-	if redis.call("GET", KEYS[1]) == ARGV[1] then
-		return redis.call("DEL", KEYS[1])
-	else
-		return 0
-	end
-	`
+	defaultExpiration = 10 // 单位，秒
+	sleepDur          = 10 * time.Millisecond
 )
 
+// 内置 lua 脚本
+var internalScriptMap = map[string]string{
+	"compareAndDelete": `
+		if redis.call("GET", KEYS[1]) == ARGV[1] then
+			return redis.call("DEL", KEYS[1])
+		else
+			return 0
+		end
+		`,
+}
+
 // NewClient 创建 redis 客户端
-func NewClient(opts ...ClientConfigOption) (client *RedisClient) {
+func NewClient(ctx context.Context, opts ...ClientConfigOption) (client *RedisClient) {
 	ro := &redis.Options{}
 	for _, opt := range opts {
 		opt(ro)
 	}
 	client = &RedisClient{
-		client:       redis.NewClient(ro),
-		luaScriptMap: make(map[string]string),
+		client:        redis.NewClient(ro),
+		luaEvalShaMap: make(map[string]string),
+	}
+	for k, v := range internalScriptMap {
+		if err := client.ScriptLoad(ctx, k, v); err != nil {
+			panic(err)
+		}
 	}
 	return
 }
@@ -153,18 +162,28 @@ func (rc *RedisClient) Pipeline(ctx context.Context, cmdArgsList ...[]any) (resu
 }
 
 // ScriptLoad 加载 lua 脚本
-func (rc *RedisClient) ScriptLoad(ctx context.Context, scriptFilePath string) (err error) {
-	script := gtkfile.GetContents(scriptFilePath)
+func (rc *RedisClient) ScriptLoad(ctx context.Context, name, script string) (err error) {
+	var evalsha string
+	if evalsha, err = rc.client.ScriptLoad(ctx, script).Result(); err != nil {
+		return
+	}
+	rc.luaEvalShaMap[name] = evalsha
+	return
+}
+
+// ScriptLoadByPath 通过 lua 脚本文件的路径加载 lua 脚本
+func (rc *RedisClient) ScriptLoadByPath(ctx context.Context, scriptPath string) (err error) {
+	script := gtkfile.GetContents(scriptPath)
 	if strings.EqualFold("", script) {
-		err = errors.Errorf("[%s] script not found", scriptFilePath)
+		err = errors.Errorf("[%s] script not found", scriptPath)
 		return
 	}
 	var evalsha string
 	if evalsha, err = rc.client.ScriptLoad(ctx, script).Result(); err != nil {
 		return
 	}
-	scriptFileName := gtkfile.Name(scriptFilePath)
-	rc.luaScriptMap[scriptFileName] = evalsha
+	name := gtkfile.Name(scriptPath)
+	rc.luaEvalShaMap[name] = evalsha
 	return
 }
 
@@ -178,10 +197,10 @@ func (rc *RedisClient) Eval(ctx context.Context, script string, keys []string, a
 }
 
 // EvalSha 执行 lua 脚本
-func (rc *RedisClient) EvalSha(ctx context.Context, scriptFileName string, keys []string, args ...any) (value any, err error) {
-	evalsha, ok := rc.luaScriptMap[scriptFileName]
+func (rc *RedisClient) EvalSha(ctx context.Context, name string, keys []string, args ...any) (value any, err error) {
+	evalsha, ok := rc.luaEvalShaMap[name]
 	if !ok {
-		err = errors.Errorf("[%s] Script Not Found", scriptFileName)
+		err = errors.Errorf("[%s] Script Not Found", name)
 		return
 	}
 	value, err = rc.client.EvalSha(ctx, evalsha, keys, args...).Result()
@@ -223,7 +242,7 @@ func (rc *RedisClient) SetCD(ctx context.Context, key string, cd time.Duration) 
 // Cad compare and delete
 func (rc *RedisClient) Cad(ctx context.Context, key string, value any) (ok bool, err error) {
 	var result any
-	if result, err = rc.Eval(ctx, compareAndDeleteScript, []string{key}, value); err != nil {
+	if result, err = rc.EvalSha(ctx, "compareAndDelete", []string{key}, value); err != nil {
 		return
 	}
 	ok = gtkconv.ToBool(result)

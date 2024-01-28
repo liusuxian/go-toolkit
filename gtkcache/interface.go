@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 03:02:22
+ * @LastEditTime: 2024-01-28 16:14:46
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -21,13 +21,15 @@ type Func func(ctx context.Context) (val any, err error)
 type ICache interface {
 	// Get 获取缓存
 	Get(ctx context.Context, key string) (val any, err error)
-	// GetReset 获取缓存，并在缓存命中时重置过期时间
+	// GetReset 获取缓存，并在缓存命中时重置过期时间（原子操作）
 	GetReset(ctx context.Context, key string, timeout time.Duration) (val any, err error)
 	// GetMap 批量获取缓存（原子操作）
 	GetMap(ctx context.Context, keys ...string) (data map[string]any, err error)
+	// GetMapReset 批量获取缓存，并在所有缓存都命中时重置所有缓存的过期时间（原子操作）
+	GetMapReset(ctx context.Context, timeout time.Duration, keys ...string) (data map[string]any, err error)
 	// Set 设置缓存
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error)
-	// SetMap 批量设置缓存（原子操作）
+	// SetMap 批量设置缓存，且所有 key 的过期时间相同（原子操作）
 	SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error)
 	// CustomCache 自定义缓存
 	CustomCache(ctx context.Context, f Func) (val any, err error)

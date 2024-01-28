@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 00:13:46
+ * @LastEditTime: 2024-01-28 17:07:39
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -27,15 +27,17 @@ type A struct {
 }
 
 func TestRedis(t *testing.T) {
-	r := miniredis.RunT(t)
-	client := gtkredis.NewClient(func(cc *gtkredis.ClientConfig) {
+	var (
+		ctx = context.Background()
+		r   = miniredis.RunT(t)
+	)
+	client := gtkredis.NewClient(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.Password = ""
 		cc.DB = 1
 	})
 	defer client.Close()
 
-	ctx := context.Background()
 	assert := assert.New(t)
 	actualObj, err := client.Do(ctx, "FLUSHDB")
 	if assert.NoError(err) {
@@ -138,9 +140,9 @@ func TestRedis(t *testing.T) {
 		rl.Unlock(ctx)
 	}
 
-	err = client.ScriptLoad(ctx, "lua_script/test1.lua")
+	err = client.ScriptLoadByPath(ctx, "lua_script/test1.lua")
 	assert.Error(err)
-	err = client.ScriptLoad(ctx, "lua_script/test.lua")
+	err = client.ScriptLoadByPath(ctx, "lua_script/test.lua")
 	assert.NoError(err)
 	actualObj, err = client.EvalSha(ctx, "test", []string{"lua_key"}, 1)
 	if assert.NoError(err) {
@@ -149,8 +151,11 @@ func TestRedis(t *testing.T) {
 }
 
 func TestRedisLuaScript(t *testing.T) {
-	r := miniredis.RunT(t)
-	client := gtkredis.NewClient(func(cc *gtkredis.ClientConfig) {
+	var (
+		ctx = context.Background()
+		r   = miniredis.RunT(t)
+	)
+	client := gtkredis.NewClient(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.Password = ""
 		cc.DB = 1
@@ -160,10 +165,9 @@ func TestRedisLuaScript(t *testing.T) {
 	var (
 		err    error
 		val    any
-		ctx    = context.Background()
 		assert = assert.New(t)
 	)
-	err = client.ScriptLoad(ctx, "lua_script/test_get.lua")
+	err = client.ScriptLoadByPath(ctx, "lua_script/test_get.lua")
 	assert.NoError(err)
 	val, err = client.Do(ctx, "SADD", "test_get1", 100, 200, 300)
 	assert.NoError(err)
@@ -181,7 +185,7 @@ func TestRedisLuaScript(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2, gtkconv.ToInt(val))
 
-	err = client.ScriptLoad(ctx, "lua_script/test_set.lua")
+	err = client.ScriptLoadByPath(ctx, "lua_script/test_set.lua")
 	assert.NoError(err)
 	val, err = client.EvalSha(ctx, "test_set", []string{"test_set1"}, 100)
 	assert.NoError(err)
