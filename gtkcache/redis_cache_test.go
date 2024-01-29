@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 17:19:58
+ * @LastEditTime: 2024-01-29 16:32:47
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -22,10 +22,11 @@ import (
 
 func TestRedisCache(t *testing.T) {
 	var (
-		ctx = context.Background()
-		r   = miniredis.RunT(t)
+		ctx   = context.Background()
+		r     = miniredis.RunT(t)
+		cache *gtkcache.RedisCache
 	)
-	cache := gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""
@@ -41,7 +42,8 @@ func TestRedisCache(t *testing.T) {
 	val, err = cache.Get(ctx, "test_key_1")
 	assert.NoError(err)
 	assert.Nil(val)
-	isExist = cache.IsExist(ctx, "test_key_1")
+	isExist, err = cache.IsExist(ctx, "test_key_1")
+	assert.NoError(err)
 	assert.False(isExist)
 	timeout, err = cache.GetExpire(ctx, "test_key_1")
 	assert.NoError(err)
@@ -52,7 +54,8 @@ func TestRedisCache(t *testing.T) {
 	val, err = cache.Get(ctx, "test_key_1")
 	assert.NoError(err)
 	assert.Equal(100, gtkconv.ToInt(val))
-	isExist = cache.IsExist(ctx, "test_key_1")
+	isExist, err = cache.IsExist(ctx, "test_key_1")
+	assert.NoError(err)
 	assert.True(isExist)
 	timeout, err = cache.GetExpire(ctx, "test_key_1")
 	assert.NoError(err)
@@ -65,7 +68,8 @@ func TestRedisCache(t *testing.T) {
 	assert.Equal(float64(-1), timeout.Seconds())
 	err = cache.Delete(ctx, "test_key_1", "test_key_2")
 	assert.NoError(err)
-	isExist = cache.IsExist(ctx, "test_key_1")
+	isExist, err = cache.IsExist(ctx, "test_key_1")
+	assert.NoError(err)
 	assert.False(isExist)
 
 	err = cache.Set(ctx, "test_key_1", 100, time.Second*10)

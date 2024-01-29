@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 17:19:09
+ * @LastEditTime: 2024-01-29 16:30:44
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -19,6 +19,7 @@ import (
 
 // RedisCache Redis 缓存
 type RedisCache struct {
+	ctx    context.Context
 	client *gtkredis.RedisClient // redis 客户端
 }
 
@@ -58,13 +59,13 @@ var internalScriptMap = map[string]string{
 }
 
 // NewRedisCache 创建 RedisCache
-func NewRedisCache(ctx context.Context, opts ...gtkredis.ClientConfigOption) (cache IRedisCache) {
-	client := gtkredis.NewClient(ctx, opts...)
-	cache = &RedisCache{
-		client: client,
+func NewRedisCache(ctx context.Context, opts ...gtkredis.ClientConfigOption) (rc *RedisCache) {
+	rc = &RedisCache{
+		ctx:    ctx,
+		client: gtkredis.NewClient(ctx, opts...),
 	}
 	for k, v := range internalScriptMap {
-		if err := client.ScriptLoad(ctx, k, v); err != nil {
+		if err := rc.client.ScriptLoad(ctx, k, v); err != nil {
 			panic(err)
 		}
 	}
@@ -179,11 +180,8 @@ func (rc *RedisCache) CustomCache(ctx context.Context, f Func) (val any, err err
 }
 
 // IsExist 缓存是否存在
-func (rc *RedisCache) IsExist(ctx context.Context, key string) (isExist bool) {
-	var (
-		val any
-		err error
-	)
+func (rc *RedisCache) IsExist(ctx context.Context, key string) (isExist bool, err error) {
+	var val any
 	if val, err = rc.client.Do(ctx, "EXISTS", key); err != nil {
 		return
 	}

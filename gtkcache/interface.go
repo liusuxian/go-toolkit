@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 16:14:46
+ * @LastEditTime: 2024-01-29 16:29:56
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,6 @@ package gtkcache
 
 import (
 	"context"
-	"github.com/liusuxian/go-toolkit/gtkredis"
 	"time"
 )
 
@@ -34,18 +33,11 @@ type ICache interface {
 	// CustomCache 自定义缓存
 	CustomCache(ctx context.Context, f Func) (val any, err error)
 	// IsExist 缓存是否存在
-	IsExist(ctx context.Context, key string) (isExist bool)
+	IsExist(ctx context.Context, key string) (isExist bool, err error)
 	// Delete 删除缓存
 	Delete(ctx context.Context, keys ...string) (err error)
 	// GetExpire 获取缓存过期时间
 	GetExpire(ctx context.Context, key string) (timeout time.Duration, err error)
 	// Close 关闭缓存服务
 	Close(ctx context.Context) (err error)
-}
-
-// IRedisCache Redis 缓存接口
-type IRedisCache interface {
-	ICache
-	// Client Redis 客户端
-	Client() (client *gtkredis.RedisClient)
 }
