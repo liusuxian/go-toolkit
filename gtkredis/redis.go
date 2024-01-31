@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 17:05:53
+ * @LastEditTime: 2024-01-30 13:44:06
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -56,7 +56,7 @@ const (
 
 // 内置 lua 脚本
 var internalScriptMap = map[string]string{
-	"compareAndDelete": `
+	"COMPARE_AND_DELETE": `
 		if redis.call("GET", KEYS[1]) == ARGV[1] then
 			return redis.call("DEL", KEYS[1])
 		else
@@ -242,7 +242,7 @@ func (rc *RedisClient) SetCD(ctx context.Context, key string, cd time.Duration) 
 // Cad compare and delete
 func (rc *RedisClient) Cad(ctx context.Context, key string, value any) (ok bool, err error) {
 	var result any
-	if result, err = rc.EvalSha(ctx, "compareAndDelete", []string{key}, value); err != nil {
+	if result, err = rc.EvalSha(ctx, "COMPARE_AND_DELETE", []string{key}, value); err != nil {
 		return
 	}
 	ok = gtkconv.ToBool(result)
