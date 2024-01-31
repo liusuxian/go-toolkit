@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-31 15:24:07
+ * @LastEditTime: 2024-01-31 16:40:32
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -632,12 +632,11 @@ func (rc *RedisCache) SSPage(ctx context.Context, key string, page, pageSize int
 	)
 	if isDescOrder {
 		// score 值递减
-		args = append(args, "ZREVRANGE")
+		args = append(args, "ZREVRANGE", page, pageSize)
 	} else {
 		// score 值递增
-		args = append(args, "ZRANGE")
+		args = append(args, "ZRANGE", page, pageSize)
 	}
-	args = append(args, page, pageSize)
 	if withScores {
 		args = append(args, "WITHSCORES")
 	} else {
