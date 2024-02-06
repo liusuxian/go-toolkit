@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-06 16:52:43
+ * @LastEditTime: 2024-02-07 02:34:46
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -66,13 +66,16 @@ func TestRedisCacheString(t *testing.T) {
 	timeout, err = cache.GetExpire(ctx, "test_key_2")
 	assert.NoError(err)
 	assert.Equal(time.Second*2, timeout)
-
+	val, err = cache.GetOrSet(ctx, "test_key_22", map[string]any{"a": 1}, time.Second)
+	assert.NoError(err)
+	assert.Equal("{\"a\":1}", val)
 	val, err = cache.GetOrSetFunc(ctx, "test_key_3", func(ctx context.Context) (val any, err error) {
 		return
 	}, time.Second)
 	assert.NoError(err)
 	assert.Equal("", val)
-
+	err = cache.SetMap(ctx, map[string]any{"a": 1, "b": map[string]any{"b": 100}}, time.Second)
+	assert.NoError(err)
 	ok, err = cache.SetIfNotExist(ctx, "test_key_3", 100, time.Second)
 	assert.NoError(err)
 	assert.False(ok)

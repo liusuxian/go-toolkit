@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-30 13:44:06
+ * @LastEditTime: 2024-02-07 02:47:20
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,14 +11,12 @@ package gtkredis
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/gofrs/uuid"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkfile"
-	"github.com/liusuxian/go-toolkit/gtkreflection"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -88,20 +86,11 @@ func (rc *RedisClient) Do(ctx context.Context, cmd string, args ...any) (value a
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	// 处理 redis 命令参数
-	for k, v := range args {
-		reflectInfo := gtkreflection.OriginTypeAndKind(v)
-		switch reflectInfo.OriginKind {
-		case reflect.Struct, reflect.Map, reflect.Slice, reflect.Array:
-			// 忽略切片类型为 []byte 的情况
-			if _, ok := v.([]byte); !ok {
-				if args[k], err = json.Marshal(v); err != nil {
-					return
-				}
-			}
-		}
+	// 处理`redis`命令参数
+	if err = utils.DoRedisArgs(0, args...); err != nil {
+		return
 	}
-	// 执行 redis 命令
+	// 执行`redis`命令
 	cmdArgs := make([]any, 0, len(args)+1)
 	cmdArgs = append(cmdArgs, cmd)
 	cmdArgs = append(cmdArgs, args...)
@@ -121,25 +110,14 @@ func (rc *RedisClient) Pipeline(ctx context.Context, cmdArgsList ...[]any) (resu
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	// 执行 redis 管道命令
+	// 执行`redis`管道命令
 	p := rc.client.Pipeline()
-	// 处理redis命令参数
+	// 处理`redis`命令参数
 	for _, cmdArgs := range cmdArgsList {
-		for k, v := range cmdArgs {
-			if k > 0 {
-				reflectInfo := gtkreflection.OriginTypeAndKind(v)
-				switch reflectInfo.OriginKind {
-				case reflect.Struct, reflect.Map, reflect.Slice, reflect.Array:
-					// 忽略切片类型为 []byte 的情况
-					if _, ok := v.([]byte); !ok {
-						if cmdArgs[k], err = json.Marshal(v); err != nil {
-							return
-						}
-					}
-				}
-			}
+		if err = utils.DoRedisArgs(1, cmdArgs...); err != nil {
+			return
 		}
-		// 执行 redis 命令
+		// 执行`redis`命令
 		p.Do(ctx, cmdArgs...)
 	}
 	var resList []redis.Cmder
@@ -189,6 +167,10 @@ func (rc *RedisClient) ScriptLoadByPath(ctx context.Context, scriptPath string) 
 
 // Eval 执行 lua 脚本
 func (rc *RedisClient) Eval(ctx context.Context, script string, keys []string, args ...any) (value any, err error) {
+	// 处理`redis`命令参数
+	if err = utils.DoRedisArgs(0, args...); err != nil {
+		return
+	}
 	value, err = rc.client.Eval(ctx, script, keys, args...).Result()
 	if err == redis.Nil {
 		err = nil
@@ -201,6 +183,10 @@ func (rc *RedisClient) EvalSha(ctx context.Context, name string, keys []string, 
 	evalsha, ok := rc.luaEvalShaMap[name]
 	if !ok {
 		err = errors.Errorf("[%s] Script Not Found", name)
+		return
+	}
+	// 处理`redis`命令参数
+	if err = utils.DoRedisArgs(0, args...); err != nil {
 		return
 	}
 	value, err = rc.client.EvalSha(ctx, evalsha, keys, args...).Result()
