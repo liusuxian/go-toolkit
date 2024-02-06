@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-31 16:40:32
+ * @LastEditTime: 2024-02-06 16:51:33
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -24,6 +24,15 @@ type RedisCache struct {
 
 // 内置 lua 脚本
 var internalScriptMap = map[string]string{
+	"SETGET": `
+	if tonumber(ARGV[2]) > 0 then
+		redis.call('SETEX', KEYS[1], ARGV[2], ARGV[1])
+	else
+		redis.call('SET', KEYS[1], ARGV[1])
+	end
+	return redis.call('GET', KEYS[1])
+	`,
+
 	"GET_EX": `
 	local val = redis.call('GET', KEYS[1])
 	if not val then
@@ -48,6 +57,22 @@ var internalScriptMap = map[string]string{
     end
 	end
 	return vals
+	`,
+
+	"GETORSET": `
+	local val = redis.call('GET', KEYS[1])
+	if not val then
+		if tonumber(ARGV[2]) > 0 then
+			redis.call('SETEX', KEYS[1], ARGV[2], ARGV[1])
+		else
+			redis.call('SET', KEYS[1], ARGV[1])
+		end
+		return redis.call('GET', KEYS[1])
+	end
+	if tonumber(ARGV[2]) > 0 then
+		redis.call('EXPIRE', KEYS[1], ARGV[2])
+	end
+	return val
 	`,
 
 	"MSET_EX": `
@@ -147,7 +172,7 @@ var internalScriptMap = map[string]string{
 	if total == 0 then
 		return cjson.encode({total=total})
 	end
-	if tonumber(ARGV[5], 10) > 0 then
+	if tonumber(ARGV[5]) > 0 then
 		redis.call('EXPIRE', KEYS[1], ARGV[5])
 	end
 	local start = (ARGV[2] - 1) * ARGV[3]
@@ -270,6 +295,18 @@ func (rc *RedisCache) Client() (client *gtkredis.RedisClient) {
 	return rc.client
 }
 
+// setget 设置`key`的值，并读取`key`的新值
+//
+//	当`timeout > 0`时，设置`key`的过期时间
+func (rc *RedisCache) setget(ctx context.Context, key string, val any, timeout ...time.Duration) (newVal any, err error) {
+	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+		newVal, err = rc.client.EvalSha(ctx, "SETGET", []string{key}, val, 0)
+	} else {
+		newVal, err = rc.client.EvalSha(ctx, "SETGET", []string{key}, val, int64(timeout[0].Seconds()))
+	}
+	return
+}
+
 // Get 获取缓存
 //
 //	当`timeout > 0`且缓存命中时，设置/重置`key`的过期时间
@@ -310,6 +347,44 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time
 	return
 }
 
+// GetOrSet 检索并返回`key`的值，或者当`key`不存在时，则使用`newVal`设置`key`的值
+//
+//	当`timeout > 0`时，设置/重置`key`的过期时间
+func (rc *RedisCache) GetOrSet(ctx context.Context, key string, newVal any, timeout ...time.Duration) (val any, err error) {
+	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+		val, err = rc.client.EvalSha(ctx, "GETORSET", []string{key}, newVal, 0)
+	} else {
+		val, err = rc.client.EvalSha(ctx, "GETORSET", []string{key}, newVal, int64(timeout[0].Seconds()))
+	}
+	return
+}
+
+// GetOrSetFunc 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
+//
+//	当`timeout > 0`时，设置/重置`key`的过期时间
+func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, timeout ...time.Duration) (val any, err error) {
+	if val, err = rc.Get(ctx, key, timeout...); err != nil {
+		return
+	}
+	if val == nil {
+		var newVal any
+		if newVal, err = f(ctx); err != nil {
+			return
+		}
+		// 此处不判断`newVal == nil`是因为防止缓存穿透
+		val, err = rc.setget(ctx, key, newVal, timeout...)
+		return
+	}
+	return
+}
+
+// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在读写互斥锁中执行的
+//
+//	当`timeout > 0`时，设置/重置`key`的过期时间
+func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, timeout ...time.Duration) (val any, err error) {
+	return rc.GetOrSetFunc(ctx, key, f, timeout...)
+}
+
 // Set 设置缓存
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
@@ -322,7 +397,7 @@ func (rc *RedisCache) Set(ctx context.Context, key string, val any, timeout ...t
 	return
 }
 
-// SetMap 批量设置缓存，所有 key 的过期时间相同
+// SetMap 批量设置缓存，所有`key`的过期时间相同
 //
 //	当`timeout > 0`时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
 func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error) {
@@ -346,6 +421,39 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 		_, err = rc.client.EvalSha(ctx, "MSET_EX", keys, args...)
 	}
 	return
+}
+
+// SetIfNotExist 当`key`不存在时，则使用`val`设置`key`的值，返回是否设置成功
+//
+//	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+func (rc *RedisCache) SetIfNotExist(ctx context.Context, key string, val any, timeout ...time.Duration) (ok bool, err error) {
+	var result any
+	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+		result, err = rc.client.Do(ctx, "SETNX", key, val)
+	} else {
+		result, err = rc.client.Do(ctx, "SET", key, val, "EX", int64(timeout[0].Seconds()), "NX")
+	}
+	ok = gtkconv.ToBool(result)
+	return
+}
+
+// SetIfNotExistFunc 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功
+//
+//	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func, timeout ...time.Duration) (ok bool, err error) {
+	var val any
+	if val, err = f(ctx); err != nil {
+		return
+	}
+	// 此处不判断`val == nil`是因为防止缓存穿透
+	return rc.SetIfNotExist(ctx, key, val, timeout...)
+}
+
+// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在读写互斥锁中执行的
+//
+//	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+func (rc *RedisCache) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, timeout ...time.Duration) (ok bool, err error) {
+	return rc.SetIfNotExistFunc(ctx, key, f, timeout...)
 }
 
 // CustomCache 自定义缓存

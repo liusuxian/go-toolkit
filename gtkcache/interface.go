@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-31 15:23:23
+ * @LastEditTime: 2024-02-06 17:32:47
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -24,12 +24,30 @@ type ICache interface {
 	// GetMap 批量获取缓存
 	//   当`timeout > 0`且所有缓存都命中时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
 	GetMap(ctx context.Context, keys []string, timeout ...time.Duration) (data map[string]any, err error)
+	// GetOrSet 检索并返回`key`的值，或者当`key`不存在时，则使用`newVal`设置`key`的值
+	//   当`timeout > 0`时，设置/重置`key`的过期时间
+	GetOrSet(ctx context.Context, key string, newVal any, timeout ...time.Duration) (val any, err error)
+	// GetOrSetFunc 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
+	//   当`timeout > 0`时，设置/重置`key`的过期时间
+	GetOrSetFunc(ctx context.Context, key string, f Func, timeout ...time.Duration) (val any, err error)
+	// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在读写互斥锁中执行的
+	//   当`timeout > 0`时，设置/重置`key`的过期时间
+	GetOrSetFuncLock(ctx context.Context, key string, f Func, timeout ...time.Duration) (val any, err error)
 	// Set 设置缓存
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error)
-	// SetMap 批量设置缓存，所有 key 的过期时间相同
+	// SetMap 批量设置缓存，所有`key`的过期时间相同
 	//   当`timeout > 0`时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
 	SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error)
+	// SetIfNotExist 当`key`不存在时，则使用`val`设置`key`的值，返回是否设置成功
+	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+	SetIfNotExist(ctx context.Context, key string, val any, timeout ...time.Duration) (ok bool, err error)
+	// SetIfNotExistFunc 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功
+	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+	SetIfNotExistFunc(ctx context.Context, key string, f Func, timeout ...time.Duration) (ok bool, err error)
+	// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在读写互斥锁中执行的
+	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+	SetIfNotExistFuncLock(ctx context.Context, key string, f Func, timeout ...time.Duration) (ok bool, err error)
 	// CustomCache 自定义缓存
 	CustomCache(ctx context.Context, f Func) (val any, err error)
 	// IsExist 缓存是否存在

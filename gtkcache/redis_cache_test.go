@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-31 15:36:12
+ * @LastEditTime: 2024-02-06 16:52:43
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -20,6 +20,12 @@ import (
 	"time"
 )
 
+type AAA struct {
+	A int
+	B float64
+	C string
+}
+
 func TestRedisCacheString(t *testing.T) {
 	var (
 		ctx   = context.Background()
@@ -36,6 +42,7 @@ func TestRedisCacheString(t *testing.T) {
 		val     any
 		err     error
 		isExist bool
+		ok      bool
 		timeout time.Duration
 	)
 	val, err = cache.Get(ctx, "test_key_1", time.Second*10)
@@ -47,6 +54,41 @@ func TestRedisCacheString(t *testing.T) {
 	timeout, err = cache.GetExpire(ctx, "test_key_1")
 	assert.NoError(err)
 	assert.Equal(float64(-2), timeout.Seconds())
+
+	err = cache.Set(ctx, "test_key_2", nil, time.Second)
+	assert.NoError(err)
+	val, err = cache.GetOrSet(ctx, "test_key_2", 200, time.Second*2)
+	assert.NoError(err)
+	assert.Equal("", val)
+	a1 := AAA{}
+	gtkconv.ToStruct(val, &a1)
+	assert.Equal(AAA{A: 0, B: 0, C: ""}, a1)
+	timeout, err = cache.GetExpire(ctx, "test_key_2")
+	assert.NoError(err)
+	assert.Equal(time.Second*2, timeout)
+
+	val, err = cache.GetOrSetFunc(ctx, "test_key_3", func(ctx context.Context) (val any, err error) {
+		return
+	}, time.Second)
+	assert.NoError(err)
+	assert.Equal("", val)
+
+	ok, err = cache.SetIfNotExist(ctx, "test_key_3", 100, time.Second)
+	assert.NoError(err)
+	assert.False(ok)
+	ok, err = cache.SetIfNotExist(ctx, "test_key_4", nil, time.Second)
+	assert.NoError(err)
+	assert.True(ok)
+	ok, err = cache.SetIfNotExistFunc(ctx, "test_key_4", func(ctx context.Context) (val any, err error) {
+		return
+	}, time.Second)
+	assert.NoError(err)
+	assert.False(ok)
+	ok, err = cache.SetIfNotExistFunc(ctx, "test_key_5", func(ctx context.Context) (val any, err error) {
+		return
+	}, time.Second)
+	assert.NoError(err)
+	assert.True(ok)
 }
 
 func TestRedisCacheString2(t *testing.T) {
