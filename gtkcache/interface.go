@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-06 17:32:47
+ * @LastEditTime: 2024-02-06 17:43:12
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -127,7 +127,7 @@ type IRedisCache interface {
 	//   当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 	SSScore(ctx context.Context, key string, member any, timeout ...time.Duration) (score float64, err error)
 
-	/* Hash（哈希表）*/
+	/* TODO Hash（哈希表）*/
 
-	/* List（列表）*/
+	/* TODO List（列表）*/
 }
