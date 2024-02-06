@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-06 16:51:33
+ * @LastEditTime: 2024-02-06 23:56:39
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -25,7 +25,7 @@ type RedisCache struct {
 // 内置 lua 脚本
 var internalScriptMap = map[string]string{
 	"SETGET": `
-	if tonumber(ARGV[2]) > 0 then
+	if tonumber(ARGV[2], 10) > 0 then
 		redis.call('SETEX', KEYS[1], ARGV[2], ARGV[1])
 	else
 		redis.call('SET', KEYS[1], ARGV[1])
@@ -62,14 +62,14 @@ var internalScriptMap = map[string]string{
 	"GETORSET": `
 	local val = redis.call('GET', KEYS[1])
 	if not val then
-		if tonumber(ARGV[2]) > 0 then
+		if tonumber(ARGV[2], 10) > 0 then
 			redis.call('SETEX', KEYS[1], ARGV[2], ARGV[1])
 		else
 			redis.call('SET', KEYS[1], ARGV[1])
 		end
 		return redis.call('GET', KEYS[1])
 	end
-	if tonumber(ARGV[2]) > 0 then
+	if tonumber(ARGV[2], 10) > 0 then
 		redis.call('EXPIRE', KEYS[1], ARGV[2])
 	end
 	return val
@@ -172,7 +172,7 @@ var internalScriptMap = map[string]string{
 	if total == 0 then
 		return cjson.encode({total=total})
 	end
-	if tonumber(ARGV[5]) > 0 then
+	if tonumber(ARGV[5], 10) > 0 then
 		redis.call('EXPIRE', KEYS[1], ARGV[5])
 	end
 	local start = (ARGV[2] - 1) * ARGV[3]
