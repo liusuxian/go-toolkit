@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-11 02:00:33
+ * @LastEditTime: 2024-02-11 04:26:06
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,6 +13,7 @@ import (
 	"context"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkredis"
+	"reflect"
 	"time"
 )
 
@@ -372,7 +373,7 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 		if newVal, err = f(ctx); err != nil {
 			return
 		}
-		if newVal == nil && !force {
+		if reflect.ValueOf(newVal).IsNil() && !force {
 			return
 		}
 		// 此处不判断`newVal == nil`是因为防止缓存穿透
@@ -404,7 +405,7 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, cc 
 		if newVal, err = f(ctx); err != nil {
 			return
 		}
-		if newVal == nil && !force {
+		if reflect.ValueOf(newVal).IsNil() && !force {
 			return
 		}
 		// 此处不判断`newVal == nil`是因为防止缓存穿透
@@ -483,7 +484,7 @@ func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func,
 	if val, err = f(ctx); err != nil {
 		return
 	}
-	if val == nil && !force {
+	if reflect.ValueOf(val).IsNil() && !force {
 		return
 	}
 	// 此处不判断`val == nil`是因为防止缓存穿透
