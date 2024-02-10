@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-07 02:34:46
+ * @LastEditTime: 2024-02-11 02:27:11
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -21,9 +21,30 @@ import (
 )
 
 type AAA struct {
-	A int
-	B float64
-	C string
+	A     int
+	B     float64
+	C     string
+	cache *gtkcache.RedisCache
+}
+
+func (a *AAA) Get(ctx context.Context, keys []string, timeout ...time.Duration) (val any, err error) {
+	return
+}
+
+func (a *AAA) Set(ctx context.Context, keys []string, newVal any, timeout ...time.Duration) (val any, err error) {
+	script := `
+		local result = redis.call('SETEX', KEYS[1], ARGV[3], ARGV[1])
+		if not result['ok'] then
+			return false
+		end
+		result = redis.call('SETEX', KEYS[2], ARGV[3], ARGV[2])
+		if not result['ok'] then
+			return false
+		end
+		return redis.call('MGET', KEYS[1], KEYS[2])
+		`
+	val, err = a.cache.Client().Eval(ctx, script, keys, 1000, 2000, 120)
+	return
 }
 
 func TestRedisCacheString(t *testing.T) {
@@ -71,7 +92,7 @@ func TestRedisCacheString(t *testing.T) {
 	assert.Equal("{\"a\":1}", val)
 	val, err = cache.GetOrSetFunc(ctx, "test_key_3", func(ctx context.Context) (val any, err error) {
 		return
-	}, time.Second)
+	}, true, time.Second)
 	assert.NoError(err)
 	assert.Equal("", val)
 	err = cache.SetMap(ctx, map[string]any{"a": 1, "b": map[string]any{"b": 100}}, time.Second)
@@ -84,14 +105,23 @@ func TestRedisCacheString(t *testing.T) {
 	assert.True(ok)
 	ok, err = cache.SetIfNotExistFunc(ctx, "test_key_4", func(ctx context.Context) (val any, err error) {
 		return
-	}, time.Second)
+	}, true, time.Second)
 	assert.NoError(err)
 	assert.False(ok)
 	ok, err = cache.SetIfNotExistFunc(ctx, "test_key_5", func(ctx context.Context) (val any, err error) {
 		return
-	}, time.Second)
+	}, true, time.Second)
 	assert.NoError(err)
 	assert.True(ok)
+
+	val, err = cache.CustomGetOrSetFunc(ctx, []string{"test_key_10", "test_key_11"}, &AAA{cache: cache}, func(ctx context.Context) (val any, err error) {
+		return map[string]any{
+			"test_key_10": 1,
+			"test_key_11": 2,
+		}, nil
+	}, true, time.Second)
+	assert.NoError(err)
+	assert.Equal([]any{"1000", "2000"}, val)
 }
 
 func TestRedisCacheString2(t *testing.T) {
@@ -215,41 +245,6 @@ func TestRedisCacheString4(t *testing.T) {
 	timeout, err = cache.GetExpire(ctx, "test_key_2")
 	assert.NoError(err)
 	assert.Equal(time.Second*60, timeout)
-}
-
-func TestRedisCacheString5(t *testing.T) {
-	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.RedisCache
-	)
-	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
-	})
-	var (
-		assert = assert.New(t)
-		val    any
-		err    error
-	)
-	val, err = cache.CustomCache(ctx, func(ctx context.Context) (val any, err error) {
-		script := `
-		local result = redis.call('SETEX', KEYS[1], ARGV[3], ARGV[1])
-		if not result['ok'] then
-			return false
-		end
-		result = redis.call('SETEX', KEYS[2], ARGV[3], ARGV[2])
-		if not result['ok'] then
-			return false
-		end
-		return true
-		`
-		val, err = cache.Client().Eval(ctx, script, []string{"test_key_1", "test_key_2"}, 1000, 2000, 120)
-		return
-	})
-	assert.NoError(err)
-	assert.True(gtkconv.ToBool(val))
 }
 
 func TestRedisCacheSet(t *testing.T) {

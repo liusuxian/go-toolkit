@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-06 23:56:39
+ * @LastEditTime: 2024-02-11 02:00:33
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -362,13 +362,17 @@ func (rc *RedisCache) GetOrSet(ctx context.Context, key string, newVal any, time
 // GetOrSetFunc 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
-func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, timeout ...time.Duration) (val any, err error) {
+//	当`force = true`时，可防止缓存穿透
+func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	if val, err = rc.Get(ctx, key, timeout...); err != nil {
 		return
 	}
 	if val == nil {
 		var newVal any
 		if newVal, err = f(ctx); err != nil {
+			return
+		}
+		if newVal == nil && !force {
 			return
 		}
 		// 此处不判断`newVal == nil`是因为防止缓存穿透
@@ -381,8 +385,41 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, time
 // GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在读写互斥锁中执行的
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
-func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, timeout ...time.Duration) (val any, err error) {
-	return rc.GetOrSetFunc(ctx, key, f, timeout...)
+//	当`force = true`时，可防止缓存穿透
+func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+	return rc.GetOrSetFunc(ctx, key, f, force, timeout...)
+}
+
+// CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
+//
+//	当`timeout > 0`时，设置/重置`key`的过期时间
+//	当`force = true`时，可防止缓存穿透
+func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+	// 获取缓存
+	if val, err = cc.Get(ctx, keys, timeout...); err != nil {
+		return
+	}
+	if val == nil {
+		var newVal any
+		if newVal, err = f(ctx); err != nil {
+			return
+		}
+		if newVal == nil && !force {
+			return
+		}
+		// 此处不判断`newVal == nil`是因为防止缓存穿透
+		val, err = cc.Set(ctx, keys, newVal, timeout...)
+		return
+	}
+	return
+}
+
+// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在读写互斥锁中执行的
+//
+//	当`timeout > 0`时，设置/重置`key`的过期时间
+//	当`force = true`时，可防止缓存穿透
+func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+	return rc.CustomGetOrSetFunc(ctx, keys, cc, f, force, timeout...)
 }
 
 // Set 设置缓存
@@ -440,9 +477,13 @@ func (rc *RedisCache) SetIfNotExist(ctx context.Context, key string, val any, ti
 // SetIfNotExistFunc 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功
 //
 //	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func, timeout ...time.Duration) (ok bool, err error) {
+//	当`force = true`时，可防止缓存穿透
+func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
 	var val any
 	if val, err = f(ctx); err != nil {
+		return
+	}
+	if val == nil && !force {
 		return
 	}
 	// 此处不判断`val == nil`是因为防止缓存穿透
@@ -452,14 +493,9 @@ func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func,
 // SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在读写互斥锁中执行的
 //
 //	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-func (rc *RedisCache) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, timeout ...time.Duration) (ok bool, err error) {
-	return rc.SetIfNotExistFunc(ctx, key, f, timeout...)
-}
-
-// CustomCache 自定义缓存
-func (rc *RedisCache) CustomCache(ctx context.Context, f Func) (val any, err error) {
-	val, err = f(ctx)
-	return
+//	当`force = true`时，可防止缓存穿透
+func (rc *RedisCache) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
+	return rc.SetIfNotExistFunc(ctx, key, f, force, timeout...)
 }
 
 // IsExist 缓存是否存在
