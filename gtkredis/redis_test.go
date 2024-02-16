@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-28 17:07:39
+ * @LastEditTime: 2024-02-17 03:31:31
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -190,4 +190,38 @@ func TestRedisLuaScript(t *testing.T) {
 	val, err = client.EvalSha(ctx, "test_set", []string{"test_set1"}, 100)
 	assert.NoError(err)
 	assert.Equal(1, gtkconv.ToInt(val))
+}
+
+func TestRedisPolling(t *testing.T) {
+	var (
+		ctx = context.Background()
+		r   = miniredis.RunT(t)
+	)
+	client := gtkredis.NewClient(ctx, func(cc *gtkredis.ClientConfig) {
+		cc.Addr = r.Addr()
+		cc.Password = ""
+		cc.DB = 1
+	})
+	defer client.Close()
+
+	var (
+		err    error
+		index  int
+		assert = assert.New(t)
+	)
+	for i := 0; i < 5; i++ {
+		index, err = client.Polling(ctx, "test_key_1", 5)
+		assert.NoError(err)
+		assert.Equal(i, index)
+	}
+	for i := 0; i < 5; i++ {
+		index, err = client.Polling(ctx, "test_key_1", 5)
+		assert.NoError(err)
+		assert.Equal(i, index)
+	}
+	for i := 0; i < 5; i++ {
+		index, err = client.Polling(ctx, "test_key_1", 5)
+		assert.NoError(err)
+		assert.Equal(i, index)
+	}
 }

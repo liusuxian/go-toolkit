@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-07 02:47:20
+ * @LastEditTime: 2024-02-17 03:33:19
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -60,6 +60,15 @@ var internalScriptMap = map[string]string{
 		else
 			return 0
 		end
+		`,
+
+	"POLLING": `
+		local next = redis.call("INCRBY", KEYS[1], 1)
+		if next > tonumber(ARGV[1], 10) then
+			redis.call("SET", KEYS[1], 1)
+			return 0
+		end
+		return next-1
 		`,
 }
 
@@ -232,6 +241,16 @@ func (rc *RedisClient) Cad(ctx context.Context, key string, value any) (ok bool,
 		return
 	}
 	ok = gtkconv.ToBool(result)
+	return
+}
+
+// Polling 轮询
+func (rc *RedisClient) Polling(ctx context.Context, key string, max int) (index int, err error) {
+	var result any
+	if result, err = rc.EvalSha(ctx, "POLLING", []string{key}, max); err != nil {
+		return
+	}
+	index = gtkconv.ToInt(result)
 	return
 }
 
