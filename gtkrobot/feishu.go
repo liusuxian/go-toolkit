@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-20 21:04:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-20 21:59:20
+ * @LastEditTime: 2024-02-21 00:01:11
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtkrobot
 
 import (
 	"bytes"
-	"github.com/liusuxian/go-toolkit/gtkjson"
+	"encoding/json"
 	"github.com/liusuxian/go-toolkit/gtkstr"
 	"github.com/pkg/errors"
 	"net/http"
@@ -58,7 +58,7 @@ func (fr *FeishuRobot) SendTextMessage(content string) (err error) {
 // send 发送
 func (fr *FeishuRobot) send() (err error) {
 	var message []byte
-	if message, err = gtkjson.Bytes(fr.data); err != nil {
+	if message, err = json.Marshal(fr.data); err != nil {
 		return
 	}
 	var buffer bytes.Buffer
