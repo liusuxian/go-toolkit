@@ -19,7 +19,7 @@ import (
 
 // FeishuRobot
 type FeishuRobot struct {
-	WebHookURL string
+	webHookURL string
 	data       FeiShuMessage
 }
 
@@ -37,13 +37,13 @@ type FeishuContent struct {
 // NewFeishuRobot 新建飞书机器人
 func NewFeishuRobot(webHookURL string) (fr *FeishuRobot) {
 	return &FeishuRobot{
-		WebHookURL: webHookURL,
+		webHookURL: webHookURL,
 	}
 }
 
 // SendTextMessage 发送文本消息
 func (fr *FeishuRobot) SendTextMessage(content string) (err error) {
-	if gtkstr.TrimAll(fr.WebHookURL) == "" {
+	if gtkstr.TrimAll(fr.webHookURL) == "" {
 		return
 	}
 	fr.data = FeiShuMessage{
@@ -67,7 +67,7 @@ func (fr *FeishuRobot) send() (err error) {
 	}
 	// 创建`HTTP`请求
 	var req *http.Request
-	if req, err = http.NewRequest("POST", fr.WebHookURL, &buffer); err != nil {
+	if req, err = http.NewRequest("POST", fr.webHookURL, &buffer); err != nil {
 		return
 	}
 	// 设置请求头
