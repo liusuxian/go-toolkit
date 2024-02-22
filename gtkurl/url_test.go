@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-06 18:30:38
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-06 18:52:35
+ * @LastEditTime: 2024-02-22 18:33:07
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -71,4 +71,21 @@ func TestQueryDecode(t *testing.T) {
 	str, err = gtkurl.QueryDecode("Hello%2")
 	assert.Error(err)
 	assert.Equal("", str)
+}
+
+func TestIsUrl(t *testing.T) {
+	var (
+		assert = assert.New(t)
+		ok     bool
+	)
+	ok = gtkurl.IsUrl("http://example.com")
+	assert.True(ok)
+	ok = gtkurl.IsUrl("https://example.com")
+	assert.True(ok)
+	ok = gtkurl.IsUrl("ftp://example.com")
+	assert.False(ok)
+	ok = gtkurl.IsUrl("example.com")
+	assert.False(ok)
+	ok = gtkurl.IsUrl("hello world")
+	assert.False(ok)
 }
