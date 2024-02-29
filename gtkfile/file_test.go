@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 00:16:21
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 23:00:40
+ * @LastEditTime: 2024-02-25 23:45:10
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -42,4 +42,12 @@ func TestName(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal("file", gtkfile.Name("/var/www/file.js"))
 	assert.Equal("file", gtkfile.Name("file.js"))
+}
+
+func TestGenRandomFileName(t *testing.T) {
+	t.Log(gtkfile.GenRandomFileName("example.png"))
+	t.Log(gtkfile.GenRandomFileName("example.png"))
+	t.Log(gtkfile.GenRandomFileName("example.png"))
+	t.Log(gtkfile.GenRandomFileName("example.png"))
+	t.Log(gtkfile.GenRandomFileName("example.png"))
 }

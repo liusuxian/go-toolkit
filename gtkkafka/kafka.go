@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 23:01:39
+ * @LastEditTime: 2024-02-27 14:54:12
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -37,6 +37,7 @@ type ClientConfig struct {
 	Servers                   string                            // SSL接入点的IP地址以及端口
 	Protocol                  string                            // SASL用户认证协议
 	RetryDelay                time.Duration                     // 当消费失败时重试的间隔时间
+	RetryMaxCount             int                               // 当消费失败时重试的最大次数
 	BatchSize                 int                               // 批量消费的条数
 	BatchInterval             time.Duration                     // 批量消费的间隔时间
 	IsClose                   bool                              // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
@@ -442,8 +443,11 @@ func (kc *KafkaClient) handelData(consumerName string, consumer *kafka.Consumer,
 			},
 		})
 		// 重试处理函数
-		count := 0
-		for {
+		var (
+			retryMaxCount = kc.config.RetryMaxCount
+			count         = 0
+		)
+		for retryMaxCount == 0 || (retryMaxCount > 0 && count < retryMaxCount) {
 			count++
 			consumer.Poll(0) // 用以给kafka发送心跳
 			time.Sleep(kc.config.RetryDelay)
@@ -489,8 +493,11 @@ func (kc *KafkaClient) handelBatchData(consumerName string, consumer *kafka.Cons
 			},
 		})
 		// 重试处理函数
-		count := 0
-		for {
+		var (
+			retryMaxCount = kc.config.RetryMaxCount
+			count         = 0
+		)
+		for retryMaxCount == 0 || (retryMaxCount > 0 && count > retryMaxCount) {
 			count++
 			consumer.Poll(0) // 用以给kafka发送心跳
 			time.Sleep(kc.config.RetryDelay)

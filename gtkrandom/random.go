@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-01 23:27:01
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:59:36
+ * @LastEditTime: 2024-02-26 21:09:41
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,9 +10,9 @@
 package gtkrandom
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"sort"
-	"time"
 )
 
 // RandomWeight 随机权重
@@ -27,12 +27,8 @@ func RandomWeight(weights []int) (index int) {
 	for i := 1; i < length; i++ {
 		prefixSum[i] = prefixSum[i-1] + weights[i]
 	}
-	// 创建一个新的随机数生成器源
-	source := rand.NewSource(time.Now().UnixNano())
-	// 创建一个 PRNG
-	rng := rand.New(source)
 	// 生成一个随机权重值
-	randomWeight := rng.Intn(prefixSum[length-1])
+	randomWeight, _ := rand.Int(rand.Reader, big.NewInt(int64(prefixSum[length-1])))
 	// 使用二分查找算法找到随机权重值对应的下标
-	return sort.SearchInts(prefixSum, randomWeight)
+	return sort.SearchInts(prefixSum, int(randomWeight.Int64()))
 }

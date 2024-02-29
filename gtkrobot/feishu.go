@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-20 21:04:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-21 00:01:11
+ * @LastEditTime: 2024-02-28 14:25:55
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,8 +10,8 @@
 package gtkrobot
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
+	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkstr"
 	"github.com/pkg/errors"
 	"net/http"
@@ -19,8 +19,9 @@ import (
 
 // FeishuRobot
 type FeishuRobot struct {
-	webHookURL string
-	data       FeiShuMessage
+	webHookURL     string
+	requestBuilder gtkhttp.RequestBuilder // 请求构建器
+	httpClient     *http.Client
 }
 
 // FeiShuMessage 飞书消息
@@ -37,53 +38,50 @@ type FeishuContent struct {
 // NewFeishuRobot 新建飞书机器人
 func NewFeishuRobot(webHookURL string) (fr *FeishuRobot) {
 	return &FeishuRobot{
-		webHookURL: webHookURL,
+		webHookURL:     webHookURL,
+		requestBuilder: gtkhttp.NewRequestBuilder(),
+		httpClient:     &http.Client{},
 	}
 }
 
 // SendTextMessage 发送文本消息
-func (fr *FeishuRobot) SendTextMessage(content string) (err error) {
+func (fr *FeishuRobot) SendTextMessage(ctx context.Context, content string) (err error) {
 	if gtkstr.TrimAll(fr.webHookURL) == "" {
 		return
 	}
-	fr.data = FeiShuMessage{
+	return fr.send(ctx, FeiShuMessage{
 		MsgType: "text",
 		Content: FeishuContent{
 			Text: content,
 		},
-	}
-	return fr.send()
+	})
 }
 
 // send 发送
-func (fr *FeishuRobot) send() (err error) {
-	var message []byte
-	if message, err = json.Marshal(fr.data); err != nil {
-		return
-	}
-	var buffer bytes.Buffer
-	if _, err = buffer.Write(message); err != nil {
-		return
-	}
-	// 创建`HTTP`请求
-	var req *http.Request
-	if req, err = http.NewRequest("POST", fr.webHookURL, &buffer); err != nil {
-		return
-	}
-	// 设置请求头
-	req.Header.Set("Content-Type", "application/json")
-	// 发送请求
+func (fr *FeishuRobot) send(ctx context.Context, data FeiShuMessage) (err error) {
 	var (
-		client = &http.Client{}
-		resp   *http.Response
+		setters = []gtkhttp.RequestOption{
+			gtkhttp.SetBody(data),
+			gtkhttp.SetContentType("application/json; charset=utf-8"),
+		}
+		req *http.Request
 	)
-	if resp, err = client.Do(req); err != nil {
+
+	if req, err = fr.requestBuilder.Build(ctx, http.MethodPost, fr.webHookURL, setters...); err != nil {
+		return
+	}
+	// 发送请求
+	var resp *http.Response
+	if resp, err = fr.httpClient.Do(req); err != nil {
 		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		err = errors.Errorf("Request Failed With Status Code: %d", resp.StatusCode)
+	if gtkhttp.IsFailureStatusCode(resp) {
+		err = &gtkhttp.RequestError{
+			HTTPStatusCode: resp.StatusCode,
+			Err:            errors.New("Request Failed"),
+		}
 		return
 	}
 	return
