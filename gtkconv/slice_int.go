@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-18 17:05:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:44:14
+ * @LastEditTime: 2024-02-29 16:22:22
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtkconv
 
 import (
 	"encoding/json"
-	"github.com/liusuxian/go-toolkit/gtkreflection"
+	"github.com/liusuxian/go-toolkit/gtkreflect"
 	"reflect"
 )
 
@@ -209,7 +209,7 @@ func ToInt64SliceE(i any) (iv []int64, err error) {
 		return []int64{}, convertError(i, "[]int64")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -422,7 +422,7 @@ func ToInt32SliceE(i any) (iv []int32, err error) {
 		return []int32{}, convertError(i, "[]int32")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -635,7 +635,7 @@ func ToInt16SliceE(i any) (iv []int16, err error) {
 		return []int16{}, convertError(i, "[]int16")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -848,7 +848,7 @@ func ToInt8SliceE(i any) (iv []int8, err error) {
 		return []int8{}, convertError(i, "[]int8")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -1061,7 +1061,7 @@ func ToIntSliceE(i any) (iv []int, err error) {
 		return []int{}, convertError(i, "[]int")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()

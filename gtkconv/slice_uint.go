@@ -11,7 +11,7 @@ package gtkconv
 
 import (
 	"encoding/json"
-	"github.com/liusuxian/go-toolkit/gtkreflection"
+	"github.com/liusuxian/go-toolkit/gtkreflect"
 	"reflect"
 )
 
@@ -209,7 +209,7 @@ func ToUint64SliceE(i any) (iv []uint64, err error) {
 		return []uint64{}, convertError(i, "[]uint64")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -422,7 +422,7 @@ func ToUint32SliceE(i any) (iv []uint32, err error) {
 		return []uint32{}, convertError(i, "[]uint32")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -635,7 +635,7 @@ func ToUint16SliceE(i any) (iv []uint16, err error) {
 		return []uint16{}, convertError(i, "[]uint16")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -848,7 +848,7 @@ func ToUint8SliceE(i any) (iv []uint8, err error) {
 		return []uint8{}, convertError(i, "[]uint8")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -1061,7 +1061,7 @@ func ToUintSliceE(i any) (iv []uint, err error) {
 		return []uint{}, convertError(i, "[]uint")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()

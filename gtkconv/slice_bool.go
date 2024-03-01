@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-16 02:20:09
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:42:20
+ * @LastEditTime: 2024-02-29 16:21:40
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtkconv
 
 import (
 	"encoding/json"
-	"github.com/liusuxian/go-toolkit/gtkreflection"
+	"github.com/liusuxian/go-toolkit/gtkreflect"
 	"reflect"
 )
 
@@ -189,7 +189,7 @@ func ToBoolSliceE(i any) (iv []bool, err error) {
 		return []bool{}, convertError(i, "[]bool")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflection.OriginValueAndKind(i)
+		originValueAndKind := gtkreflect.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()

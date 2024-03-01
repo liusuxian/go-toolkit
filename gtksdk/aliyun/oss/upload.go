@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-26 12:15:22
+ * @LastEditTime: 2024-02-29 18:20:52
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -66,7 +66,7 @@ func (u *UploadFileInfo) GetErr() (err error) {
 }
 
 // Upload 上传
-func (s *AliyunOSS) Upload(w http.ResponseWriter, r *http.Request, dirPath string) (fileInfo *UploadFileInfo) {
+func (s *AliyunOSS) Upload(r *http.Request, dirPath string) (fileInfo *UploadFileInfo) {
 	if r.Method != "POST" {
 		fileInfo = &UploadFileInfo{err: errors.New("Unsupported Method")}
 		return
@@ -123,7 +123,7 @@ func (s *AliyunOSS) Upload(w http.ResponseWriter, r *http.Request, dirPath strin
 }
 
 // BatchUpload 批量上传
-func (s *AliyunOSS) BatchUpload(w http.ResponseWriter, r *http.Request, dirPath string) (fileInfos []*UploadFileInfo) {
+func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string) (fileInfos []*UploadFileInfo) {
 	if r.Method != "POST" {
 		fileInfos = []*UploadFileInfo{{err: errors.New("Unsupported Method")}}
 		return

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-22 23:27:03
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 23:29:35
+ * @LastEditTime: 2024-02-29 18:20:27
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -49,6 +49,9 @@ func MustString(v any) (str string) {
 
 // Bytes
 func Bytes(v any) (b []byte, err error) {
+	if v == nil {
+		return
+	}
 	b, err = json.Marshal(v)
 	return
 }

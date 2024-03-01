@@ -2,12 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 21:33:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:23:07
+ * @LastEditTime: 2024-02-29 16:16:48
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package gtkreflection
+package gtkreflect
 
 import "reflect"
 
@@ -93,4 +93,29 @@ func ValueToInterface(v reflect.Value) (value any, ok bool) {
 	default:
 		return nil, false
 	}
+}
+
+// IsNil 检查给定的值是否是`nil`
+func IsNil(value any) (isNil bool) {
+	if value == nil {
+		return true
+	}
+	var rv reflect.Value
+	if v, ok := value.(reflect.Value); ok {
+		rv = v
+	} else {
+		rv = reflect.ValueOf(value)
+	}
+	switch rv.Kind() {
+	case reflect.Chan,
+		reflect.Map,
+		reflect.Slice,
+		reflect.Func,
+		reflect.Interface,
+		reflect.UnsafePointer:
+		return !rv.IsValid() || rv.IsNil()
+	case reflect.Ptr:
+		return !rv.IsValid() || rv.IsNil()
+	}
+	return false
 }

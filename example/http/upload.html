@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:18:50
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-26 03:03:29
+ * @LastEditTime: 2024-03-01 13:34:36
  * @Description: 
  * 
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -26,6 +26,14 @@
   <form action="http://127.0.0.1:8080/batchUpload" method="post" enctype="multipart/form-data">
     <input type="file" name="file" id="batchFiles" multiple>
     <input type="submit" value="上传">
+  </form>
+  <h2>重定向</h2>
+  <form action="http://127.0.0.1:8080/redirect" method="post">
+    <input type="submit" value="重定向">
+  </form>
+  <h2>数据流</h2>
+  <form action="http://127.0.0.1:8080/sse" method="post">
+    <input type="submit" value="数据流">
   </form>
 </body>
 

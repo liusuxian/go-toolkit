@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-24 20:51:23
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-25 17:51:34
+ * @LastEditTime: 2024-02-29 16:39:26
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,7 +13,6 @@ import (
 	"context"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/liusuxian/go-toolkit/gtkconv"
-	"reflect"
 	"time"
 )
 
@@ -25,10 +24,10 @@ func (s *AliyunOSS) GetAccessUrl(ctx context.Context, filePath string, cacheKey 
 		if val, err = s.Cache.Get(ctx, cacheKey); err != nil {
 			return
 		}
-		if !reflect.ValueOf(val).IsNil() {
-			if fileUrl, err = gtkconv.ToStringE(val); err != nil {
-				return
-			}
+		if fileUrl, err = gtkconv.ToStringE(val); err != nil {
+			return
+		}
+		if fileUrl != "" {
 			return
 		}
 	}
