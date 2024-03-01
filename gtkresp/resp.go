@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-29 16:41:35
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 13:30:21
+ * @LastEditTime: 2024-03-01 22:32:26
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -94,12 +94,68 @@ func Unauthorized(msg string, data any) (resp Response) {
 
 // RespSucc 返回成功
 func RespSucc(w http.ResponseWriter, data any) {
-	writeJson(w, Succ(data))
+	WriteJson(w, Succ(data))
 }
 
 // RespFail 返回失败
 func RespFail(w http.ResponseWriter, code int, msg string, data ...any) {
-	writeJson(w, Fail(code, msg, data...))
+	WriteJson(w, Fail(code, msg, data...))
+}
+
+// Write
+func Write(w http.ResponseWriter, data ...any) {
+	if len(data) == 0 {
+		return
+	}
+	for _, v := range data {
+		switch val := v.(type) {
+		case []byte:
+			w.Write(val)
+		case string:
+			w.Write([]byte(val))
+		default:
+			w.Write(gtkconv.ToBytes(v))
+		}
+	}
+}
+
+// Writef
+func Writef(w http.ResponseWriter, format string, params ...any) {
+	Write(w, fmt.Sprintf(format, params...))
+}
+
+// Writeln
+func Writeln(w http.ResponseWriter, data ...any) {
+	if len(data) == 0 {
+		Write(w, "\n")
+		return
+	}
+	Write(w, append(data, "\n")...)
+}
+
+// Writefln
+func Writefln(w http.ResponseWriter, format string, params ...any) {
+	Writeln(w, fmt.Sprintf(format, params...))
+}
+
+// WriteStatus
+func WriteStatus(w http.ResponseWriter, status int, data ...any) {
+	w.WriteHeader(status)
+	if len(data) > 0 {
+		Write(w, data...)
+	} else {
+		Write(w, http.StatusText(status))
+	}
+}
+
+// WriteJson
+func WriteJson(w http.ResponseWriter, resp Response) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if b, err := resp.Json(); err != nil {
+		w.Write(Fail(http.StatusInternalServerError, errors.Wrap(err, "WriteJson Failed").Error()).MustJson())
+	} else {
+		w.Write(b)
+	}
 }
 
 // RespSSESucc 返回`SSE`事件成功
@@ -134,14 +190,4 @@ func RespSSEFail(w http.ResponseWriter, code int, msg string, data ...any) {
 func Redirect(w http.ResponseWriter, link string) {
 	w.Header().Set("Location", link)
 	w.WriteHeader(302)
-}
-
-// writeJson
-func writeJson(w http.ResponseWriter, resp Response) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if b, err := resp.Json(); err != nil {
-		w.Write(Fail(http.StatusInternalServerError, errors.Wrap(err, "WriteJson Failed").Error()).MustJson())
-	} else {
-		w.Write(b)
-	}
 }

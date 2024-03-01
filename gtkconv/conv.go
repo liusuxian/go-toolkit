@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-14 13:11:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2023-05-11 14:38:24
+ * @LastEditTime: 2024-03-01 21:50:09
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -316,5 +316,29 @@ func ToStruct(input, output any, opts ...DecoderConfigOption) {
 // ProtoMsgToMap 将 protobuf 消息转换为 Map 类型
 func ProtoMsgToMap(msg proto.Message) (m map[string]any) {
 	m, _ = ProtoMsgToMapE(msg)
+	return
+}
+
+// ToByte 将 any 转换为 byte 类型
+func ToByte(i any) (v byte) {
+	v, _ = ToByteE(i)
+	return
+}
+
+// ToRune 将 any 转换为 rune 类型
+func ToRune(i any) (v rune) {
+	v, _ = ToRuneE(i)
+	return
+}
+
+// ToRunes 将 any 转换为 []rune 类型
+func ToRunes(i any) (v []rune) {
+	v, _ = ToRunesE(i)
+	return
+}
+
+// ToBytes 将 any 转换为 []byte 类型
+func ToBytes(i any) (v []byte) {
+	v, _ = ToBytesE(i)
 	return
 }

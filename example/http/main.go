@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 13:42:05
+ * @LastEditTime: 2024-03-01 22:37:54
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -17,6 +17,12 @@ import (
 	"net/http"
 	"time"
 )
+
+type User struct {
+	Name string
+	Age  int
+	Url  string
+}
 
 func main() {
 	var (
@@ -66,6 +72,17 @@ func main() {
 		}
 		gtkresp.RespSSEFail(w, -1, "test fail")
 		gtkresp.RespSSESucc(w, "finish")
+	})
+	// 数据流
+	inta := 99
+	http.HandleFunc("/write", func(w http.ResponseWriter, r *http.Request) {
+		gtkresp.Write(w, "hello ", "world ", "liusuxian \n")
+		gtkresp.Write(w, User{"wenzi1", 999, "www.baidu.com"}, "\n")
+		gtkresp.Writeln(w, inta)
+		gtkresp.Writef(w, "I am test: %s", "Writef\n")
+		gtkresp.Writeln(w, "I am test: ", "Writeln")
+		gtkresp.Writefln(w, "I am test: %s", "Writefln")
+		gtkresp.WriteStatus(w, http.StatusOK, "WriteStatus")
 	})
 	// 启动HTTP服务器
 	fmt.Println("start server")
