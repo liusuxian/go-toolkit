@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-29 16:41:35
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 22:32:26
+ * @LastEditTime: 2024-03-02 18:02:54
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,9 +12,11 @@ package gtkresp
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/pkg/errors"
 	"net/http"
+	"time"
 )
 
 const (
@@ -190,4 +192,42 @@ func RespSSEFail(w http.ResponseWriter, code int, msg string, data ...any) {
 func Redirect(w http.ResponseWriter, link string) {
 	w.Header().Set("Location", link)
 	w.WriteHeader(302)
+}
+
+// WriteSuccMessage 写成功响应消息
+func WriteSuccMessage(ws *websocket.Conn, messageType int, data any) (err error) {
+	var dataBytes []byte
+	if dataBytes, err = gtkconv.ToBytesE(Succ(data)); err != nil {
+		return
+	}
+	return ws.WriteMessage(messageType, dataBytes)
+}
+
+// WriteFailMessage 写失败响应消息
+func WriteFailMessage(ws *websocket.Conn, messageType, code int, msg string, data ...any) (err error) {
+	var dataBytes []byte
+	if dataBytes, err = gtkconv.ToBytesE(Fail(code, msg, data...)); err != nil {
+		return
+	}
+	return ws.WriteMessage(messageType, dataBytes)
+}
+
+// WriteMessage 写任意消息
+func WriteMessage(ws *websocket.Conn, messageType int, data any) (err error) {
+	var dataBytes []byte
+	if dataBytes, err = gtkconv.ToBytesE(data); err != nil {
+		return
+	}
+	return ws.WriteMessage(messageType, dataBytes)
+}
+
+// WriteControl 使用给定的截止时间写入一个控制消息
+//
+//	允许的消息类型包括 `CloseMessage`，`PingMessage`，`PongMessage`
+func WriteControl(ws *websocket.Conn, messageType int, data any, deadline time.Time) (err error) {
+	var dataBytes []byte
+	if dataBytes, err = gtkconv.ToBytesE(data); err != nil {
+		return
+	}
+	return ws.WriteControl(messageType, dataBytes, deadline)
 }
