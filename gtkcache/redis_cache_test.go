@@ -27,11 +27,11 @@ type AAA struct {
 	cache *gtkcache.RedisCache
 }
 
-func (a *AAA) Get(ctx context.Context, keys []string, timeout ...time.Duration) (val any, err error) {
+func (a *AAA) Get(ctx context.Context, keys []string, args []any, timeout ...time.Duration) (val any, err error) {
 	return
 }
 
-func (a *AAA) Set(ctx context.Context, keys []string, newVal any, timeout ...time.Duration) (val any, err error) {
+func (a *AAA) Set(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error) {
 	script := `
 		local result = redis.call('SETEX', KEYS[1], ARGV[3], ARGV[1])
 		if not result['ok'] then
@@ -114,7 +114,7 @@ func TestRedisCacheString(t *testing.T) {
 	assert.NoError(err)
 	assert.True(ok)
 
-	val, err = cache.CustomGetOrSetFunc(ctx, []string{"test_key_10", "test_key_11"}, &AAA{cache: cache}, func(ctx context.Context) (val any, err error) {
+	val, err = cache.CustomGetOrSetFunc(ctx, []string{"test_key_10", "test_key_11"}, []any{}, &AAA{cache: cache}, func(ctx context.Context) (val any, err error) {
 		return map[string]any{
 			"test_key_10": 1,
 			"test_key_11": 2,

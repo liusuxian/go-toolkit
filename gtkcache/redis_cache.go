@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-29 16:39:36
+ * @LastEditTime: 2024-03-06 20:19:49
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -395,9 +395,9 @@ func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, 
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透
-func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	// 获取缓存
-	if val, err = cc.Get(ctx, keys, timeout...); err != nil {
+	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
 		return
 	}
 	if val == nil {
@@ -409,7 +409,7 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, cc 
 			return
 		}
 		// 此处不判断`newVal == nil`是因为防止缓存穿透
-		val, err = cc.Set(ctx, keys, newVal, timeout...)
+		val, err = cc.Set(ctx, keys, args, newVal, timeout...)
 		return
 	}
 	return
@@ -419,8 +419,8 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, cc 
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透
-func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	return rc.CustomGetOrSetFunc(ctx, keys, cc, f, force, timeout...)
+func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+	return rc.CustomGetOrSetFunc(ctx, keys, args, cc, f, force, timeout...)
 }
 
 // Set 设置缓存
