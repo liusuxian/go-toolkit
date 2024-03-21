@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-18 20:48:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-21 13:42:22
+ * @LastEditTime: 2024-03-21 19:39:25
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,6 +12,7 @@ package gtklog
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/liusuxian/go-toolkit/gtkconf"
@@ -23,6 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -45,7 +47,15 @@ const (
 type ContextKey string
 
 const (
-	CtxValFieldKey = "ctx"
+	CtxValFieldKey   = "ctx"
+	onlyWriteMessage = "only_write_msg"
+
+	fieldKeyMsg   = "msg"
+	fieldKeyLevel = "level"
+	fieldKeyTime  = "time"
+	fieldKeyError = "error"
+	fieldKeyFunc  = "func"
+	fieldKeyFile  = "file"
 )
 
 // 要写入日志的数据字段
@@ -97,24 +107,30 @@ func init() {
 }
 
 // 实现 logrus.Formatter 接口
-type formatter struct {
+type textFormatter struct {
 	config *Config // 日志配置
 }
 
 // Format
-func (f *formatter) Format(entry *logrus.Entry) (bs []byte, err error) {
+func (tf *textFormatter) Format(entry *logrus.Entry) (bs []byte, err error) {
+	// 只打印 Message 数据
 	var buf bytes.Buffer
-	buf.WriteString(entry.Time.Format(f.config.TimestampFormat))
-	buf.WriteString(" ")
-	if entry.Level.String() != "unknown" {
-		buf.WriteString("[" + strings.ToUpper(entry.Level.String()) + "]")
-		buf.WriteString(" ")
+	if _, ok := entry.Data[onlyWriteMessage]; ok {
+		buf.WriteString(entry.Message)
+		buf.WriteString("\n")
+		bs = buf.Bytes()
+		return
 	}
+	// 打印全部数据
+	buf.WriteString(entry.Time.Format(tf.config.TimestampFormat))
+	buf.WriteString(" ")
+	buf.WriteString(fmt.Sprintf("[%s]", strings.ToUpper(entry.Level.String())))
+	buf.WriteString(" ")
 	// 处理自定义 Context 上下文变量
 	if val, ok := entry.Data[CtxValFieldKey]; ok {
 		ctxValMap := val.(map[ContextKey]any)
 		ctxVals := make([]string, 0, len(ctxValMap))
-		for _, k := range f.config.CtxKeys {
+		for _, k := range tf.config.CtxKeys {
 			ctxVals = append(ctxVals, fmt.Sprintf("%s:%v", k, ctxValMap[k]))
 		}
 		buf.WriteString("{")
@@ -122,20 +138,100 @@ func (f *formatter) Format(entry *logrus.Entry) (bs []byte, err error) {
 		buf.WriteString("} ")
 	}
 	// 处理文件名和行号字段
-	if val, ok := entry.Data[f.config.FileInfoField]; ok {
+	if val, ok := entry.Data[tf.config.FileInfoField]; ok {
 		buf.WriteString(fmt.Sprintf("%s", val))
 		buf.WriteString(" ")
 	}
 	// 处理其他数据字段
 	for k, v := range entry.Data {
-		if k == CtxValFieldKey || k == f.config.FileInfoField {
+		if k == CtxValFieldKey || k == tf.config.FileInfoField {
 			continue
 		}
 		buf.WriteString(fmt.Sprintf("%s", v))
 		buf.WriteString(" ")
 	}
+	// 处理 Message 字段
 	buf.WriteString(entry.Message)
 	buf.WriteString("\n")
+	bs = buf.Bytes()
+	return
+}
+
+// 实现 logrus.Formatter 接口
+type jsonFormatter struct {
+	config *Config // 日志配置
+	// 是否禁用输出中的 HTML 转义
+	disableHTMLEscape bool
+}
+
+// Format
+func (jf *jsonFormatter) Format(entry *logrus.Entry) (bs []byte, err error) {
+	// 只打印 Message 数据
+	if _, ok := entry.Data[onlyWriteMessage]; ok {
+		var buf bytes.Buffer
+		buf.WriteString(entry.Message)
+		buf.WriteString("\n")
+		bs = buf.Bytes()
+		return
+	}
+	// 打印全部数据
+	var data Fields
+	if jf.config.JSONDataKey != "" {
+		data = make(Fields, 5)
+		data[jf.config.JSONDataKey] = make(Fields)
+	} else {
+		data = make(Fields, len(entry.Data)+5)
+	}
+	data[fieldKeyTime] = entry.Time.Format(jf.config.TimestampFormat)
+	data[fieldKeyLevel] = strings.ToUpper(entry.Level.String())
+	// 处理自定义 Context 上下文变量
+	if val, ok := entry.Data[CtxValFieldKey]; ok {
+		if jf.config.JSONDataKey != "" {
+			data[jf.config.JSONDataKey].(Fields)[CtxValFieldKey] = val.(map[ContextKey]any)
+		} else {
+			data[CtxValFieldKey] = val.(map[ContextKey]any)
+		}
+	}
+	// 处理文件名和行号字段
+	if val, ok := entry.Data[jf.config.FileInfoField]; ok {
+		if jf.config.JSONDataKey != "" {
+			data[jf.config.JSONDataKey].(Fields)[jf.config.FileInfoField] = fmt.Sprintf("%s", val)
+		} else {
+			data[jf.config.FileInfoField] = fmt.Sprintf("%s", val)
+		}
+	}
+	// 处理其他数据字段
+	for k, v := range entry.Data {
+		if k == CtxValFieldKey || k == jf.config.FileInfoField || k == fieldKeyFile || k == fieldKeyFunc {
+			continue
+		}
+
+		var vv any
+		switch v := v.(type) {
+		case error:
+			vv = v.Error()
+		default:
+			vv = v
+		}
+		if jf.config.JSONDataKey != "" {
+			data[jf.config.JSONDataKey].(Fields)[k] = vv
+		} else {
+			data[k] = vv
+		}
+	}
+	// 处理 Message 字段
+	data[fieldKeyMsg] = entry.Message
+	// json日志是否美化输出，默认 false
+	buf := &bytes.Buffer{}
+	encoder := json.NewEncoder(buf)
+	encoder.SetEscapeHTML(!jf.disableHTMLEscape)
+	if jf.config.JSONPrettyPrint {
+		encoder.SetIndent("", "  ")
+	}
+	if err = encoder.Encode(data); err != nil {
+		err = errors.Errorf("failed to marshal fields to JSON, %v", err)
+		return
+	}
 	bs = buf.Bytes()
 	return
 }
@@ -238,6 +334,18 @@ func (l *Logger) Panicf(ctx context.Context, format string, args ...any) {
 	l.withFields(ctx, Fields{}).Panicf(format, args...)
 }
 
+// Write 使用日志输出对象写入数据
+func (l *Logger) Write(level Level, data []byte) (err error) {
+	var lv logrus.Level
+	if lv, err = logrus.ParseLevel(string(level)); err != nil {
+		return
+	}
+	w := l.withFields(context.TODO(), Fields{onlyWriteMessage: 1}).WriterLevel(lv)
+	defer w.Close()
+	_, err = w.Write(data)
+	return
+}
+
 // GetLevel
 func (l *Logger) GetLevel() (level Level) {
 	level = Level(l.logrus.GetLevel().String())
@@ -329,6 +437,18 @@ func Panicf(ctx context.Context, format string, args ...any) {
 	gLogger.withFields(ctx, Fields{}).Panicf(format, args...)
 }
 
+// Write 使用日志输出对象写入数据
+func Write(level Level, data []byte) (err error) {
+	var lv logrus.Level
+	if lv, err = logrus.ParseLevel(string(level)); err != nil {
+		return
+	}
+	w := gLogger.withFields(context.TODO(), Fields{onlyWriteMessage: 1}).WriterLevel(lv)
+	defer w.Close()
+	_, err = w.Write(data)
+	return
+}
+
 // GetLevel
 func GetLevel() (level Level) {
 	level = Level(gLogger.logrus.GetLevel().String())
@@ -365,18 +485,14 @@ func (l *Logger) withFields(ctx context.Context, fields Fields) (entry *logrus.E
 }
 
 // fileInfo
-func fileInfo(skip int) string {
+func fileInfo(skip int) (caller string) {
 	_, file, line, ok := runtime.Caller(skip)
 	if !ok {
-		file = "<???>"
-		line = 1
-	} else {
-		slash := strings.LastIndex(file, "/")
-		if slash >= 0 {
-			file = file[slash+1:]
-		}
+		caller = "<???>:1"
+		return
 	}
-	return fmt.Sprintf("%s:%d", file, line)
+	caller = fmt.Sprintf("%s:%d", filepath.Base(file), line)
+	return
 }
 
 // newLogger 新建日志
@@ -462,19 +578,11 @@ func newLogger(cfg *Config, opts ...ConfigOption) (logger *Logger, err error) {
 	// 日志类型
 	switch logger.config.LogType {
 	case "json":
-		format := &logrus.JSONFormatter{
-			TimestampFormat: logger.config.TimestampFormat,
-			CallerPrettyfier: func(f *runtime.Frame) (function string, file string) {
-				return
-			},
-			PrettyPrint: logger.config.JSONPrettyPrint,
+		logger.logrus.Formatter = &jsonFormatter{
+			config: logger.config,
 		}
-		if logger.config.JSONDataKey != "" {
-			format.DataKey = logger.config.JSONDataKey
-		}
-		logger.logrus.Formatter = format
 	default:
-		logger.logrus.Formatter = &formatter{
+		logger.logrus.Formatter = &textFormatter{
 			config: logger.config,
 		}
 	}

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-18 20:48:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-21 14:56:45
+ * @LastEditTime: 2024-03-21 19:42:09
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -30,6 +30,8 @@ func TestNewWithOption1(t *testing.T) {
 	assert.NotNil(log)
 	err = log.SetLevel(gtklog.TraceLevel)
 	assert.NoError(err)
+	err = log.Write(gtklog.DebugLevel, []byte("hello world"))
+	assert.NoError(err)
 	t.Log("level:", log.GetLevel())
 	t.Log("ConfigStr:", log.GetConfigStr())
 	log.Trace(ctx, "I am Trace")
@@ -53,6 +55,8 @@ func TestNewWithOption2(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(log)
+	err = log.Write(gtklog.DebugLevel, []byte("hello world"))
+	assert.NoError(err)
 	t.Log("level:", log.GetLevel())
 	t.Log("ConfigStr:", log.GetConfigStr())
 	log.Trace(ctx, "I am Trace")
@@ -89,6 +93,8 @@ func TestNewWithOption3(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(log)
+	err = log.Write(gtklog.DebugLevel, []byte("hello world"))
+	assert.NoError(err)
 	t.Log("level:", log.GetLevel())
 	t.Log("ConfigStr:", log.GetConfigStr())
 	ctx = context.WithValue(ctx, RequestIdKey, "100000")
@@ -122,6 +128,8 @@ func TestNewWithOption4(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(log)
+	err = log.Write(gtklog.DebugLevel, []byte("hello world"))
+	assert.NoError(err)
 	t.Log("level:", log.GetLevel())
 	t.Log("ConfigStr:", log.GetConfigStr())
 	ctx = context.WithValue(ctx, RequestIdKey, "100000")
@@ -157,6 +165,8 @@ func TestNewWithOption5(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(log)
+	err = log.Write(gtklog.DebugLevel, []byte("hello world"))
+	assert.NoError(err)
 	t.Log("level:", log.GetLevel())
 	t.Log("ConfigStr:", log.GetConfigStr())
 	log.Trace(ctx, "I am Trace")
@@ -175,6 +185,8 @@ func TestLogger(t *testing.T) {
 		err     error
 	)
 	err = gtklog.SetLevel(gtklog.TraceLevel)
+	assert.NoError(err)
+	err = gtklog.Write(gtklog.DebugLevel, []byte("hello world"))
 	assert.NoError(err)
 	t.Log("level:", gtklog.GetLevel())
 	t.Log("ConfigStr:", gtklog.GetConfigStr())
