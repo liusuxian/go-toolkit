@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-27 14:54:12
+ * @LastEditTime: 2024-03-21 16:13:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -26,65 +26,77 @@ import (
 
 // ProducerConsumerConfig 生产者和消费者配置
 type ProducerConsumerConfig struct {
-	Topic         string // topic 名称
-	StartProducer bool   // 启动生产者
-	StartConsumer bool   // 启动消费者
-	StartAll      bool   // 启动生产者和消费者
+	Topic         string `json:"topic" dc:"topic 名称"`      // topic 名称
+	StartProducer bool   `json:"startProducer" dc:"启动生产者"` // 启动生产者
+	StartConsumer bool   `json:"startConsumer" dc:"启动消费者"` // 启动消费者
+	StartAll      bool   `json:"startAll" dc:"启动生产者和消费者"`  // 启动生产者和消费者
 }
 
-// ClientConfig kafka 客户端配置
-type ClientConfig struct {
-	Servers                   string                            // SSL接入点的IP地址以及端口
-	Protocol                  string                            // SASL用户认证协议
-	RetryDelay                time.Duration                     // 当消费失败时重试的间隔时间
-	RetryMaxCount             int                               // 当消费失败时重试的最大次数
-	BatchSize                 int                               // 批量消费的条数
-	BatchInterval             time.Duration                     // 批量消费的间隔时间
-	IsClose                   bool                              // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
-	Env                       string                            // 当前服务环境
-	ProducerConsumerConfigMap map[string]ProducerConsumerConfig // 生产者和消费者配置
-	ExcludeEnvTopicMap        map[string][]string               // 指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息
+// Config kafka 客户端配置
+type Config struct {
+	Servers                   string                            `json:"servers" dc:"SSL接入点的IP地址以及端口"`                              // SSL接入点的IP地址以及端口
+	Protocol                  string                            `json:"protocol" dc:"SASL用户认证协议"`                                  // SASL用户认证协议
+	RetryDelay                time.Duration                     `json:"retryDelay" dc:"当消费失败时重试的间隔时间，默认 10s"`                      // 当消费失败时重试的间隔时间，默认 10s
+	RetryMaxCount             int                               `json:"retryMaxCount" dc:"当消费失败时重试的最大次数，默认 0无限重试"`                 // 当消费失败时重试的最大次数，默认 0无限重试
+	BatchSize                 int                               `json:"batchSize" dc:"批量消费的条数，默认 200"`                             // 批量消费的条数，默认 200
+	BatchInterval             time.Duration                     `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                        // 批量消费的间隔时间，默认 5s
+	IsClose                   bool                              `json:"isClose" dc:"是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）"`      // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
+	Env                       string                            `json:"env" dc:"当前服务环境，默认 local"`                                  // 当前服务环境，默认 local
+	ProducerConsumerConfigMap map[string]ProducerConsumerConfig `json:"producerConsumerConfigMap" dc:"生产者和消费者配置"`                  // 生产者和消费者配置
+	ExcludeEnvTopicMap        map[string][]string               `json:"excludeEnvTopicMap" dc:"指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息"` // 指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息
+	LogConfig                 *gtklog.Config                    `json:"logConfig" dc:"日志配置"`                                       // 日志配置
 }
 
-// ClientConfigOption kafka 客户端配置选项
-type ClientConfigOption func(cc *ClientConfig)
+// ConfigOption kafka 客户端配置选项
+type ConfigOption func(c *Config)
 
 // KafkaClient kafka 客户端结构
 type KafkaClient struct {
 	producerMap       map[string]*kafka.Producer
 	consumerMap       map[string][]*kafka.Consumer
 	topicPartitionMap map[string]uint32 // topic 分区数
-	config            *ClientConfig     // kafka 客户端配置
+	config            *Config           // kafka 客户端配置
+	logger            *gtklog.Logger    // 日志对象
 }
 
-// NewClient 创建 kafka 客户端
-func NewClient(opts ...ClientConfigOption) (client *KafkaClient) {
+// NewWithOption 创建 kafka 客户端
+func NewWithOption(opts ...ConfigOption) (client *KafkaClient, err error) {
 	client = &KafkaClient{
-		config: &ClientConfig{
+		config: &Config{
 			ProducerConsumerConfigMap: make(map[string]ProducerConsumerConfig),
 			ExcludeEnvTopicMap:        make(map[string][]string),
+			LogConfig:                 &gtklog.Config{},
 		},
 	}
 	for _, opt := range opts {
 		opt(client.config)
 	}
+	// SSL接入点的IP地址以及端口
 	if client.config.Servers == "" {
 		client.config.Servers = "host.docker.internal:9092"
 	}
+	// SASL用户认证协议
 	if client.config.Protocol == "" {
 		client.config.Protocol = "PLAINTEXT"
 	}
+	// 当消费失败时重试的间隔时间，默认 10s
 	if client.config.RetryDelay == time.Duration(0) {
 		client.config.RetryDelay = time.Second * 10
 	}
+	// 批量消费的条数，默认 200
 	if client.config.BatchSize == 0 {
 		client.config.BatchSize = 200
 	}
+	// 批量消费的间隔时间，默认 5s
 	if client.config.BatchInterval == time.Duration(0) {
 		client.config.BatchInterval = time.Second * 5
 	}
+	// 当前服务环境，默认 local
 	if client.config.Env == "" {
 		client.config.Env = "local"
+	}
+	if client.logger, err = gtklog.NewWithConfig(client.config.LogConfig); err != nil {
+		return
 	}
 	client.producerMap = make(map[string]*kafka.Producer)
 	client.consumerMap = make(map[string][]*kafka.Consumer)
@@ -92,8 +104,53 @@ func NewClient(opts ...ClientConfigOption) (client *KafkaClient) {
 	return
 }
 
-// GetClientConfig 获取 kafka 客户端配置
-func (kc *KafkaClient) GetClientConfig() (config ClientConfig) {
+// NewWithConfig 创建 kafka 客户端
+func NewWithConfig(cfg *Config) (client *KafkaClient, err error) {
+	if cfg == nil {
+		cfg = &Config{
+			ProducerConsumerConfigMap: make(map[string]ProducerConsumerConfig),
+			ExcludeEnvTopicMap:        make(map[string][]string),
+			LogConfig:                 &gtklog.Config{},
+		}
+	}
+	client = &KafkaClient{
+		config: cfg,
+	}
+	// SSL接入点的IP地址以及端口
+	if client.config.Servers == "" {
+		client.config.Servers = "host.docker.internal:9092"
+	}
+	// SASL用户认证协议
+	if client.config.Protocol == "" {
+		client.config.Protocol = "PLAINTEXT"
+	}
+	// 当消费失败时重试的间隔时间，默认 10s
+	if client.config.RetryDelay == time.Duration(0) {
+		client.config.RetryDelay = time.Second * 10
+	}
+	// 批量消费的条数，默认 200
+	if client.config.BatchSize == 0 {
+		client.config.BatchSize = 200
+	}
+	// 批量消费的间隔时间，默认 5s
+	if client.config.BatchInterval == time.Duration(0) {
+		client.config.BatchInterval = time.Second * 5
+	}
+	// 当前服务环境，默认 local
+	if client.config.Env == "" {
+		client.config.Env = "local"
+	}
+	if client.logger, err = gtklog.NewWithConfig(client.config.LogConfig); err != nil {
+		return
+	}
+	client.producerMap = make(map[string]*kafka.Producer)
+	client.consumerMap = make(map[string][]*kafka.Consumer)
+	client.topicPartitionMap = make(map[string]uint32)
+	return
+}
+
+// GetConfig 获取 kafka 客户端配置
+func (kc *KafkaClient) GetConfig() (config Config) {
 	return *(kc.config)
 }
 
@@ -120,7 +177,7 @@ func (kc *KafkaClient) SetTopicPartitionNum(producerConsumerName string, partiti
 }
 
 // NewProducer 创建生产者
-func (kc *KafkaClient) NewProducer(producerConsumerName string) (err error) {
+func (kc *KafkaClient) NewProducer(ctx context.Context, producerConsumerName string) (err error) {
 	// 获取生产者配置
 	var (
 		isStart      bool
@@ -135,7 +192,7 @@ func (kc *KafkaClient) NewProducer(producerConsumerName string) (err error) {
 		return
 	}
 	if kc.config.IsClose {
-		gtklog.Infof("init kafka producer: %s, topic: %s, originTopic: %s success (isClosed)", producerName, topic, originTopic)
+		kc.logger.Infof(ctx, "init kafka producer: %s, topic: %s, originTopic: %s success (isClosed)", producerName, topic, originTopic)
 		return
 	}
 	var kafkaCnf = &kafka.ConfigMap{
@@ -171,10 +228,10 @@ func (kc *KafkaClient) NewProducer(producerConsumerName string) (err error) {
 			switch ev := e.(type) {
 			case *kafka.Message:
 				if ev.TopicPartition.Error != nil {
-					gtklog.Errorf("%s producer failed to write access log entry: %v, topic: %v, partition: %v, offset: %v, key: %s, content: %s",
+					kc.logger.Errorf(ctx, "%s producer failed to write access log entry: %v, topic: %v, partition: %v, offset: %v, key: %s, content: %s",
 						producerName, ev.TopicPartition.Error, *ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset, ev.Key, ev.Value)
 				} else {
-					gtklog.Debugf("%s producer send ok topic: %v, partition: %v, offset: %v, key: %s, content: %s",
+					kc.logger.Debugf(ctx, "%s producer send ok topic: %v, partition: %v, offset: %v, key: %s, content: %s",
 						producerName, *ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset, ev.Key, ev.Value)
 				}
 			}
@@ -182,12 +239,12 @@ func (kc *KafkaClient) NewProducer(producerConsumerName string) (err error) {
 	}()
 
 	kc.producerMap[producerName] = producer
-	gtklog.Infof("init kafka producer: %s, topic: %s, originTopic: %s success", producerName, topic, originTopic)
+	kc.logger.Infof(ctx, "init kafka producer: %s, topic: %s, originTopic: %s success", producerName, topic, originTopic)
 	return
 }
 
 // NewConsumer 创建消费者
-func (kc *KafkaClient) NewConsumer(producerConsumerName string) (err error) {
+func (kc *KafkaClient) NewConsumer(ctx context.Context, producerConsumerName string) (err error) {
 	// 获取消费者配置
 	var (
 		isStart      bool
@@ -203,7 +260,7 @@ func (kc *KafkaClient) NewConsumer(producerConsumerName string) (err error) {
 		return
 	}
 	if kc.config.IsClose {
-		gtklog.Infof("init kafka consumer: %s, topic: %s, group: %s, partitionNum: %v success (isClosed)", consumerName, topic, group, partitionNum)
+		kc.logger.Infof(ctx, "init kafka consumer: %s, topic: %s, group: %s, partitionNum: %v success (isClosed)", consumerName, topic, group, partitionNum)
 		return
 	}
 	var kafkaCnf = &kafka.ConfigMap{
@@ -237,12 +294,12 @@ func (kc *KafkaClient) NewConsumer(producerConsumerName string) (err error) {
 	}
 
 	kc.consumerMap[consumerName] = consumerList
-	gtklog.Infof("init kafka consumer: %s, topic: %s, group: %s, partitionNum: %v success", consumerName, topic, group, partitionNum)
+	kc.logger.Infof(ctx, "init kafka consumer: %s, topic: %s, group: %s, partitionNum: %v success", consumerName, topic, group, partitionNum)
 	return
 }
 
 // SendJsonData 发送 Json 格式的数据
-func (kc *KafkaClient) SendJsonData(producerConsumerName string, data any, key ...string) (err error) {
+func (kc *KafkaClient) SendJsonData(ctx context.Context, producerConsumerName string, data any, key ...string) (err error) {
 	var dataMap map[string]any
 	if dataMap, err = gtkconv.ToStringMapE(data); err != nil {
 		return
@@ -255,7 +312,7 @@ func (kc *KafkaClient) SendJsonData(producerConsumerName string, data any, key .
 	if buf, err = json.Marshal(dataMap); err != nil {
 		return
 	}
-	return kc.sendData(producerConsumerName, buf, key...)
+	return kc.sendData(ctx, producerConsumerName, buf, key...)
 }
 
 // SubscribeTopics 订阅数据
@@ -274,7 +331,7 @@ func (kc *KafkaClient) SubscribeTopics(ctx context.Context, producerConsumerName
 	}
 	topics := []string{topic}
 	if kc.config.IsClose {
-		gtklog.Infof("subscribeTopics consumer: %s, topics: %v (isClosed)", consumerName, topics)
+		kc.logger.Infof(ctx, "subscribeTopics consumer: %s, topics: %v (isClosed)", consumerName, topics)
 		return
 	}
 	// 订阅topics
@@ -294,7 +351,7 @@ func (kc *KafkaClient) SubscribeTopics(ctx context.Context, producerConsumerName
 			// 添加对 panic 的处理
 			defer func() {
 				if r := recover(); r != nil {
-					gtklog.Errorf("%s %v consumer panic: %v", consumerName, consumer, r)
+					kc.logger.Errorf(ctx, "%s %v consumer panic: %+v", consumerName, consumer, r)
 				}
 			}()
 
@@ -306,14 +363,14 @@ func (kc *KafkaClient) SubscribeTopics(ctx context.Context, producerConsumerName
 					msg, pErr := consumer.ReadMessage(100 * time.Millisecond)
 					if pErr == nil {
 						// 处理数据
-						kc.handelData(consumerName, consumer, msg, fn)
+						kc.handelData(ctx, consumerName, consumer, msg, fn)
 					} else {
 						if kafkaErr, ok := pErr.(kafka.Error); ok {
 							if kafkaErr.Code() != kafka.ErrTimedOut {
-								gtklog.Errorf("%s %v consumer error: %v, msg: %+v", consumerName, consumer, pErr, msg)
+								kc.logger.Errorf(ctx, "%s %v consumer error: %+v, msg: %+v", consumerName, consumer, pErr, msg)
 							}
 						} else {
-							gtklog.Errorf("%s %v consumer error: %v, msg: %+v", consumerName, consumer, pErr, msg)
+							kc.logger.Errorf(ctx, "%s %v consumer error: %+v, msg: %+v", consumerName, consumer, pErr, msg)
 						}
 					}
 				}
@@ -340,7 +397,7 @@ func (kc *KafkaClient) BatchSubscribeTopics(ctx context.Context, producerConsume
 	}
 	topics := []string{topic}
 	if kc.config.IsClose {
-		gtklog.Infof("batchSubscribeTopics consumer: %s, topics: %v (isClosed)", consumerName, topics)
+		kc.logger.Infof(ctx, "batchSubscribeTopics consumer: %s, topics: %v (isClosed)", consumerName, topics)
 		return
 	}
 	// 订阅topics
@@ -360,7 +417,7 @@ func (kc *KafkaClient) BatchSubscribeTopics(ctx context.Context, producerConsume
 			// 添加对 panic 的处理
 			defer func() {
 				if r := recover(); r != nil {
-					gtklog.Errorf("%s %v consumer panic: %v", consumerName, consumer, r)
+					kc.logger.Errorf(ctx, "%s %v consumer panic: %+v", consumerName, consumer, r)
 				}
 			}()
 
@@ -385,10 +442,10 @@ func (kc *KafkaClient) BatchSubscribeTopics(ctx context.Context, producerConsume
 						} else {
 							if kafkaErr, ok := pErr.(kafka.Error); ok {
 								if kafkaErr.Code() != kafka.ErrTimedOut {
-									gtklog.Errorf("%s %v consumer error: %v, msg: %+v", consumerName, consumer, pErr, msg)
+									kc.logger.Errorf(ctx, "%s %v consumer error: %+v, msg: %+v", consumerName, consumer, pErr, msg)
 								}
 							} else {
-								gtklog.Errorf("%s %v consumer error: %v, msg: %+v", consumerName, consumer, pErr, msg)
+								kc.logger.Errorf(ctx, "%s %v consumer error: %+v, msg: %+v", consumerName, consumer, pErr, msg)
 							}
 						}
 					}
@@ -400,7 +457,7 @@ func (kc *KafkaClient) BatchSubscribeTopics(ctx context.Context, producerConsume
 				case <-ticker.C:
 					if len(msgList) > 0 {
 						// 批量处理数据
-						kc.handelBatchData(consumerName, consumer, msgList, fn)
+						kc.handelBatchData(ctx, consumerName, consumer, msgList, fn)
 						// 重新创建一个新的 msgList
 						msgList = make([]*kafka.Message, 0, kc.config.BatchSize)
 					}
@@ -409,7 +466,7 @@ func (kc *KafkaClient) BatchSubscribeTopics(ctx context.Context, producerConsume
 						msgList = append(msgList, msg)
 						if len(msgList) == kc.config.BatchSize {
 							// 批量处理数据
-							kc.handelBatchData(consumerName, consumer, msgList, fn)
+							kc.handelBatchData(ctx, consumerName, consumer, msgList, fn)
 							// 重新创建一个新的 msgList
 							msgList = make([]*kafka.Message, 0, kc.config.BatchSize)
 						}
@@ -417,7 +474,7 @@ func (kc *KafkaClient) BatchSubscribeTopics(ctx context.Context, producerConsume
 				case <-ctx.Done():
 					if len(msgList) > 0 {
 						// 批量处理数据
-						kc.handelBatchData(consumerName, consumer, msgList, fn)
+						kc.handelBatchData(ctx, consumerName, consumer, msgList, fn)
 					}
 					return
 				}
@@ -429,10 +486,10 @@ func (kc *KafkaClient) BatchSubscribeTopics(ctx context.Context, producerConsume
 }
 
 // handelData 处理数据
-func (kc *KafkaClient) handelData(consumerName string, consumer *kafka.Consumer, msg *kafka.Message, fn func(msg *kafka.Message) error) {
+func (kc *KafkaClient) handelData(ctx context.Context, consumerName string, consumer *kafka.Consumer, msg *kafka.Message, fn func(msg *kafka.Message) error) {
 	// 执行处理函数
 	if fErr := fn(msg); fErr != nil {
-		gtklog.Errorf("%s %v consumer error: %v, topic: %v, partition: %v, offset: %v, content: %s", consumerName, consumer,
+		kc.logger.Errorf(ctx, "%s %v consumer error: %+v, topic: %v, partition: %v, offset: %v, content: %s", consumerName, consumer,
 			fErr, *msg.TopicPartition.Topic, msg.TopicPartition.Partition, msg.TopicPartition.Offset, string(msg.Value))
 		// 暂停该分区的消费
 		consumer.Pause([]kafka.TopicPartition{
@@ -452,7 +509,7 @@ func (kc *KafkaClient) handelData(consumerName string, consumer *kafka.Consumer,
 			consumer.Poll(0) // 用以给kafka发送心跳
 			time.Sleep(kc.config.RetryDelay)
 			if sfErr := fn(msg); sfErr != nil {
-				gtklog.Errorf("%s %v consumer error: %v, count: %d, topic: %v, partition: %v, offset: %v, content: %s", consumerName, consumer,
+				kc.logger.Errorf(ctx, "%s %v consumer error: %+v, count: %d, topic: %v, partition: %v, offset: %v, content: %s", consumerName, consumer,
 					sfErr, count, *msg.TopicPartition.Topic, msg.TopicPartition.Partition, msg.TopicPartition.Offset, string(msg.Value))
 				continue
 			}
@@ -472,7 +529,7 @@ func (kc *KafkaClient) handelData(consumerName string, consumer *kafka.Consumer,
 }
 
 // handelBatchData 批量处理数据
-func (kc *KafkaClient) handelBatchData(consumerName string, consumer *kafka.Consumer, msgList []*kafka.Message, fn func(messages []*kafka.Message) error) {
+func (kc *KafkaClient) handelBatchData(ctx context.Context, consumerName string, consumer *kafka.Consumer, msgList []*kafka.Message, fn func(messages []*kafka.Message) error) {
 	// 判断 msgList 是否为空
 	msgSize := len(msgList)
 	if msgSize == 0 {
@@ -482,7 +539,7 @@ func (kc *KafkaClient) handelBatchData(consumerName string, consumer *kafka.Cons
 	endMsg := msgList[msgSize-1]
 	// 执行处理函数
 	if fErr := fn(msgList); fErr != nil {
-		gtklog.Errorf("%s %v consumer error: %v, topic: %v, partition: %v, offset: %v", consumerName, consumer,
+		kc.logger.Errorf(ctx, "%s %v consumer error: %+v, topic: %v, partition: %v, offset: %v", consumerName, consumer,
 			fErr, *endMsg.TopicPartition.Topic, endMsg.TopicPartition.Partition, endMsg.TopicPartition.Offset)
 		// 暂停该分区的消费
 		consumer.Pause([]kafka.TopicPartition{
@@ -502,7 +559,7 @@ func (kc *KafkaClient) handelBatchData(consumerName string, consumer *kafka.Cons
 			consumer.Poll(0) // 用以给kafka发送心跳
 			time.Sleep(kc.config.RetryDelay)
 			if sfErr := fn(msgList); sfErr != nil {
-				gtklog.Errorf("%s %v consumer error: %v, count: %d, topic: %v, partition: %v, offset: %v", consumerName, consumer,
+				kc.logger.Errorf(ctx, "%s %v consumer error: %+v, count: %d, topic: %v, partition: %v, offset: %v", consumerName, consumer,
 					sfErr, count, *endMsg.TopicPartition.Topic, endMsg.TopicPartition.Partition, endMsg.TopicPartition.Offset)
 				continue
 			}
@@ -522,7 +579,7 @@ func (kc *KafkaClient) handelBatchData(consumerName string, consumer *kafka.Cons
 }
 
 // sendData 发送数据
-func (kc *KafkaClient) sendData(producerConsumerName string, data []byte, key ...string) (err error) {
+func (kc *KafkaClient) sendData(ctx context.Context, producerConsumerName string, data []byte, key ...string) (err error) {
 	// 获取生产者配置
 	var (
 		isStart      bool
@@ -549,13 +606,13 @@ func (kc *KafkaClient) sendData(producerConsumerName string, data []byte, key ..
 		msg.Key = []byte(dataKey)
 	}
 	if kc.config.IsClose {
-		gtklog.Debugf("%s producer sendData(isClosed) msg: %s, data: %s", producerName, gtkjson.MustString(msg), string(data))
+		kc.logger.Debugf(ctx, "%s producer sendData(isClosed) msg: %s, data: %s", producerName, gtkjson.MustString(msg), string(data))
 		return
 	}
 	// 环境检测
 	if list, ok := kc.config.ExcludeEnvTopicMap[kc.config.Env]; ok {
 		if gtkarr.ContainsStr(list, originTopic) {
-			gtklog.Debugf("%s producer sendData msg: %s, data: %s", producerName, gtkjson.MustString(msg), string(data))
+			kc.logger.Debugf(ctx, "%s producer sendData msg: %s, data: %s", producerName, gtkjson.MustString(msg), string(data))
 			return
 		}
 	}
