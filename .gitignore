@@ -22,4 +22,4 @@ go.work
 
 **/log/
 **/logs/
-test_config/
+**/.env

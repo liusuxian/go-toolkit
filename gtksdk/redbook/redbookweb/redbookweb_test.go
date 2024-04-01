@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-27 22:00:33
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-28 15:39:48
+ * @LastEditTime: 2024-03-31 20:41:25
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,8 +12,9 @@ package redbookweb_test
 import (
 	"context"
 	"fmt"
-	"github.com/liusuxian/go-toolkit/gtkconf"
+	"github.com/joho/godotenv"
 	"github.com/liusuxian/go-toolkit/gtkconv"
+	"github.com/liusuxian/go-toolkit/gtkenv"
 	"github.com/liusuxian/go-toolkit/gtksdk/redbook/redbookweb"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -21,28 +22,21 @@ import (
 	"testing"
 )
 
-type Config struct {
-	Phone string `json:"phone" dc:"phone"`
-}
-
 func TestSendCode(t *testing.T) {
 	var (
-		assert   = assert.New(t)
-		ctx      = context.Background()
-		config   = Config{}
-		localCfg *gtkconf.Config
-		resp     *redbookweb.SendCodeResponse
-		err      error
+		assert = assert.New(t)
+		ctx    = context.Background()
+		resp   *redbookweb.SendCodeResponse
+		err    error
 	)
-	localCfg, err = gtkconf.NewConfig("../../../test_config/redbookweb.json")
+	err = godotenv.Load(".env")
 	assert.NoError(err)
-	err = localCfg.StructKey("test", &config)
-	assert.NoError(err)
-
+	phone := gtkenv.Get("phone")
+	t.Logf("phone: %s\n", phone)
 	c := redbookweb.NewClient()
 	resp, err = c.SendCode(ctx, redbookweb.SendCodeRequest{
 		Zone:  "86",
-		Phone: config.Phone,
+		Phone: phone,
 	})
 	t.Logf("err: %v\n\n", err)
 	t.Logf("resp: %v\n\n", resp)
@@ -52,8 +46,6 @@ func TestLoginWithVerifyCodeAndCustomerLoginAndLoginAndUserInfo(t *testing.T) {
 	var (
 		assert   = assert.New(t)
 		ctx      = context.Background()
-		config   = Config{}
-		localCfg *gtkconf.Config
 		resp1    *redbookweb.LoginWithVerifyCodeResponse
 		cookies1 []*http.Cookie
 		resp2    *redbookweb.CustomerLoginResponse
@@ -64,16 +56,16 @@ func TestLoginWithVerifyCodeAndCustomerLoginAndLoginAndUserInfo(t *testing.T) {
 		cookies4 []*http.Cookie
 		err      error
 	)
-	localCfg, err = gtkconf.NewConfig("../../../test_config/redbookweb.json")
+	err = godotenv.Load(".env")
 	assert.NoError(err)
-	err = localCfg.StructKey("test", &config)
-	assert.NoError(err)
+	phone := gtkenv.Get("phone")
+	t.Logf("phone: %s\n", phone)
 
 	c := redbookweb.NewClient()
 	if resp1, cookies1, err = c.LoginWithVerifyCode(ctx, redbookweb.LoginWithVerifyCodeRequest{
 		Zone:       "86",
-		Mobile:     config.Phone,
-		VerifyCode: "138264", // 需要收到验证码以后手动输入
+		Mobile:     phone,
+		VerifyCode: "198129", // 需要收到验证码以后手动输入
 	}); err != nil {
 		t.Logf("err1: %v\n\n", err)
 		return

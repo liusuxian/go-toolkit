@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-21 16:13:14
+ * @LastEditTime: 2024-04-01 13:11:24
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -554,7 +554,7 @@ func (kc *KafkaClient) handelBatchData(ctx context.Context, consumerName string,
 			retryMaxCount = kc.config.RetryMaxCount
 			count         = 0
 		)
-		for retryMaxCount == 0 || (retryMaxCount > 0 && count > retryMaxCount) {
+		for retryMaxCount == 0 || (retryMaxCount > 0 && count < retryMaxCount) {
 			count++
 			consumer.Poll(0) // 用以给kafka发送心跳
 			time.Sleep(kc.config.RetryDelay)
