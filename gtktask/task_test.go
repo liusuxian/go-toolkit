@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-01 17:52:18
+ * @LastEditTime: 2024-04-01 23:17:08
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -19,18 +19,51 @@ import (
 	"time"
 )
 
-func TestPolling(t *testing.T) {
+func TestPollingOne(t *testing.T) {
 	var (
-		assert       = assert.New(t)
-		total   uint = 5
-		polling      = gtktask.NewPolling()
+		assert  = assert.New(t)
+		list    = []bool{false, false, false, false, false, false, false, false, false, false, false, false}
+		polling *gtktask.SPolling
+		index   uint
+		err     error
 	)
-	for i := 0; i < int(total); i++ {
-		index := polling.Polling(total)
+	polling, err = gtktask.NewPolling(list)
+	assert.NoError(err)
+	index, err = polling.Polling()
+	assert.Error(err)
+	assert.Equal(uint(0), index)
+
+	polling.SetIsAvailable(1, true)
+	polling.SetIsAvailable(3, true)
+	polling.SetIsAvailable(4, true)
+	polling.SetIsAvailable(6, true)
+	polling.SetIsAvailable(7, true)
+	polling.SetIsAvailable(9, true)
+	polling.SetIsAvailable(11, true)
+	for _, v := range []uint{1, 3, 4, 6, 7, 9, 11} {
+		index, err = polling.Polling()
+		assert.NoError(err)
+		assert.Equal(v, index)
+	}
+	for _, v := range []uint{1, 3, 4, 6, 7, 9, 11} {
+		index, err = polling.Polling()
+		assert.NoError(err)
+		assert.Equal(v, index)
+	}
+
+	polling.SetIsAvailable(0, true)
+	polling.SetIsAvailable(2, true)
+	polling.SetIsAvailable(5, true)
+	polling.SetIsAvailable(8, true)
+	polling.SetIsAvailable(10, true)
+	for i := 0; i < len(list); i++ {
+		index, err = polling.Polling()
+		assert.NoError(err)
 		assert.Equal(uint(i), index)
 	}
-	for i := 0; i < int(total); i++ {
-		index := polling.Polling(total)
+	for i := 0; i < len(list); i++ {
+		index, err = polling.Polling()
+		assert.NoError(err)
 		assert.Equal(uint(i), index)
 	}
 }

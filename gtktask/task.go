@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-01 18:28:12
+ * @LastEditTime: 2024-04-01 23:15:48
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,7 +18,8 @@ import (
 
 // SPolling 轮询对象
 type SPolling struct {
-	index uint
+	list  []bool // 数据切片，false:当前下标不可用 true:当前下标可用
+	index uint   // 当前下标位置
 	lock  sync.Mutex
 }
 
@@ -26,20 +27,53 @@ type SPolling struct {
 type RetryFunc func(ctx context.Context) (err error)
 
 // NewPolling 新建轮询
-func NewPolling(startIndex ...uint) (s *SPolling) {
-	s = &SPolling{}
+func NewPolling(list []bool, startIndex ...uint) (s *SPolling, err error) {
+	if len(list) == 0 {
+		err = errors.Errorf("list must not be empty")
+		return
+	}
+	s = &SPolling{
+		list: make([]bool, len(list)),
+	}
+	copy(s.list, list)
 	if len(startIndex) > 0 {
 		s.index = startIndex[0]
 	}
 	return
 }
 
-// Polling 轮询
-func (s *SPolling) Polling(total uint) (index uint) {
+// SetIsAvailable 设置下标是否可用
+func (s *SPolling) SetIsAvailable(index uint, isAvailable bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	index = s.index
-	s.index++
+
+	total := uint(len(s.list))
+	if total > 0 && index <= total-1 {
+		s.list[index] = isAvailable
+	}
+}
+
+// Polling 轮询
+func (s *SPolling) Polling() (index uint, err error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	total := uint(len(s.list))
+	hasAvailable := false
+	for i := s.index; i < total; i++ {
+		if s.list[i] {
+			index = i
+			s.index = i + 1
+			hasAvailable = true
+			break
+		}
+	}
+	// 如果切片中没有可用元素，直接返回错误
+	if !hasAvailable {
+		err = errors.New("no available index found")
+		return
+	}
+	// 重置 index 为切片的起始位置
 	if s.index >= total {
 		s.index = 0
 	}
