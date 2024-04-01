@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-01 18:02:44
+ * @LastEditTime: 2024-04-01 18:24:45
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-type sPolling struct {
+type SPolling struct {
 	index uint
 	lock  sync.Mutex
 }
@@ -25,8 +25,8 @@ type sPolling struct {
 type RetryFunc func(ctx context.Context) (err error)
 
 // NewPolling 新建轮训
-func NewPolling(startIndex ...uint) (s *sPolling) {
-	s = &sPolling{}
+func NewPolling(startIndex ...uint) (s *SPolling) {
+	s = &SPolling{}
 	if len(startIndex) > 0 {
 		s.index = startIndex[0]
 	}
@@ -34,7 +34,7 @@ func NewPolling(startIndex ...uint) (s *sPolling) {
 }
 
 // Polling 轮训
-func (s *sPolling) Polling(total uint) (index uint) {
+func (s *SPolling) Polling(total uint) (index uint) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	index = s.index
