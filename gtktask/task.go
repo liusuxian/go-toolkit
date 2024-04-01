@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-01 18:24:45
+ * @LastEditTime: 2024-04-01 18:28:12
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -16,6 +16,7 @@ import (
 	"time"
 )
 
+// SPolling 轮询对象
 type SPolling struct {
 	index uint
 	lock  sync.Mutex
@@ -24,7 +25,7 @@ type SPolling struct {
 // RetryFunc 重试函数的类型
 type RetryFunc func(ctx context.Context) (err error)
 
-// NewPolling 新建轮训
+// NewPolling 新建轮询
 func NewPolling(startIndex ...uint) (s *SPolling) {
 	s = &SPolling{}
 	if len(startIndex) > 0 {
@@ -33,7 +34,7 @@ func NewPolling(startIndex ...uint) (s *SPolling) {
 	return
 }
 
-// Polling 轮训
+// Polling 轮询
 func (s *SPolling) Polling(total uint) (index uint) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
