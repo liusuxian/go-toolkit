@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-01 23:17:08
+ * @LastEditTime: 2024-04-02 18:41:48
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -22,24 +22,24 @@ import (
 func TestPollingOne(t *testing.T) {
 	var (
 		assert  = assert.New(t)
-		list    = []bool{false, false, false, false, false, false, false, false, false, false, false, false}
-		polling *gtktask.SPolling
+		total   = 12
+		polling *gtktask.SPollingOne
 		index   uint
 		err     error
 	)
-	polling, err = gtktask.NewPolling(list)
-	assert.NoError(err)
+	polling = gtktask.NewPollingOne(0)
+	assert.Nil(polling)
+	polling = gtktask.NewPollingOne(total)
+	for i := 0; i < total; i++ {
+		polling.SetIsAvailable(uint(i), false)
+	}
 	index, err = polling.Polling()
 	assert.Error(err)
 	assert.Equal(uint(0), index)
 
-	polling.SetIsAvailable(1, true)
-	polling.SetIsAvailable(3, true)
-	polling.SetIsAvailable(4, true)
-	polling.SetIsAvailable(6, true)
-	polling.SetIsAvailable(7, true)
-	polling.SetIsAvailable(9, true)
-	polling.SetIsAvailable(11, true)
+	for _, v := range []uint{1, 3, 4, 6, 7, 9, 11} {
+		polling.SetIsAvailable(v, true)
+	}
 	for _, v := range []uint{1, 3, 4, 6, 7, 9, 11} {
 		index, err = polling.Polling()
 		assert.NoError(err)
@@ -51,20 +51,51 @@ func TestPollingOne(t *testing.T) {
 		assert.Equal(v, index)
 	}
 
-	polling.SetIsAvailable(0, true)
-	polling.SetIsAvailable(2, true)
-	polling.SetIsAvailable(5, true)
-	polling.SetIsAvailable(8, true)
-	polling.SetIsAvailable(10, true)
-	for i := 0; i < len(list); i++ {
+	for _, v := range []uint{0, 2, 5, 8, 10} {
+		polling.SetIsAvailable(v, true)
+	}
+	for i := 0; i < total; i++ {
 		index, err = polling.Polling()
 		assert.NoError(err)
 		assert.Equal(uint(i), index)
 	}
-	for i := 0; i < len(list); i++ {
+	for i := 0; i < total; i++ {
 		index, err = polling.Polling()
 		assert.NoError(err)
 		assert.Equal(uint(i), index)
+	}
+}
+
+func TestPollingTwo(t *testing.T) {
+	var (
+		assert  = assert.New(t)
+		list    = []int{10, 10, 10}
+		polling *gtktask.SPollingTwo
+		index0  uint
+		index1  uint
+		err     error
+	)
+	polling = gtktask.NewPollingTwo()
+	assert.Nil(polling)
+	polling = gtktask.NewPollingTwo(10, 0, 10)
+	assert.Nil(polling)
+	polling = gtktask.NewPollingTwo(list...)
+	for i := 0; i < len(list); i++ {
+		polling.SetIsAvailableOne(uint(i), false)
+	}
+	index0, index1, err = polling.Polling()
+	assert.Error(err)
+	assert.Equal(uint(0), index0)
+	assert.Equal(uint(0), index1)
+	for i := 0; i < len(list); i++ {
+		polling.SetIsAvailableOne(uint(i), true)
+	}
+	for i := 0; i < len(list); i++ {
+		for j := 0; j < list[i]; j++ {
+			index0, index1, err = polling.Polling()
+			assert.NoError(err)
+			t.Logf("index0: %+v, index1: %+v", index0, index1)
+		}
 	}
 }
 

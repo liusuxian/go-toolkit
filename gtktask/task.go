@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-01 23:15:48
+ * @LastEditTime: 2024-04-02 18:12:21
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -16,67 +16,126 @@ import (
 	"time"
 )
 
-// SPolling 轮询对象
-type SPolling struct {
-	list  []bool // 数据切片，false:当前下标不可用 true:当前下标可用
-	index uint   // 当前下标位置
+// SPollingOne 轮询对象（支持一维数组）
+type SPollingOne struct {
+	list  []uint8 // 0:当前下标不可用 1:当前下标可用
+	total uint    // 长度
+	index uint    // 当前下标位置
 	lock  sync.Mutex
+}
+
+// SPollingTwo 轮询对象（支持二维数组）
+type SPollingTwo struct {
+	pollingOne     *SPollingOne
+	pollingOneList []*SPollingOne
 }
 
 // RetryFunc 重试函数的类型
 type RetryFunc func(ctx context.Context) (err error)
 
-// NewPolling 新建轮询
-func NewPolling(list []bool, startIndex ...uint) (s *SPolling, err error) {
-	if len(list) == 0 {
-		err = errors.Errorf("list must not be empty")
+// NewPollingOne 新建轮询（支持一维数组）
+func NewPollingOne(total int) (s *SPollingOne) {
+	if total <= 0 {
 		return
 	}
-	s = &SPolling{
-		list: make([]bool, len(list)),
+	s = &SPollingOne{
+		list:  make([]uint8, total),
+		total: uint(total),
 	}
-	copy(s.list, list)
-	if len(startIndex) > 0 {
-		s.index = startIndex[0]
+	for i := 0; i < total; i++ {
+		s.list[i] = 1
 	}
 	return
 }
 
 // SetIsAvailable 设置下标是否可用
-func (s *SPolling) SetIsAvailable(index uint, isAvailable bool) {
+func (s *SPollingOne) SetIsAvailable(index uint, isAvailable bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	total := uint(len(s.list))
-	if total > 0 && index <= total-1 {
-		s.list[index] = isAvailable
+	if s.total > 0 && index <= s.total-1 {
+		if isAvailable {
+			s.list[index] = 1
+		} else {
+			s.list[index] = 0
+		}
 	}
 }
 
 // Polling 轮询
-func (s *SPolling) Polling() (index uint, err error) {
+func (s *SPollingOne) Polling() (index uint, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	total := uint(len(s.list))
 	hasAvailable := false
-	for i := s.index; i < total; i++ {
-		if s.list[i] {
+	// 从当前索引`s.index`开始查找
+	for i := s.index; i < s.total; i++ {
+		if s.list[i] == 1 {
 			index = i
 			s.index = i + 1
 			hasAvailable = true
 			break
 		}
 	}
-	// 如果切片中没有可用元素，直接返回错误
+	// 如果从`s.index`开始没找到，则从头开始查找
 	if !hasAvailable {
-		err = errors.New("no available index found")
+		for i := uint(0); i < s.index; i++ {
+			if s.list[i] == 1 {
+				index = i
+				s.index = i + 1
+				hasAvailable = true
+				break
+			}
+		}
+	}
+	// 如果切片中没有可用元素，返回错误
+	if !hasAvailable {
+		err = errors.New("no available element found")
 		return
 	}
-	// 重置 index 为切片的起始位置
-	if s.index >= total {
+	// 重置`index`为切片的起始位置
+	if s.index >= s.total {
 		s.index = 0
 	}
+	return
+}
+
+// NewPollingTwo 新建轮询（支持二维数组）
+func NewPollingTwo(totals ...int) (s *SPollingTwo) {
+	if len(totals) <= 0 {
+		return
+	}
+	for _, total := range totals {
+		if total <= 0 {
+			return
+		}
+	}
+	s = &SPollingTwo{
+		pollingOne:     NewPollingOne(len(totals)),
+		pollingOneList: make([]*SPollingOne, len(totals)),
+	}
+	for k, total := range totals {
+		s.pollingOneList[k] = NewPollingOne(total)
+	}
+	return
+}
+
+// SetIsAvailableOne 设置下标是否可用
+func (s *SPollingTwo) SetIsAvailableOne(index uint, isAvailable bool) {
+	s.pollingOne.SetIsAvailable(index, isAvailable)
+}
+
+// SetIsAvailableTwo 设置下标是否可用
+func (s *SPollingTwo) SetIsAvailableTwo(index0, index1 uint, isAvailable bool) {
+	s.pollingOneList[index0].SetIsAvailable(index1, isAvailable)
+}
+
+// Polling 轮询
+func (s *SPollingTwo) Polling() (index0, index1 uint, err error) {
+	if index0, err = s.pollingOne.Polling(); err != nil {
+		return
+	}
+	index1, err = s.pollingOneList[index0].Polling()
 	return
 }
 
