@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-11 16:49:58
+ * @LastEditTime: 2024-04-11 19:56:04
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -77,7 +77,7 @@ func (p *PollInfo) Stop() {
 	p.quitChan <- true
 }
 
-// Init 初始化轮询对象的可用列表
+// Init 初始化轮询对象
 func (p *PollInfo) Init(ids ...int) {
 	items := make([]doubly.Node, 0, len(ids))
 	for _, id := range ids {
@@ -86,8 +86,13 @@ func (p *PollInfo) Init(ids ...int) {
 	p.availableList.PushBack(items...)
 }
 
-// SetUnAvailable 设置不可用的轮询对象标识
-func (p *PollInfo) SetUnAvailable(ids ...int) {
+// IsAvailable 是否有可用的轮询对象标识
+func (p *PollInfo) IsAvailable() (isAvailable bool) {
+	return p.availableList.Len() > 0
+}
+
+// SetUnavailable 设置不可用的轮询对象标识
+func (p *PollInfo) SetUnavailable(ids ...int) {
 	uuids := make([]string, 0, len(ids))
 	for _, id := range ids {
 		uuids = append(uuids, strconv.Itoa(id))

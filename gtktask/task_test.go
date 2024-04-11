@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-11 16:50:07
+ * @LastEditTime: 2024-04-11 19:57:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -35,7 +35,7 @@ func TestPoll(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(i, index)
 	}
-	poll.SetUnAvailable(0, 1, 2)
+	poll.SetUnavailable(0, 1, 2)
 	for i := 3; i < 10; i++ {
 		index, err = poll.Poll()
 		assert.NoError(err)
