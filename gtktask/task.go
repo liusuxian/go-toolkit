@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-02 18:12:21
+ * @LastEditTime: 2024-04-11 16:49:58
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,131 +11,104 @@ package gtktask
 
 import (
 	"context"
+	"github.com/liusuxian/go-toolkit/gtkcontainer/linkedlist/doubly"
+	"github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
-	"sync"
+	"strconv"
 	"time"
 )
 
-// SPollingOne 轮询对象（支持一维数组）
-type SPollingOne struct {
-	list  []uint8 // 0:当前下标不可用 1:当前下标可用
-	total uint    // 长度
-	index uint    // 当前下标位置
-	lock  sync.Mutex
-}
-
-// SPollingTwo 轮询对象（支持二维数组）
-type SPollingTwo struct {
-	pollingOne     *SPollingOne
-	pollingOneList []*SPollingOne
+// PollInfo 用于存储轮询信息的结构体
+type PollInfo struct {
+	availableList   *doubly.LinkedList                    // 可用的轮询对象标识列表
+	unavailableMap  cmap.ConcurrentMap[string, time.Time] // 不可用的轮询对象标识映射
+	unavailableTime time.Duration                         // 不可用的轮询对象的冷却时间
+	interval        time.Duration                         // 可用性检测时间间隔
+	quitChan        chan bool                             // 退出信号
 }
 
 // RetryFunc 重试函数的类型
 type RetryFunc func(ctx context.Context) (err error)
 
-// NewPollingOne 新建轮询（支持一维数组）
-func NewPollingOne(total int) (s *SPollingOne) {
-	if total <= 0 {
-		return
+// NewPoll 新建轮询对象
+func NewPoll(unavailableTime, interval time.Duration) (p *PollInfo) {
+	if unavailableTime <= 0 {
+		unavailableTime = time.Minute * 10
 	}
-	s = &SPollingOne{
-		list:  make([]uint8, total),
-		total: uint(total),
+	if interval <= 0 {
+		interval = time.Minute * 10
 	}
-	for i := 0; i < total; i++ {
-		s.list[i] = 1
+	p = &PollInfo{
+		availableList:   doubly.NewLinkedList(),
+		unavailableMap:  cmap.New[time.Time](),
+		unavailableTime: unavailableTime,
+		interval:        interval,
+		quitChan:        make(chan bool),
 	}
+	// 启动可用性检测
+	go p.start()
 	return
 }
 
-// SetIsAvailable 设置下标是否可用
-func (s *SPollingOne) SetIsAvailable(index uint, isAvailable bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if s.total > 0 && index <= s.total-1 {
-		if isAvailable {
-			s.list[index] = 1
-		} else {
-			s.list[index] = 0
-		}
-	}
-}
-
-// Polling 轮询
-func (s *SPollingOne) Polling() (index uint, err error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	hasAvailable := false
-	// 从当前索引`s.index`开始查找
-	for i := s.index; i < s.total; i++ {
-		if s.list[i] == 1 {
-			index = i
-			s.index = i + 1
-			hasAvailable = true
-			break
-		}
-	}
-	// 如果从`s.index`开始没找到，则从头开始查找
-	if !hasAvailable {
-		for i := uint(0); i < s.index; i++ {
-			if s.list[i] == 1 {
-				index = i
-				s.index = i + 1
-				hasAvailable = true
-				break
+// start 启动可用性检测
+func (p *PollInfo) start() {
+	ticker := time.NewTicker(p.interval)
+	for {
+		select {
+		case <-ticker.C:
+			// 遍历不可用的轮询对象
+			now := time.Now()
+			for uuid, unavailableTime := range p.unavailableMap.Items() {
+				if now.After(unavailableTime) || now.Equal(unavailableTime) {
+					// 超过冷却时间，将不可用对象从不可用列表中移除
+					p.unavailableMap.Remove(uuid)
+					p.availableList.PushBack(doubly.Node{Uuid: uuid, Value: nil})
+				}
 			}
-		}
-	}
-	// 如果切片中没有可用元素，返回错误
-	if !hasAvailable {
-		err = errors.New("no available element found")
-		return
-	}
-	// 重置`index`为切片的起始位置
-	if s.index >= s.total {
-		s.index = 0
-	}
-	return
-}
-
-// NewPollingTwo 新建轮询（支持二维数组）
-func NewPollingTwo(totals ...int) (s *SPollingTwo) {
-	if len(totals) <= 0 {
-		return
-	}
-	for _, total := range totals {
-		if total <= 0 {
+		case <-p.quitChan:
+			ticker.Stop()
 			return
 		}
 	}
-	s = &SPollingTwo{
-		pollingOne:     NewPollingOne(len(totals)),
-		pollingOneList: make([]*SPollingOne, len(totals)),
+}
+
+// Stop 停止可用性检测
+func (p *PollInfo) Stop() {
+	p.quitChan <- true
+}
+
+// Init 初始化轮询对象的可用列表
+func (p *PollInfo) Init(ids ...int) {
+	items := make([]doubly.Node, 0, len(ids))
+	for _, id := range ids {
+		items = append(items, doubly.Node{Uuid: strconv.Itoa(id), Value: nil})
 	}
-	for k, total := range totals {
-		s.pollingOneList[k] = NewPollingOne(total)
+	p.availableList.PushBack(items...)
+}
+
+// SetUnAvailable 设置不可用的轮询对象标识
+func (p *PollInfo) SetUnAvailable(ids ...int) {
+	uuids := make([]string, 0, len(ids))
+	for _, id := range ids {
+		uuids = append(uuids, strconv.Itoa(id))
 	}
-	return
+	p.availableList.Remove(uuids...)
+
+	unavailableIds := make(map[string]time.Time, len(uuids))
+	for _, uuid := range uuids {
+		unavailableIds[uuid] = time.Now().Add(p.unavailableTime)
+	}
+	p.unavailableMap.MSet(unavailableIds)
 }
 
-// SetIsAvailableOne 设置下标是否可用
-func (s *SPollingTwo) SetIsAvailableOne(index uint, isAvailable bool) {
-	s.pollingOne.SetIsAvailable(index, isAvailable)
-}
-
-// SetIsAvailableTwo 设置下标是否可用
-func (s *SPollingTwo) SetIsAvailableTwo(index0, index1 uint, isAvailable bool) {
-	s.pollingOneList[index0].SetIsAvailable(index1, isAvailable)
-}
-
-// Polling 轮询
-func (s *SPollingTwo) Polling() (index0, index1 uint, err error) {
-	if index0, err = s.pollingOne.Polling(); err != nil {
+// Poll 轮询
+func (p *PollInfo) Poll() (id int, err error) {
+	var node *doubly.Node
+	if node, err = p.availableList.Poll(); err != nil {
+		err = errors.New("no available id found")
 		return
 	}
-	index1, err = s.pollingOneList[index0].Polling()
+	id, err = strconv.Atoi(node.Uuid)
 	return
 }
 
