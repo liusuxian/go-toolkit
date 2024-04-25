@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-17 03:33:19
+ * @LastEditTime: 2024-04-23 02:52:30
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -72,14 +72,35 @@ var internalScriptMap = map[string]string{
 		`,
 }
 
-// NewClient 创建 redis 客户端
-func NewClient(ctx context.Context, opts ...ClientConfigOption) (client *RedisClient) {
+// NewClientWithOption 创建 redis 客户端
+func NewClientWithOption(ctx context.Context, opts ...ClientConfigOption) (client *RedisClient) {
 	ro := &redis.Options{}
 	for _, opt := range opts {
 		opt(ro)
 	}
 	client = &RedisClient{
 		client:        redis.NewClient(ro),
+		luaEvalShaMap: make(map[string]string),
+	}
+	for k, v := range internalScriptMap {
+		if err := client.ScriptLoad(ctx, k, v); err != nil {
+			panic(err)
+		}
+	}
+	return
+}
+
+// NewClientWithConfig 创建 redis 客户端
+func NewClientWithConfig(ctx context.Context, cfg *ClientConfig) (client *RedisClient) {
+	if cfg == nil {
+		cfg = &ClientConfig{
+			Addr:     "localhost:6379",
+			Password: "",
+			DB:       0,
+		}
+	}
+	client = &RedisClient{
+		client:        redis.NewClient(cfg),
 		luaEvalShaMap: make(map[string]string),
 	}
 	for k, v := range internalScriptMap {

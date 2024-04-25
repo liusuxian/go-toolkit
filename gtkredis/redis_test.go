@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-17 03:31:31
+ * @LastEditTime: 2024-04-25 18:54:27
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -31,7 +31,7 @@ func TestRedis(t *testing.T) {
 		ctx = context.Background()
 		r   = miniredis.RunT(t)
 	)
-	client := gtkredis.NewClient(ctx, func(cc *gtkredis.ClientConfig) {
+	client := gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.Password = ""
 		cc.DB = 1
@@ -155,10 +155,10 @@ func TestRedisLuaScript(t *testing.T) {
 		ctx = context.Background()
 		r   = miniredis.RunT(t)
 	)
-	client := gtkredis.NewClient(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.Password = ""
-		cc.DB = 1
+	client := gtkredis.NewClientWithConfig(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		Password: "",
+		DB:       1,
 	})
 	defer client.Close()
 
@@ -197,7 +197,7 @@ func TestRedisPolling(t *testing.T) {
 		ctx = context.Background()
 		r   = miniredis.RunT(t)
 	)
-	client := gtkredis.NewClient(ctx, func(cc *gtkredis.ClientConfig) {
+	client := gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.Password = ""
 		cc.DB = 1

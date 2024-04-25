@@ -1,31 +1,32 @@
-# kafka 配置
-kafka:
-  servers: "127.0.0.1:19092" # SSL接入点的IP地址以及端口
-  protocol: "PLAINTEXT" # SASL用户认证协议
-  retries: 2147483647 # 发送消息失败后允许重试的次数，默认 2147483647
-  retryBackoff: 1000 # 发送消息失败后，下一次重试发送前的等待时间，默认 1000 毫秒
-  waitTimeout: "5s" # 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
-  retryDelay: "10s" # 当消费失败时重试的间隔时间，默认 10s
+# redis_mq 配置
+redis_mq:
+  addr: "127.0.0.1:6379" # redis 地址
+  password: "redis!@#$%" # redis 密码
+  db: 0 # redis 数据库
+  retries: 3600 # 发送消息失败后允许重试的次数，默认 3600
+  retryBackoff: "1s" # 发送消息失败后，下一次重试发送前的等待时间，默认 1s
+  expireTime: "5m" # 消息过期时间，默认 3天
+  waitTimeout: "2500ms" # 指定等待消息的最大时间，默认最大 2500ms
+  retryDelay: "1s" # 当消费失败时重试的间隔时间，默认 10s
   retryMaxCount: 0 # 当消费失败时重试的最大次数，默认 0，无限重试
-  offsetReset: "earliest" # 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
+  offsetReset: "0-0" # 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
   batchSize: 200 # 批量消费的条数，默认 200
-  batchInterval: "5s" # 批量消费的间隔时间，默认 5s
-  isClose: true # 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
+  batchInterval: "1s" # 批量消费的间隔时间，默认 5s
   env: "test" # 当前服务环境，默认 local
-  topicConfig: # topic 配置，key 为 topic 名称
-    topic_100: # topic 名称
+  mqConfig: # 消息队列配置，key 为消息队列名称
+    queue: # 队列名称
       partitionNum: 12 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-    topic_101: # topic 名称
-      partitionNum: 12 # 消息队列分区数量，默认 12 个分区
+    queue_100: # 队列名称
+      partitionNum: 1 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-    topic_102: # topic 名称
-      partitionNum: 12 # 消息队列分区数量，默认 12 个分区
+    queue_200: # 队列名称
+      partitionNum: 1 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-  excludeEnvTopicMap: # 指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息
-    test: ["topic_101", "topic_102"]
+  excludeEnvMQMap: # 指定哪些服务环境下对应的哪些消息队列不发送消息
+    test: ["queue_100", "queue_200"]
   logConfig: # 日志配置
-    logPath: "logs/kafka" # 日志文件路径，默认 logs
+    logPath: "logs/redis_mq" # 日志文件路径，默认 logs
     logType: "text" # 日志类型，json|text，默认 text
     logLevel: "debug" # 日志级别，panic、fatal、error、warning、info、debug、trace，默认 debug
     ctxKeys: [] # 自定义 Context 上下文变量名称，自动打印 Context 的变量到日志中，默认为空

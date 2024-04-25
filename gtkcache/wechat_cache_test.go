@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-29 16:15:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-29 17:52:48
+ * @LastEditTime: 2024-04-23 02:15:13
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -25,7 +25,7 @@ func TestNewWechatCache(t *testing.T) {
 		r     = miniredis.RunT(t)
 		cache *gtkcache.WechatCache
 	)
-	cache = gtkcache.NewWechatCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewWechatCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""

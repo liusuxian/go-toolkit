@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-06 20:19:49
+ * @LastEditTime: 2024-04-23 02:15:54
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -277,11 +277,25 @@ var internalScriptMap = map[string]string{
 	`,
 }
 
-// NewRedisCache 创建 RedisCache
-func NewRedisCache(ctx context.Context, opts ...gtkredis.ClientConfigOption) (rc *RedisCache) {
+// NewRedisCacheWithOption 创建 RedisCache
+func NewRedisCacheWithOption(ctx context.Context, opts ...gtkredis.ClientConfigOption) (rc *RedisCache) {
 	rc = &RedisCache{
 		ctx:    ctx,
-		client: gtkredis.NewClient(ctx, opts...),
+		client: gtkredis.NewClientWithOption(ctx, opts...),
+	}
+	for k, v := range internalScriptMap {
+		if err := rc.client.ScriptLoad(ctx, k, v); err != nil {
+			panic(err)
+		}
+	}
+	return
+}
+
+// NewRedisCacheWithConfig 创建 RedisCache
+func NewRedisCacheWithConfig(ctx context.Context, cfg *gtkredis.ClientConfig) (rc *RedisCache) {
+	rc = &RedisCache{
+		ctx:    ctx,
+		client: gtkredis.NewClientWithConfig(ctx, cfg),
 	}
 	for k, v := range internalScriptMap {
 		if err := rc.client.ScriptLoad(ctx, k, v); err != nil {

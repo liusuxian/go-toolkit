@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-29 16:39:48
+ * @LastEditTime: 2024-04-23 02:17:26
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -53,7 +53,7 @@ func TestRedisCacheString(t *testing.T) {
 		r     = miniredis.RunT(t)
 		cache *gtkcache.RedisCache
 	)
-	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""
@@ -130,7 +130,7 @@ func TestRedisCacheString2(t *testing.T) {
 		r     = miniredis.RunT(t)
 		cache *gtkcache.RedisCache
 	)
-	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""
@@ -161,7 +161,7 @@ func TestRedisCacheString3(t *testing.T) {
 		r     = miniredis.RunT(t)
 		cache *gtkcache.RedisCache
 	)
-	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""
@@ -190,7 +190,7 @@ func TestRedisCacheString4(t *testing.T) {
 		r     = miniredis.RunT(t)
 		cache *gtkcache.RedisCache
 	)
-	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""
@@ -253,7 +253,7 @@ func TestRedisCacheSet(t *testing.T) {
 		r     = miniredis.RunT(t)
 		cache *gtkcache.RedisCache
 	)
-	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""
@@ -348,7 +348,7 @@ func TestRedisCacheSortedSet(t *testing.T) {
 		r     = miniredis.RunT(t)
 		cache *gtkcache.RedisCache
 	)
-	cache = gtkcache.NewRedisCache(ctx, func(cc *gtkredis.ClientConfig) {
+	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
 		cc.Addr = r.Addr()
 		cc.DB = 1
 		cc.Password = ""

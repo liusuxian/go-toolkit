@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-21 16:05:23
+ * @LastEditTime: 2024-04-25 23:06:33
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,11 +13,11 @@ import (
 	"context"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/liusuxian/go-toolkit/gtkconf"
-	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtkkafka"
 	"github.com/liusuxian/go-toolkit/gtklog"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 type TestRecordInfo struct {
@@ -39,15 +39,15 @@ func TestNewWithOption(t *testing.T) {
 	kafkaClient, err = gtkkafka.NewWithOption(func(cc *gtkkafka.Config) {
 		cc.IsClose = true
 		cc.Env = "test"
-		cc.ProducerConsumerConfigMap = map[string]gtkkafka.ProducerConsumerConfig{
-			"test": {
-				Topic:    "topic100",
-				StartAll: true,
+		cc.TopicConfig = map[string]gtkkafka.TopicConfig{
+			"topic_100": {
+				PartitionNum: 12,
+				Mode:         gtkkafka.ModeBoth,
 			},
 		}
 		cc.ExcludeEnvTopicMap = map[string][]string{
 			"test": {
-				"topic100",
+				"topic_100",
 			},
 		}
 		cc.LogConfig.LogPath = "logs/kafka"
@@ -60,38 +60,46 @@ func TestNewWithOption(t *testing.T) {
 			gtklog.FatalLevel: "error.log",
 			gtklog.PanicLevel: "error.log",
 		}
+		cc.LogConfig.Stdout = true
 	})
 	assert.NoError(err)
-	t.Logf("NewClient kafkaClient: %+v, Config: %s\n", kafkaClient, gtkjson.MustString(kafkaClient.GetConfig()))
-	if err = kafkaClient.NewProducer(ctx, "test"); err != nil {
+	// 打印消息队列客户端配置
+	kafkaClient.PrintClientConfig(ctx)
+	// 创建生产者
+	if err = kafkaClient.NewProducer(ctx, "topic_100"); err != nil {
 		t.Fatal("NewProducer Error: ", err)
 	}
-	if err = kafkaClient.NewConsumer(ctx, "test"); err != nil {
+	if err = kafkaClient.NewConsumer(ctx, "topic_100"); err != nil {
 		t.Fatal("NewConsumer Error: ", err)
 	}
-	if err = kafkaClient.SendJsonData(ctx, "test", TestRecordInfo{
-		Uid:  1111,
-		Sid:  2222,
-		Time: "2023-11-28 12:00:00",
-		Str:  "<iphone 12.12.12, 1234...>"}); err != nil {
-		t.Fatal("SendJsonData Error: ", err)
+	if err = kafkaClient.SendMessage(ctx, "topic_100", &gtkkafka.ProducerMessage{
+		Data: TestRecordInfo{
+			Uid:  1111,
+			Sid:  2222,
+			Time: "2023-11-28 12:00:00",
+			Str:  "<iphone 12.12.12, 1234...>"},
+	}); err != nil {
+		t.Fatal("SendMessage Error: ", err)
 	}
-	if err = kafkaClient.SendJsonData(ctx, "test", TestRecordInfo{
-		Uid:  1111,
-		Sid:  2222,
-		Time: "2023-11-28 12:00:00",
-		Str:  "<iphone 12.12.12, 1234...>"}, "1"); err != nil {
-		t.Fatal("SendJsonData Error: ", err)
+	if err = kafkaClient.SendMessage(ctx, "topic_100", &gtkkafka.ProducerMessage{
+		Key: "1",
+		Data: TestRecordInfo{
+			Uid:  1111,
+			Sid:  2222,
+			Time: "2023-11-28 12:00:00",
+			Str:  "<iphone 12.12.12, 1234...>"},
+	}); err != nil {
+		t.Fatal("SendMessage Error: ", err)
 	}
-	if err = kafkaClient.SubscribeTopics(ctx, "test", func(message *kafka.Message) error {
+	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
 		return nil
 	}); err != nil {
-		t.Fatal("SubscribeTopics Error: ", err)
+		t.Fatal("Subscribe Error: ", err)
 	}
-	if err = kafkaClient.BatchSubscribeTopics(ctx, "test", func(messages []*kafka.Message) error {
+	if err = kafkaClient.BatchSubscribe(ctx, "topic_100", func(messages []*kafka.Message) error {
 		return nil
 	}); err != nil {
-		t.Fatal("BatchSubscribeTopics Error: ", err)
+		t.Fatal("BatchSubscribe Error: ", err)
 	}
 }
 
@@ -109,51 +117,63 @@ func TestNewWithConfig(t *testing.T) {
 	// 创建 kafka 客户端
 	kafkaClient, err = gtkkafka.NewWithConfig(config)
 	assert.NoError(err)
-	t.Logf("NewClient kafkaClient: %+v, Config: %s\n", kafkaClient, gtkjson.MustString(kafkaClient.GetConfig()))
-	for producerConsumerName := range config.ProducerConsumerConfigMap {
+	// 打印消息队列客户端配置
+	kafkaClient.PrintClientConfig(ctx)
+
+	for topic := range config.TopicConfig {
 		// ============================= 以下为生产者 =============================
-		if err := kafkaClient.NewProducer(ctx, producerConsumerName); err != nil {
-			t.Fatalf("create %s producer error: %v", producerConsumerName, err)
+		if err := kafkaClient.NewProducer(ctx, topic); err != nil {
+			t.Fatalf("create %s producer error: %v", topic, err)
 		}
 		// ============================= 以下为消费者 =============================
-		if err := kafkaClient.NewConsumer(ctx, producerConsumerName); err != nil {
-			t.Fatalf("create %s consumer error: %v", producerConsumerName, err)
+		if err := kafkaClient.NewConsumer(ctx, topic); err != nil {
+			t.Fatalf("create %s consumer error: %v", topic, err)
 		}
 	}
-	if err = kafkaClient.SendJsonData(ctx, "test_100", TestRecordInfo{
-		Uid:  1111,
-		Sid:  2222,
-		Time: "2023-11-28 12:00:00",
-		Str:  "<iphone 12.12.12, 1234...>"}); err != nil {
-		t.Fatal("SendJsonData Error: ", err)
+	if err = kafkaClient.SendMessage(ctx, "topic_100", &gtkkafka.ProducerMessage{
+		Data: TestRecordInfo{
+			Uid:  1111,
+			Sid:  2222,
+			Time: "2023-11-28 12:00:00",
+			Str:  "<iphone 12.12.12, 1234...>"},
+	}); err != nil {
+		t.Fatal("SendMessage Error: ", err)
 	}
-	if err = kafkaClient.SendJsonData(ctx, "test_101", TestRecordInfo{
-		Uid:  1111,
-		Sid:  2222,
-		Time: "2023-11-28 12:00:00",
-		Str:  "<iphone 12.12.12, 1234...>"}, "1"); err != nil {
-		t.Fatal("SendJsonData Error: ", err)
+	if err = kafkaClient.SendMessage(ctx, "topic_101", &gtkkafka.ProducerMessage{
+		Key: "1",
+		Data: TestRecordInfo{
+			Uid:  1111,
+			Sid:  2222,
+			Time: "2023-11-28 12:00:00",
+			Str:  "<iphone 12.12.12, 1234...>"},
+	}); err != nil {
+		t.Fatal("SendMessage Error: ", err)
 	}
-	if err = kafkaClient.SendJsonData(ctx, "test_102", TestRecordInfo{
-		Uid:  1111,
-		Sid:  2222,
-		Time: "2023-11-28 12:00:00",
-		Str:  "<iphone 12.12.12, 1234...>"}, "2"); err != nil {
-		t.Fatal("SendJsonData Error: ", err)
+	if err = kafkaClient.SendMessage(ctx, "topic_102", &gtkkafka.ProducerMessage{
+		Key: "2",
+		Data: TestRecordInfo{
+			Uid:  1111,
+			Sid:  2222,
+			Time: "2023-11-28 12:00:00",
+			Str:  "<iphone 12.12.12, 1234...>"},
+	}); err != nil {
+		t.Fatal("SendMessage Error: ", err)
 	}
-	if err = kafkaClient.SubscribeTopics(ctx, "test_100", func(message *kafka.Message) error {
+	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
+		t.Logf("topic_100 receive message: %v", string(message.Value))
 		return nil
 	}); err != nil {
-		t.Fatal("SubscribeTopics Error: ", err)
+		t.Fatal("Subscribe Error: ", err)
 	}
-	if err = kafkaClient.BatchSubscribeTopics(ctx, "test_101", func(messages []*kafka.Message) error {
+	if err = kafkaClient.BatchSubscribe(ctx, "topic_101", func(messages []*kafka.Message) error {
 		return nil
 	}); err != nil {
-		t.Fatal("BatchSubscribeTopics Error: ", err)
+		t.Fatal("BatchSubscribe Error: ", err)
 	}
-	if err = kafkaClient.BatchSubscribeTopics(ctx, "test_102", func(messages []*kafka.Message) error {
+	if err = kafkaClient.BatchSubscribe(ctx, "topic_102", func(messages []*kafka.Message) error {
 		return nil
 	}); err != nil {
-		t.Fatal("BatchSubscribeTopics Error: ", err)
+		t.Fatal("BatchSubscribe Error: ", err)
 	}
+	time.Sleep(5 * time.Second)
 }

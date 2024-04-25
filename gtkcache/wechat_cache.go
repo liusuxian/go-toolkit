@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-29 16:15:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-29 17:52:06
+ * @LastEditTime: 2024-04-23 02:14:22
  * @Description: 适配 github.com/silenceper/wechat/v2 库的缓存
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -22,11 +22,20 @@ type WechatCache struct {
 	client *gtkredis.RedisClient // redis 客户端
 }
 
-// NewWechatCache 创建微信缓存
-func NewWechatCache(ctx context.Context, opts ...gtkredis.ClientConfigOption) (wc *WechatCache) {
+// NewWechatCacheWithOption 创建微信缓存
+func NewWechatCacheWithOption(ctx context.Context, opts ...gtkredis.ClientConfigOption) (wc *WechatCache) {
 	wc = &WechatCache{
 		ctx:    ctx,
-		client: gtkredis.NewClient(ctx, opts...),
+		client: gtkredis.NewClientWithOption(ctx, opts...),
+	}
+	return
+}
+
+// NewWechatCacheWithConfig 创建微信缓存
+func NewWechatCacheWithConfig(ctx context.Context, cfg *gtkredis.ClientConfig) (wc *WechatCache) {
+	wc = &WechatCache{
+		ctx:    ctx,
+		client: gtkredis.NewClientWithConfig(ctx, cfg),
 	}
 	return
 }
