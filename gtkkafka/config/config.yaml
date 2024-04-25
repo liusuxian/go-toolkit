@@ -14,13 +14,13 @@ kafka:
   env: "test" # 当前服务环境，默认 local
   topicConfig: # topic 配置，key 为 topic 名称
     topic_100: # topic 名称
-      partitionNum: 12 # 消息队列分区数量，默认 12 个分区
+      partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
     topic_101: # topic 名称
-      partitionNum: 12 # 消息队列分区数量，默认 12 个分区
+      partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
     topic_102: # topic 名称
-      partitionNum: 12 # 消息队列分区数量，默认 12 个分区
+      partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
   excludeEnvTopicMap: # 指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息
     test: ["topic_101", "topic_102"]
