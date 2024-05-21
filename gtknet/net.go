@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-26 15:33:37
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-29 19:10:54
+ * @LastEditTime: 2024-05-22 02:29:17
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,7 +18,7 @@ import (
 
 // IsPrivateIPv4 判断是否是私有 IPv4 地址
 func IsPrivateIPv4(ip net.IP) (ok bool) {
-	return ip != nil && (ip[0] == 10 || ip[0] == 172 && (ip[1] >= 16 && ip[1] < 32) || ip[0] == 192 && ip[1] == 168)
+	return ip != nil && (ip[0] == 10 || (ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31) || (ip[0] == 192 && ip[1] == 168))
 }
 
 // PrivateIPv4 获取私有 IPv4 地址
