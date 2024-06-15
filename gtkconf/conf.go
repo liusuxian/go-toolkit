@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-12 18:19:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 19:56:12
+ * @LastEditTime: 2024-06-15 21:36:13
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,10 +11,10 @@ package gtkconf
 
 import (
 	"github.com/fsnotify/fsnotify"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkenv"
 	"github.com/liusuxian/go-toolkit/gtkfile"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
