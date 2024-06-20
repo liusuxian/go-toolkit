@@ -2,14 +2,14 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-10 18:51:03
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:33:26
+ * @LastEditTime: 2024-06-20 19:57:05
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package gtkconv
 
-import "github.com/mitchellh/mapstructure"
+import "github.com/go-viper/mapstructure/v2"
 
 // DecoderConfig 解码配置
 type DecoderConfig = mapstructure.DecoderConfig
