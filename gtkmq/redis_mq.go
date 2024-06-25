@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-25 22:22:20
+ * @LastEditTime: 2024-06-25 18:32:30
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,6 +18,7 @@ import (
 	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtklog"
 	"github.com/liusuxian/go-toolkit/gtkredis"
+	"github.com/liusuxian/go-toolkit/gtkstr"
 	"github.com/liusuxian/go-toolkit/gtktask"
 	"github.com/pkg/errors"
 	"hash/fnv"
@@ -26,22 +27,23 @@ import (
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Addr            string              `json:"addr" dc:"redis 地址"`                                       // redis 地址
-	Password        string              `json:"password" dc:"redis 密码"`                                   // redis 密码
-	DB              int                 `json:"db" dc:"redis 数据库"`                                        // redis 数据库
-	Retries         uint                `json:"retries" dc:"发送消息失败后允许重试的次数，默认 3600"`                      // 发送消息失败后允许重试的次数，默认 3600
-	RetryBackoff    time.Duration       `json:"retryBackoff" dc:"发送消息失败后，下一次重试发送前的等待时间，默认 1s"`            // 发送消息失败后，下一次重试发送前的等待时间，默认 1s
-	ExpireTime      time.Duration       `json:"expireTime" dc:"消息过期时间，默认 3天"`                             // 消息过期时间，默认 3天
-	WaitTimeout     time.Duration       `json:"waitTimeout" dc:"指定等待消息的最大时间，默认最大 2500ms"`                 // 指定等待消息的最大时间，默认最大 2500ms
-	RetryDelay      time.Duration       `json:"retryDelay" dc:"当消费失败时重试的间隔时间，默认 10s"`                     // 当消费失败时重试的间隔时间，默认 10s
-	RetryMaxCount   int                 `json:"retryMaxCount" dc:"当消费失败时重试的最大次数，默认 0，无限重试"`               // 当消费失败时重试的最大次数，默认 0，无限重试
-	OffsetReset     string              `json:"offsetReset" dc:"重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0"` // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	BatchSize       int                 `json:"batchSize" dc:"批量消费的条数，默认 200"`                            // 批量消费的条数，默认 200
-	BatchInterval   time.Duration       `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                       // 批量消费的间隔时间，默认 5s
-	Env             string              `json:"env" dc:"当前服务环境，默认 local"`                                 // 当前服务环境，默认 local
-	MQConfig        map[string]MQConfig `json:"mqConfig" dc:"消息队列配置，key 为消息队列名称"`                         // 消息队列配置，key 为消息队列名称
-	ExcludeEnvMQMap map[string][]string `json:"excludeEnvMQMap" dc:"指定哪些服务环境下对应的哪些消息队列不发送消息"`             // 指定哪些服务环境下对应的哪些消息队列不发送消息
-	LogConfig       *gtklog.Config      `json:"logConfig" dc:"日志配置"`                                      // 日志配置
+	Addr            string              `json:"addr" dc:"redis 地址"`                                           // redis 地址
+	Password        string              `json:"password" dc:"redis 密码"`                                       // redis 密码
+	DB              int                 `json:"db" dc:"redis 数据库"`                                            // redis 数据库
+	Retries         uint                `json:"retries" dc:"发送消息失败后允许重试的次数，默认 3600"`                          // 发送消息失败后允许重试的次数，默认 3600
+	RetryBackoff    time.Duration       `json:"retryBackoff" dc:"发送消息失败后，下一次重试发送前的等待时间，默认 1s"`                // 发送消息失败后，下一次重试发送前的等待时间，默认 1s
+	ExpireTime      time.Duration       `json:"expireTime" dc:"消息过期时间，默认 3天"`                                 // 消息过期时间，默认 3天
+	WaitTimeout     time.Duration       `json:"waitTimeout" dc:"指定等待消息的最大时间，默认最大 2500ms"`                     // 指定等待消息的最大时间，默认最大 2500ms
+	RetryDelay      time.Duration       `json:"retryDelay" dc:"当消费失败时重试的间隔时间，默认 10s"`                         // 当消费失败时重试的间隔时间，默认 10s
+	RetryMaxCount   int                 `json:"retryMaxCount" dc:"当消费失败时重试的最大次数，默认 0，无限重试"`                   // 当消费失败时重试的最大次数，默认 0，无限重试
+	OffsetReset     string              `json:"offsetReset" dc:"重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0"`     // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+	BatchSize       int                 `json:"batchSize" dc:"批量消费的条数，默认 200"`                                // 批量消费的条数，默认 200
+	BatchInterval   time.Duration       `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                           // 批量消费的间隔时间，默认 5s
+	Env             string              `json:"env" dc:"当前服务环境，默认 local"`                                     // 当前服务环境，默认 local
+	GlobalProducer  string              `json:"globalProducer" dc:"全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空"` // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	MQConfig        map[string]MQConfig `json:"mqConfig" dc:"消息队列配置，key 为消息队列名称"`                             // 消息队列配置，key 为消息队列名称
+	ExcludeEnvMQMap map[string][]string `json:"excludeEnvMQMap" dc:"指定哪些服务环境下对应的哪些消息队列不发送消息"`                 // 指定哪些服务环境下对应的哪些消息队列不发送消息
+	LogConfig       *gtklog.Config      `json:"logConfig" dc:"日志配置"`                                          // 日志配置
 }
 
 // RedisMQConfigOption Redis 消息队列配置选项
@@ -284,6 +286,11 @@ func (mq *RedisMQClient) NewProducer(ctx context.Context, queue string) (err err
 		producerName  = mq.getProducerName(queue)
 		fullQueueName = mq.getFullQueueName(queue)
 	)
+	// 判断是否配置了全局生产者名称
+	globalProducerName := gtkstr.TrimAll(mq.config.GlobalProducer)
+	if globalProducerName != "" {
+		producerName = mq.getGlobalProducerName(globalProducerName)
+	}
 	mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, partitionNum)
 	return
 }
@@ -536,6 +543,14 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 	if producerMessage.Timestamp.IsZero() {
 		producerMessage.Timestamp = time.Now().Local()
 	}
+	// 判断是否配置了全局生产者名称
+	var (
+		producerName       = mq.getProducerName(queue)
+		globalProducerName = gtkstr.TrimAll(mq.config.GlobalProducer)
+	)
+	if globalProducerName != "" {
+		producerName = mq.getGlobalProducerName(globalProducerName)
+	}
 	// 发送消息
 	if err = gtktask.Retry(ctx, func(ctx context.Context) (e error) {
 		keys := []string{
@@ -557,10 +572,10 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 		partition = gtkconv.ToInt32(value)
 		return
 	}, mq.config.Retries, mq.config.RetryBackoff, false); err != nil {
-		mq.logger.Errorf(ctx, "producer: %s send message, partition: %d, data: %s error: %+v", mq.getProducerName(queue), partition, gtkjson.MustString(producerMessage), err)
+		mq.logger.Errorf(ctx, "producer: %s send message, partition: %d, data: %s error: %+v", producerName, partition, gtkjson.MustString(producerMessage), err)
 		return
 	}
-	mq.logger.Debugf(ctx, "producer: %s send message, partition: %d, data: %s success", mq.getProducerName(queue), partition, gtkjson.MustString(producerMessage))
+	mq.logger.Debugf(ctx, "producer: %s send message, partition: %d, data: %s success", producerName, partition, gtkjson.MustString(producerMessage))
 	return
 }
 
@@ -765,6 +780,11 @@ func (mq *RedisMQClient) getPartitionNum(queue string) (partitionNum uint32, err
 	}
 	err = errors.Errorf("queue `%s` Not Found", queue)
 	return
+}
+
+// getGlobalProducerName 获取全局生产者名称
+func (mq *RedisMQClient) getGlobalProducerName(globalProducer string) (producerName string) {
+	return fmt.Sprintf("producer_%s", globalProducer)
 }
 
 // getProducerName 获取生产者名称

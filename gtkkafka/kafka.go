@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-25 23:06:47
+ * @LastEditTime: 2024-06-25 18:32:36
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,6 +18,7 @@ import (
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtklog"
+	"github.com/liusuxian/go-toolkit/gtkstr"
 	"github.com/pkg/errors"
 	"hash/fnv"
 	"math"
@@ -62,6 +63,7 @@ type Config struct {
 	BatchInterval      time.Duration          `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                                                                     // 批量消费的间隔时间，默认 5s
 	IsClose            bool                   `json:"isClose" dc:"是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）"`                                                   // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
 	Env                string                 `json:"env" dc:"当前服务环境，默认 local"`                                                                               // 当前服务环境，默认 local
+	GlobalProducer     string                 `json:"globalProducer" dc:"全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空"`                                           // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
 	TopicConfig        map[string]TopicConfig `json:"topicConfig" dc:"topic 配置，key 为 topic 名称"`                                                               // topic 配置，key 为 topic 名称
 	ExcludeEnvTopicMap map[string][]string    `json:"excludeEnvTopicMap" dc:"指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息"`                                              // 指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息
 	LogConfig          *gtklog.Config         `json:"logConfig" dc:"日志配置"`                                                                                    // 日志配置
@@ -220,15 +222,28 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 	if !isStart {
 		return
 	}
-
+	// 获取生产者名称和完整的 topic 名称
 	var (
 		producerName  = kc.getProducerName(topic)
 		fullTopicName = kc.getFullTopicName(topic)
 	)
+	// 判断是否配置了全局生产者名称
+	globalProducerName := gtkstr.TrimAll(kc.config.GlobalProducer)
+	if globalProducerName != "" {
+		producerName = kc.getGlobalProducerName(globalProducerName)
+	}
 	if kc.config.IsClose {
 		kc.logger.Infof(ctx, "new producer: %s, topic: %s, partitionNum: %d success (isClosed)", producerName, fullTopicName, partitionNum)
 		return
 	}
+	// 判断全局生产者是否已存在
+	if globalProducerName != "" {
+		if _, ok := kc.producerMap[producerName]; ok {
+			kc.logger.Infof(ctx, "new producer: %s, topic: %s, partitionNum: %d success", producerName, fullTopicName, partitionNum)
+			return
+		}
+	}
+
 	var kafkaCnf = &kafka.ConfigMap{
 		"api.version.request":                   "true",
 		"message.max.bytes":                     16384,                  // 最大消息大小
@@ -639,6 +654,11 @@ func (kc *KafkaClient) sendMessage(ctx context.Context, topic string, producerMe
 		}
 		producerName = kc.getProducerName(topic)
 	)
+	// 判断是否配置了全局生产者名称
+	globalProducerName := gtkstr.TrimAll(kc.config.GlobalProducer)
+	if globalProducerName != "" {
+		producerName = kc.getGlobalProducerName(globalProducerName)
+	}
 	if kc.config.IsClose {
 		kc.logger.Debugf(ctx, "%s producer sendMessage(isClosed): %s, data: %s", producerName, gtkjson.MustString(msg), string(producerMessage.dataBytes))
 		return
@@ -710,6 +730,11 @@ func (kc *KafkaClient) calcPartition(key string, partitionNum uint32) (partition
 	hash.Write([]byte(key))
 	partition = int32(hash.Sum32() % partitionNum)
 	return
+}
+
+// getGlobalProducerName 获取全局生产者名称
+func (kc *KafkaClient) getGlobalProducerName(globalProducer string) (producerName string) {
+	return fmt.Sprintf("producer_%s", globalProducer)
 }
 
 // getProducerName 获取生产者名称

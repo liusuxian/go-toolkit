@@ -13,6 +13,7 @@ redis_mq:
   batchSize: 200 # 批量消费的条数，默认 200
   batchInterval: "1s" # 批量消费的间隔时间，默认 5s
   env: "test" # 当前服务环境，默认 local
+  globalProducer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
   mqConfig: # 消息队列配置，key 为消息队列名称
     queue: # 队列名称
       partitionNum: 12 # 消息队列分区数量，默认 12 个分区
