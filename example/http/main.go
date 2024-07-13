@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-31 20:57:06
+ * @LastEditTime: 2024-07-13 21:11:03
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -65,6 +65,14 @@ func main() {
 			}
 		}
 		gtkresp.RespSucc(w, fileInfos)
+	})
+	// 删除文件
+	http.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
+		if err := ossConfig.DeleteObjects("test_upload/text.xlsx"); err != nil {
+			gtkresp.RespFail(w, -1, err.Error())
+			return
+		}
+		gtkresp.RespSucc(w, "OK")
 	})
 	// 重定向
 	http.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:18:50
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-31 20:54:32
+ * @LastEditTime: 2024-07-13 20:28:03
  * @Description: 
  * 
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -26,6 +26,10 @@
   <form action="http://127.0.0.1:8080/batchUpload" method="post" enctype="multipart/form-data">
     <input type="file" name="file" id="batchFiles" multiple>
     <input type="submit" value="上传">
+  </form>
+  <h2>删除文件</h2>
+  <form action="http://127.0.0.1:8080/delete" method="post">
+    <input type="submit" value="删除文件">
   </form>
   <h2>重定向</h2>
   <form action="http://127.0.0.1:8080/redirect" method="post">
