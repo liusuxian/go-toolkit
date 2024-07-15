@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 00:16:21
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-25 23:45:10
+ * @LastEditTime: 2024-07-15 20:23:43
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -50,4 +50,10 @@ func TestGenRandomFileName(t *testing.T) {
 	t.Log(gtkfile.GenRandomFileName("example.png"))
 	t.Log(gtkfile.GenRandomFileName("example.png"))
 	t.Log(gtkfile.GenRandomFileName("example.png"))
+
+	t.Log(gtkfile.GenRandomFileName("example.png", true))
+	t.Log(gtkfile.GenRandomFileName("example.png", true))
+	t.Log(gtkfile.GenRandomFileName("example.png", true))
+	t.Log(gtkfile.GenRandomFileName("example.png", true))
+	t.Log(gtkfile.GenRandomFileName("example.png", true))
 }

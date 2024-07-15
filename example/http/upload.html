@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:18:50
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-13 20:28:03
+ * @LastEditTime: 2024-07-15 18:54:57
  * @Description: 
  * 
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -27,8 +27,18 @@
     <input type="file" name="file" id="batchFiles" multiple>
     <input type="submit" value="上传">
   </form>
-  <h2>删除文件</h2>
-  <form action="http://127.0.0.1:8080/delete" method="post">
+  <h2>单文件OSS上传</h2>
+  <form action="http://127.0.0.1:8080/ossUpload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" id="singleFile">
+    <input type="submit" value="上传">
+  </form>
+  <h2>批量文件OSS上传</h2>
+  <form action="http://127.0.0.1:8080/ossBatchUpload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" id="batchFiles" multiple>
+    <input type="submit" value="上传">
+  </form>
+  <h2>删除OSS文件</h2>
+  <form action="http://127.0.0.1:8080/ossDelete" method="post">
     <input type="submit" value="删除文件">
   </form>
   <h2>重定向</h2>

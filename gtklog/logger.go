@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-18 20:48:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-21 19:39:25
+ * @LastEditTime: 2024-07-15 18:25:25
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -23,7 +23,6 @@ import (
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 	"io"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -564,7 +563,7 @@ func newLogger(cfg *Config, opts ...ConfigOption) (logger *Logger, err error) {
 		logger.config.RotationSize = 1024 * 1024 * 1024 * 5
 	}
 	// 创建日志目录
-	if err = makeDirAll(logger.config.LogPath); err != nil {
+	if err = gtkfile.MakeDirAll(logger.config.LogPath); err != nil {
 		return
 	}
 	// 是否输出到控制台
@@ -618,16 +617,6 @@ func getWriterMap(config *Config) (writerMap lfshook.WriterMap, err error) {
 			rotatelogs.WithRotationSize(config.RotationSize),
 		); err != nil {
 			return
-		}
-	}
-	return
-}
-
-// makeDirAll 创建日志目录
-func makeDirAll(logPath string) (err error) {
-	if !gtkfile.PathExists(logPath) {
-		if err = os.MkdirAll(logPath, os.ModePerm); err != nil {
-			return errors.Errorf("create <%s> error: %s", logPath, err)
 		}
 	}
 	return
