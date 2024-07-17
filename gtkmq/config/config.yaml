@@ -5,7 +5,8 @@ redis_mq:
   db: 0 # redis 数据库
   retries: 3600 # 发送消息失败后允许重试的次数，默认 3600
   retryBackoff: "1s" # 发送消息失败后，下一次重试发送前的等待时间，默认 1s
-  expireTime: "5m" # 消息过期时间，默认 3天
+  expiredTime: "5m" # 消息过期时间，默认 3天
+  delExpiredMsgInterval: "1m" # 删除过期消息的时间间隔，默认 3天
   waitTimeout: "2500ms" # 指定等待消息的最大时间，默认最大 2500ms
   retryDelay: "1s" # 当消费失败时重试的间隔时间，默认 10s
   retryMaxCount: 0 # 当消费失败时重试的最大次数，默认 0，无限重试

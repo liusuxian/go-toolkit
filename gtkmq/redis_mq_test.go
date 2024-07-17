@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-25 18:54:21
+ * @LastEditTime: 2024-07-17 16:15:46
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -55,6 +55,7 @@ func TestRedisMQProducer(t *testing.T) {
 			}})
 		assert.NoError(err)
 	}
+	time.Sleep(time.Minute * 6)
 }
 
 func TestRedisMQConsumerSubscribe(t *testing.T) {

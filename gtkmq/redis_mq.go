@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-06-25 18:32:30
+ * @LastEditTime: 2024-07-17 16:27:18
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -27,23 +27,24 @@ import (
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Addr            string              `json:"addr" dc:"redis 地址"`                                           // redis 地址
-	Password        string              `json:"password" dc:"redis 密码"`                                       // redis 密码
-	DB              int                 `json:"db" dc:"redis 数据库"`                                            // redis 数据库
-	Retries         uint                `json:"retries" dc:"发送消息失败后允许重试的次数，默认 3600"`                          // 发送消息失败后允许重试的次数，默认 3600
-	RetryBackoff    time.Duration       `json:"retryBackoff" dc:"发送消息失败后，下一次重试发送前的等待时间，默认 1s"`                // 发送消息失败后，下一次重试发送前的等待时间，默认 1s
-	ExpireTime      time.Duration       `json:"expireTime" dc:"消息过期时间，默认 3天"`                                 // 消息过期时间，默认 3天
-	WaitTimeout     time.Duration       `json:"waitTimeout" dc:"指定等待消息的最大时间，默认最大 2500ms"`                     // 指定等待消息的最大时间，默认最大 2500ms
-	RetryDelay      time.Duration       `json:"retryDelay" dc:"当消费失败时重试的间隔时间，默认 10s"`                         // 当消费失败时重试的间隔时间，默认 10s
-	RetryMaxCount   int                 `json:"retryMaxCount" dc:"当消费失败时重试的最大次数，默认 0，无限重试"`                   // 当消费失败时重试的最大次数，默认 0，无限重试
-	OffsetReset     string              `json:"offsetReset" dc:"重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0"`     // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	BatchSize       int                 `json:"batchSize" dc:"批量消费的条数，默认 200"`                                // 批量消费的条数，默认 200
-	BatchInterval   time.Duration       `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                           // 批量消费的间隔时间，默认 5s
-	Env             string              `json:"env" dc:"当前服务环境，默认 local"`                                     // 当前服务环境，默认 local
-	GlobalProducer  string              `json:"globalProducer" dc:"全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空"` // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	MQConfig        map[string]MQConfig `json:"mqConfig" dc:"消息队列配置，key 为消息队列名称"`                             // 消息队列配置，key 为消息队列名称
-	ExcludeEnvMQMap map[string][]string `json:"excludeEnvMQMap" dc:"指定哪些服务环境下对应的哪些消息队列不发送消息"`                 // 指定哪些服务环境下对应的哪些消息队列不发送消息
-	LogConfig       *gtklog.Config      `json:"logConfig" dc:"日志配置"`                                          // 日志配置
+	Addr                  string              `json:"addr" dc:"redis 地址"`                                           // redis 地址
+	Password              string              `json:"password" dc:"redis 密码"`                                       // redis 密码
+	DB                    int                 `json:"db" dc:"redis 数据库"`                                            // redis 数据库
+	Retries               uint                `json:"retries" dc:"发送消息失败后允许重试的次数，默认 3600"`                          // 发送消息失败后允许重试的次数，默认 3600
+	RetryBackoff          time.Duration       `json:"retryBackoff" dc:"发送消息失败后，下一次重试发送前的等待时间，默认 1s"`                // 发送消息失败后，下一次重试发送前的等待时间，默认 1s
+	ExpiredTime           time.Duration       `json:"expiredTime" dc:"消息过期时间，默认 3天"`                                // 消息过期时间，默认 3天
+	DelExpiredMsgInterval time.Duration       `json:"delExpiredMsgInterval" dc:"删除过期消息的时间间隔，默认 3天"`                 // 删除过期消息的时间间隔，默认 3天
+	WaitTimeout           time.Duration       `json:"waitTimeout" dc:"指定等待消息的最大时间，默认最大 2500ms"`                     // 指定等待消息的最大时间，默认最大 2500ms
+	RetryDelay            time.Duration       `json:"retryDelay" dc:"当消费失败时重试的间隔时间，默认 10s"`                         // 当消费失败时重试的间隔时间，默认 10s
+	RetryMaxCount         int                 `json:"retryMaxCount" dc:"当消费失败时重试的最大次数，默认 0，无限重试"`                   // 当消费失败时重试的最大次数，默认 0，无限重试
+	OffsetReset           string              `json:"offsetReset" dc:"重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0"`     // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+	BatchSize             int                 `json:"batchSize" dc:"批量消费的条数，默认 200"`                                // 批量消费的条数，默认 200
+	BatchInterval         time.Duration       `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                           // 批量消费的间隔时间，默认 5s
+	Env                   string              `json:"env" dc:"当前服务环境，默认 local"`                                     // 当前服务环境，默认 local
+	GlobalProducer        string              `json:"globalProducer" dc:"全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空"` // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	MQConfig              map[string]MQConfig `json:"mqConfig" dc:"消息队列配置，key 为消息队列名称"`                             // 消息队列配置，key 为消息队列名称
+	ExcludeEnvMQMap       map[string][]string `json:"excludeEnvMQMap" dc:"指定哪些服务环境下对应的哪些消息队列不发送消息"`                 // 指定哪些服务环境下对应的哪些消息队列不发送消息
+	LogConfig             *gtklog.Config      `json:"logConfig" dc:"日志配置"`                                          // 日志配置
 }
 
 // RedisMQConfigOption Redis 消息队列配置选项
@@ -51,9 +52,10 @@ type RedisMQConfigOption func(c *RedisMQConfig)
 
 // RedisMQClient Redis 消息队列客户端
 type RedisMQClient struct {
-	rc     *gtkredis.RedisClient // redis 客户端
-	config *RedisMQConfig        // Redis 消息队列配置
-	logger *gtklog.Logger        // 日志对象
+	rc       *gtkredis.RedisClient // redis 客户端
+	config   *RedisMQConfig        // Redis 消息队列配置
+	logger   *gtklog.Logger        // 日志对象
+	quitChan chan bool             // 退出信号
 }
 
 // 内置 lua 脚本
@@ -127,6 +129,7 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 			ExcludeEnvMQMap: make(map[string][]string),
 			LogConfig:       &gtklog.Config{},
 		},
+		quitChan: make(chan bool),
 	}
 	for _, opt := range opts {
 		opt(client.config)
@@ -144,8 +147,12 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 		client.config.RetryBackoff = time.Second
 	}
 	// 消息过期时间，默认 3天
-	if client.config.ExpireTime <= time.Duration(0) {
-		client.config.ExpireTime = time.Hour * 24 * 3
+	if client.config.ExpiredTime <= time.Duration(0) {
+		client.config.ExpiredTime = time.Hour * 24 * 3
+	}
+	// 删除过期消息的时间间隔，默认 3天
+	if client.config.DelExpiredMsgInterval <= time.Duration(0) {
+		client.config.DelExpiredMsgInterval = time.Hour * 24 * 3
 	}
 	// 指定等待消息的最大时间，默认最大 2500ms
 	if client.config.WaitTimeout <= time.Duration(0) || client.config.WaitTimeout > time.Millisecond*2500 {
@@ -188,6 +195,8 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 		client.rc.Close()
 		return
 	}
+	// 启动定期删除过期消息的协程
+	go client.startIntervalDelExpiredMsg(ctx)
 	return
 }
 
@@ -201,7 +210,8 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		}
 	}
 	client = &RedisMQClient{
-		config: cfg,
+		config:   cfg,
+		quitChan: make(chan bool),
 	}
 	// redis 地址
 	if client.config.Addr == "" {
@@ -216,8 +226,12 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		client.config.RetryBackoff = time.Second
 	}
 	// 消息过期时间，默认 3天
-	if client.config.ExpireTime <= time.Duration(0) {
-		client.config.ExpireTime = time.Hour * 24 * 3
+	if client.config.ExpiredTime <= time.Duration(0) {
+		client.config.ExpiredTime = time.Hour * 24 * 3
+	}
+	// 删除过期消息的时间间隔，默认 3天
+	if client.config.DelExpiredMsgInterval <= time.Duration(0) {
+		client.config.DelExpiredMsgInterval = time.Hour * 24 * 3
 	}
 	// 指定等待消息的最大时间，默认最大 2500ms
 	if client.config.WaitTimeout <= time.Duration(0) || client.config.WaitTimeout > time.Millisecond*2500 {
@@ -260,6 +274,8 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		client.rc.Close()
 		return
 	}
+	// 启动定期删除过期消息的协程
+	go client.startIntervalDelExpiredMsg(ctx)
 	return
 }
 
@@ -508,7 +524,28 @@ func (mq *RedisMQClient) DelQueue(ctx context.Context, queue string) (err error)
 
 // Close 关闭客户端
 func (mq *RedisMQClient) Close() (err error) {
+	mq.quitChan <- true
 	return mq.rc.Close()
+}
+
+// startIntervalDelExpiredMsg 启动定期删除过期消息的协程
+func (mq *RedisMQClient) startIntervalDelExpiredMsg(ctx context.Context) {
+	ticker := time.NewTicker(mq.config.DelExpiredMsgInterval)
+	for {
+		select {
+		case <-ticker.C:
+			for queue, mqConfig := range mq.config.MQConfig {
+				if mqConfig.Mode == ModeBoth || mqConfig.Mode == ModeProducer {
+					if _, err := mq.GetExpiredMessages(ctx, queue, true); err != nil {
+						mq.logger.Errorf(ctx, "Delete Expired Messages Error: %+v", err)
+					}
+				}
+			}
+		case <-mq.quitChan:
+			ticker.Stop()
+			return
+		}
+	}
 }
 
 // sendMessage 发送消息
@@ -562,7 +599,7 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 			producerMessage.Key,
 			producerMessage.dataBytes,
 			producerMessage.Timestamp.UnixMilli(),
-			time.Now().Local().Add(mq.config.ExpireTime).Unix(),
+			time.Now().Local().Add(mq.config.ExpiredTime).Unix(),
 		}
 		// 执行 lua 脚本
 		var value any
