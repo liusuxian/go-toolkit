@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-06-25 18:32:36
+ * @LastEditTime: 2024-07-27 18:19:50
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -37,8 +37,13 @@ const (
 
 // TopicConfig topic 配置
 type TopicConfig struct {
-	PartitionNum uint32                    `json:"partitionNum" dc:"topic 分区数量，默认 12 个分区"`                      // topic 分区数量，默认 12 个分区
-	Mode         ProducerConsumerStartMode `json:"mode" dc:"启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者"` // 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
+	// topic 分区数量，默认 12 个分区。
+	PartitionNum uint32 `json:"partitionNum"`
+	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者。
+	Mode ProducerConsumerStartMode `json:"mode"`
+	// 指定消费者组名称列表。如果未指定，将使用默认格式："$env_group_$topic"，其中`$env_group_`是系统根据当前环境自动添加的前缀。
+	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$env_group_"前缀。
+	Groups []string `json:"groups"`
 }
 
 // ProducerMessage 生产者消息
@@ -242,6 +247,10 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 			kc.logger.Infof(ctx, "new producer: %s, topic: %s, partitionNum: %d success", producerName, fullTopicName, partitionNum)
 			return
 		}
+	} else {
+		if _, ok := kc.producerMap[producerName]; ok {
+			return errors.Errorf("new producer: %s, topic: %s, partitionNum: %d already exists", producerName, fullTopicName, partitionNum)
+		}
 	}
 
 	var kafkaCnf = &kafka.ConfigMap{
@@ -298,55 +307,75 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 	var (
 		isStart      bool
 		partitionNum uint32
+		groups       []string
 	)
-	if isStart, partitionNum, err = kc.getConsumerConfig(topic); err != nil {
+	if isStart, partitionNum, groups, err = kc.getConsumerConfig(topic); err != nil {
 		return
 	}
 	if !isStart {
 		return
 	}
-
+	// 创建消费者
 	var (
-		consumerName  = kc.getConsumerName(topic)
-		fullTopicName = kc.getFullTopicName(topic)
-		group         = kc.getConsumerGroupName(topic)
+		consumerNameList = []string{kc.getConsumerName(topic)}
+		groupList        = []string{kc.getConsumerGroupName(topic)}
+		fullTopicName    = kc.getFullTopicName(topic)
 	)
-	if kc.config.IsClose {
-		kc.logger.Infof(ctx, "new consumer: %s, topic: %s, group: %s, partitionNum: %d success (isClosed)", consumerName, fullTopicName, group, partitionNum)
-		return
-	}
-	var kafkaCnf = &kafka.ConfigMap{
-		"api.version.request":       "true",
-		"auto.offset.reset":         kc.config.OffsetReset, // 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-		"heartbeat.interval.ms":     3000,                  // 心跳间隔时间
-		"session.timeout.ms":        30000,                 // 会话超时时间
-		"max.poll.interval.ms":      60000,                 // 最大拉取间隔时间
-		"fetch.max.bytes":           52428800,              // 一次 fetch 请求，从一个 broker 中取得的 records 最大大小
-		"max.partition.fetch.bytes": 104857600,             // 服务器从每个分区里返回给消费者的最大字节数
-		"enable.auto.commit":        false,                 // 关闭自动提交
-	}
-	if err = kafkaSetKey(kafkaCnf, map[string]string{
-		"bootstrap.servers": kc.config.Servers,
-		"security.protocol": kc.config.Protocol,
-		"group.id":          group,
-	}); err != nil {
-		return
+	if len(groups) > 0 {
+		consumerNameList = make([]string, 0, len(groups))
+		groupList = make([]string, 0, len(groups))
+		for _, g := range groups {
+			consumerNameList = append(consumerNameList, kc.getConsumerName(g))
+			groupList = append(groupList, kc.getConsumerGroupName(g))
+		}
 	}
 
-	consumerList := make([]*kafka.Consumer, 0, int(partitionNum))
-	for i := 0; i < int(partitionNum); i++ {
-		consumer, cErr := kafka.NewConsumer(kafkaCnf)
-		if cErr != nil {
-			return cErr
+	for i := 0; i < len(consumerNameList); i++ {
+		var (
+			consumerName = consumerNameList[i]
+			group        = groupList[i]
+		)
+		if _, ok := kc.consumerMap[consumerName]; ok {
+			return errors.Errorf("new consumer: %s, topic: %s, group: %s, partitionNum: %d already exists", consumerName, fullTopicName, group, partitionNum)
 		}
-		if consumer == nil {
-			return errors.Errorf("new consumer %s failed", consumerName)
+		if kc.config.IsClose {
+			kc.logger.Infof(ctx, "new consumer: %s, topic: %s, group: %s, partitionNum: %d success (isClosed)", consumerName, fullTopicName, group, partitionNum)
+			kc.consumerMap[consumerName] = nil
+			continue
 		}
-		consumerList = append(consumerList, consumer)
-	}
+		var kafkaCnf = &kafka.ConfigMap{
+			"api.version.request":       "true",
+			"auto.offset.reset":         kc.config.OffsetReset, // 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
+			"heartbeat.interval.ms":     3000,                  // 心跳间隔时间
+			"session.timeout.ms":        30000,                 // 会话超时时间
+			"max.poll.interval.ms":      60000,                 // 最大拉取间隔时间
+			"fetch.max.bytes":           52428800,              // 一次 fetch 请求，从一个 broker 中取得的 records 最大大小
+			"max.partition.fetch.bytes": 104857600,             // 服务器从每个分区里返回给消费者的最大字节数
+			"enable.auto.commit":        false,                 // 关闭自动提交
+		}
+		if err = kafkaSetKey(kafkaCnf, map[string]string{
+			"bootstrap.servers": kc.config.Servers,
+			"security.protocol": kc.config.Protocol,
+			"group.id":          group,
+		}); err != nil {
+			return
+		}
 
-	kc.consumerMap[consumerName] = consumerList
-	kc.logger.Infof(ctx, "new consumer: %s, topic: %s, group: %s, partitionNum: %d success", consumerName, fullTopicName, group, partitionNum)
+		consumerList := make([]*kafka.Consumer, 0, int(partitionNum))
+		for i := 0; i < int(partitionNum); i++ {
+			consumer, cErr := kafka.NewConsumer(kafkaCnf)
+			if cErr != nil {
+				return cErr
+			}
+			if consumer == nil {
+				return errors.Errorf("new consumer %s failed", consumerName)
+			}
+			consumerList = append(consumerList, consumer)
+		}
+
+		kc.consumerMap[consumerName] = consumerList
+		kc.logger.Infof(ctx, "new consumer: %s, topic: %s, group: %s, partitionNum: %d success", consumerName, fullTopicName, group, partitionNum)
+	}
 	return
 }
 
@@ -369,20 +398,31 @@ func (kc *KafkaClient) SendMessage(ctx context.Context, topic string, producerMe
 }
 
 // Subscribe 订阅数据
-func (kc *KafkaClient) Subscribe(ctx context.Context, topic string, fn func(message *kafka.Message) error) (err error) {
+func (kc *KafkaClient) Subscribe(ctx context.Context, topic string, fn func(message *kafka.Message) error, group ...string) (err error) {
 	// 获取消费者配置
-	var isStart bool
-	if isStart, _, err = kc.getConsumerConfig(topic); err != nil {
+	var (
+		isStart bool
+		groups  []string
+	)
+	if isStart, _, groups, err = kc.getConsumerConfig(topic); err != nil {
 		return
 	}
 	if !isStart {
 		return
+	}
+	if len(groups) > 0 && len(group) > 0 {
+		if !gtkarr.ContainsStr(groups, group[0]) {
+			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		}
 	}
 
 	var (
 		consumerName = kc.getConsumerName(topic)
 		topics       = []string{kc.getFullTopicName(topic)}
 	)
+	if len(group) > 0 {
+		consumerName = kc.getConsumerName(group[0])
+	}
 	if kc.config.IsClose {
 		kc.logger.Infof(ctx, "subscribe consumer: %s, topics: %v (isClosed)", consumerName, topics)
 		return
@@ -435,20 +475,31 @@ func (kc *KafkaClient) Subscribe(ctx context.Context, topic string, fn func(mess
 }
 
 // BatchSubscribe 批量订阅数据
-func (kc *KafkaClient) BatchSubscribe(ctx context.Context, topic string, fn func(messages []*kafka.Message) error) (err error) {
+func (kc *KafkaClient) BatchSubscribe(ctx context.Context, topic string, fn func(messages []*kafka.Message) error, group ...string) (err error) {
 	// 获取消费者配置
-	var isStart bool
-	if isStart, _, err = kc.getConsumerConfig(topic); err != nil {
+	var (
+		isStart bool
+		groups  []string
+	)
+	if isStart, _, groups, err = kc.getConsumerConfig(topic); err != nil {
 		return
 	}
 	if !isStart {
 		return
+	}
+	if len(groups) > 0 && len(group) > 0 {
+		if !gtkarr.ContainsStr(groups, group[0]) {
+			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		}
 	}
 
 	var (
 		consumerName = kc.getConsumerName(topic)
 		topics       = []string{kc.getFullTopicName(topic)}
 	)
+	if len(group) > 0 {
+		consumerName = kc.getConsumerName(group[0])
+	}
 	if kc.config.IsClose {
 		kc.logger.Infof(ctx, "batch subscribe consumer: %s, topics: %v (isClosed)", consumerName, topics)
 		return
@@ -705,7 +756,7 @@ func (kc *KafkaClient) getProducerConfig(topic string) (isStart bool, partitionN
 }
 
 // getConsumerConfig 获取消费者配置
-func (kc *KafkaClient) getConsumerConfig(topic string) (isStart bool, partitionNum uint32, err error) {
+func (kc *KafkaClient) getConsumerConfig(topic string) (isStart bool, partitionNum uint32, groups []string, err error) {
 	if config, ok := kc.config.TopicConfig[topic]; ok {
 		isStart = (config.Mode == ModeBoth || config.Mode == ModeConsumer)
 		if config.PartitionNum > 0 {
@@ -714,6 +765,7 @@ func (kc *KafkaClient) getConsumerConfig(topic string) (isStart bool, partitionN
 			// 默认分区数
 			partitionNum = defaultPartitionNum
 		}
+		groups = config.Groups
 		return
 	}
 	err = errors.Errorf("topic `%s` Not Found", topic)

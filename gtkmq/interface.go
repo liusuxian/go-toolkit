@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-25 17:27:44
+ * @LastEditTime: 2024-07-27 17:27:07
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -26,8 +26,13 @@ const (
 
 // MQConfig 消息队列配置
 type MQConfig struct {
-	PartitionNum uint32                    `json:"partitionNum" dc:"消息队列分区数量，默认 12 个分区"`                        // 消息队列分区数量，默认 12 个分区
-	Mode         ProducerConsumerStartMode `json:"mode" dc:"启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者"` // 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
+	// topic 分区数量，默认 12 个分区。
+	PartitionNum uint32 `json:"partitionNum"`
+	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者。
+	Mode ProducerConsumerStartMode `json:"mode"`
+	// 指定消费者组名称列表。如果未指定，将使用默认格式："$env_group_$topic"，其中`$env_group_`是系统根据当前环境自动添加的前缀。
+	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$env_group_"前缀。
+	Groups []string `json:"groups"`
 }
 
 // ProducerMessage 生产者消息
@@ -64,9 +69,9 @@ type MQClient interface {
 	// SendMessage 发送消息
 	SendMessage(ctx context.Context, queue string, producerMessage *ProducerMessage) (err error)
 	// Subscribe 订阅数据
-	Subscribe(ctx context.Context, queue string, fn func(message *MQMessage) error) (err error)
+	Subscribe(ctx context.Context, queue string, fn func(message *MQMessage) error, group ...string) (err error)
 	// BatchSubscribe 批量订阅数据
-	BatchSubscribe(ctx context.Context, queue string, fn func(messages []*MQMessage) error) (err error)
+	BatchSubscribe(ctx context.Context, queue string, fn func(messages []*MQMessage) error, group ...string) (err error)
 	// GetExpiredMessages 获取过期消息，每个分区每次最多返回 100 条
 	//
 	//	isDelete: 是否删除过期消息
@@ -75,15 +80,15 @@ type MQClient interface {
 	//
 	//	offset: 0-0 重置为最早位置
 	//	offset: $ 重置为最新位置
-	ResetConsumerOffset(ctx context.Context, queue string, offset string) (err error)
+	ResetConsumerOffset(ctx context.Context, queue string, offset string, group ...string) (err error)
 	// ResetConsumerOffsetByPartition 重置消费起点，指定分区（请谨慎使用）
 	//
 	//	offset: 0-0 重置为最早位置
 	//	offset: $ 重置为最新位置
 	//	offset: <ID> 重置为指定位置
-	ResetConsumerOffsetByPartition(ctx context.Context, queue string, partition int32, offset string) (err error)
+	ResetConsumerOffsetByPartition(ctx context.Context, queue string, partition int32, offset string, group ...string) (err error)
 	// DelGroup 删除消费者组（请谨慎使用）
-	DelGroup(ctx context.Context, queue string) (err error)
+	DelGroup(ctx context.Context, queue string, group ...string) (err error)
 	// DelQueue 删除队列（请谨慎使用）
 	DelQueue(ctx context.Context, queue string) (err error)
 	// 关闭客户端

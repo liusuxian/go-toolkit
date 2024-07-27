@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-25 23:06:33
+ * @LastEditTime: 2024-07-27 18:23:53
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -37,12 +37,17 @@ func TestNewWithOption(t *testing.T) {
 	)
 	// 创建 kafka 客户端
 	kafkaClient, err = gtkkafka.NewWithOption(func(cc *gtkkafka.Config) {
+		// cc.Servers = "127.0.0.1:19092"
 		cc.IsClose = true
 		cc.Env = "test"
 		cc.TopicConfig = map[string]gtkkafka.TopicConfig{
 			"topic_100": {
 				PartitionNum: 12,
 				Mode:         gtkkafka.ModeBoth,
+				Groups: []string{
+					"testname1",
+					"testname2",
+				},
 			},
 		}
 		cc.ExcludeEnvTopicMap = map[string][]string{
@@ -93,12 +98,22 @@ func TestNewWithOption(t *testing.T) {
 	}
 	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
 		return nil
-	}); err != nil {
+	}, "testname1"); err != nil {
+		t.Fatal("Subscribe Error: ", err)
+	}
+	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
+		return nil
+	}, "testname2"); err != nil {
 		t.Fatal("Subscribe Error: ", err)
 	}
 	if err = kafkaClient.BatchSubscribe(ctx, "topic_100", func(messages []*kafka.Message) error {
 		return nil
-	}); err != nil {
+	}, "testname1"); err != nil {
+		t.Fatal("BatchSubscribe Error: ", err)
+	}
+	if err = kafkaClient.BatchSubscribe(ctx, "topic_100", func(messages []*kafka.Message) error {
+		return nil
+	}, "testname2"); err != nil {
 		t.Fatal("BatchSubscribe Error: ", err)
 	}
 }
@@ -162,12 +177,23 @@ func TestNewWithConfig(t *testing.T) {
 	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
 		t.Logf("topic_100 receive message: %v", string(message.Value))
 		return nil
-	}); err != nil {
+	}, "testname1"); err != nil {
+		t.Fatal("Subscribe Error: ", err)
+	}
+	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
+		t.Logf("topic_100 receive message: %v", string(message.Value))
+		return nil
+	}, "testname2"); err != nil {
 		t.Fatal("Subscribe Error: ", err)
 	}
 	if err = kafkaClient.BatchSubscribe(ctx, "topic_101", func(messages []*kafka.Message) error {
 		return nil
-	}); err != nil {
+	}, "testname1"); err != nil {
+		t.Fatal("BatchSubscribe Error: ", err)
+	}
+	if err = kafkaClient.BatchSubscribe(ctx, "topic_101", func(messages []*kafka.Message) error {
+		return nil
+	}, "testname2"); err != nil {
 		t.Fatal("BatchSubscribe Error: ", err)
 	}
 	if err = kafkaClient.BatchSubscribe(ctx, "topic_102", func(messages []*kafka.Message) error {

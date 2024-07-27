@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-17 16:15:46
+ * @LastEditTime: 2024-07-27 18:29:26
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -80,15 +80,26 @@ func TestRedisMQConsumerSubscribe(t *testing.T) {
 		}
 	}
 
-	count := 0
+	count1 := 0
 	err = client.Subscribe(ctx, "queue", func(message *gtkmq.MQMessage) error {
-		for count < 2 {
-			count++
+		for count1 < 2 {
+			count1++
 			return errors.New("test error")
 		}
-		t.Logf("subscribe message: %s\n", gtkjson.MustString(message))
+		t.Logf("subscribe111 message: %s\n", gtkjson.MustString(message))
 		return nil
-	})
+	}, "testname1")
+	assert.NoError(err)
+
+	count2 := 0
+	err = client.Subscribe(ctx, "queue", func(message *gtkmq.MQMessage) error {
+		for count2 < 2 {
+			count2++
+			return errors.New("test error")
+		}
+		t.Logf("subscribe222 message: %s\n", gtkjson.MustString(message))
+		return nil
+	}, "testname2")
 	assert.NoError(err)
 	time.Sleep(time.Second * 5)
 }
@@ -115,15 +126,26 @@ func TestRedisMQConsumerBatchSubscribe(t *testing.T) {
 		}
 	}
 
-	count := 0
+	count1 := 0
 	err = client.BatchSubscribe(ctx, "queue", func(message []*gtkmq.MQMessage) error {
-		for count < 2 {
-			count++
+		for count1 < 2 {
+			count1++
 			return errors.New("test error")
 		}
-		t.Logf("subscribe message: %s\n", gtkjson.MustString(message))
+		t.Logf("subscribe111 message: %s\n", gtkjson.MustString(message))
 		return nil
-	})
+	}, "testname1")
+	assert.NoError(err)
+
+	count2 := 0
+	err = client.BatchSubscribe(ctx, "queue", func(message []*gtkmq.MQMessage) error {
+		for count2 < 2 {
+			count2++
+			return errors.New("test error")
+		}
+		t.Logf("subscribe222 message: %s\n", gtkjson.MustString(message))
+		return nil
+	}, "testname2")
 	assert.NoError(err)
 	time.Sleep(time.Second * 5)
 }
@@ -143,7 +165,7 @@ func TestRedisMQResetConsumerOffset(t *testing.T) {
 	assert.NoError(err)
 	defer client.Close()
 
-	err = client.ResetConsumerOffset(ctx, "queue", "0-0")
+	err = client.ResetConsumerOffset(ctx, "queue", "0-0", "testname1")
 	assert.NoError(err)
 }
 
@@ -162,7 +184,7 @@ func TestRedisMQResetConsumerOffsetByPartition(t *testing.T) {
 	assert.NoError(err)
 	defer client.Close()
 
-	err = client.ResetConsumerOffsetByPartition(ctx, "queue", 0, "0-0")
+	err = client.ResetConsumerOffsetByPartition(ctx, "queue", 0, "0-0", "testname1")
 	assert.NoError(err)
 }
 
@@ -210,7 +232,7 @@ func TestRedisMQDelGroup(t *testing.T) {
 	assert.NoError(err)
 	err = client.DelGroup(ctx, "queue_200")
 	assert.NoError(err)
-	err = client.DelGroup(ctx, "queue")
+	err = client.DelGroup(ctx, "queue", "testname2")
 	assert.NoError(err)
 }
 

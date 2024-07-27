@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-17 16:27:18
+ * @LastEditTime: 2024-07-27 18:31:36
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -52,10 +52,12 @@ type RedisMQConfigOption func(c *RedisMQConfig)
 
 // RedisMQClient Redis 消息队列客户端
 type RedisMQClient struct {
-	rc       *gtkredis.RedisClient // redis 客户端
-	config   *RedisMQConfig        // Redis 消息队列配置
-	logger   *gtklog.Logger        // 日志对象
-	quitChan chan bool             // 退出信号
+	rc          *gtkredis.RedisClient // redis 客户端
+	config      *RedisMQConfig        // Redis 消息队列配置
+	producerMap map[string]bool
+	consumerMap map[string]bool
+	logger      *gtklog.Logger // 日志对象
+	quitChan    chan bool      // 退出信号
 }
 
 // 内置 lua 脚本
@@ -129,7 +131,9 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 			ExcludeEnvMQMap: make(map[string][]string),
 			LogConfig:       &gtklog.Config{},
 		},
-		quitChan: make(chan bool),
+		producerMap: make(map[string]bool),
+		consumerMap: make(map[string]bool),
+		quitChan:    make(chan bool),
 	}
 	for _, opt := range opts {
 		opt(client.config)
@@ -210,8 +214,10 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		}
 	}
 	client = &RedisMQClient{
-		config:   cfg,
-		quitChan: make(chan bool),
+		config:      cfg,
+		producerMap: make(map[string]bool),
+		consumerMap: make(map[string]bool),
+		quitChan:    make(chan bool),
 	}
 	// redis 地址
 	if client.config.Addr == "" {
@@ -306,7 +312,16 @@ func (mq *RedisMQClient) NewProducer(ctx context.Context, queue string) (err err
 	globalProducerName := gtkstr.TrimAll(mq.config.GlobalProducer)
 	if globalProducerName != "" {
 		producerName = mq.getGlobalProducerName(globalProducerName)
+		if _, ok := mq.producerMap[producerName]; ok {
+			mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, partitionNum)
+			return
+		}
+	} else {
+		if _, ok := mq.producerMap[producerName]; ok {
+			return errors.Errorf("new producer: %s, queue: %s, partitionNum: %d already exists", producerName, fullQueueName, partitionNum)
+		}
 	}
+	mq.producerMap[producerName] = true
 	mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, partitionNum)
 	return
 }
@@ -317,8 +332,9 @@ func (mq *RedisMQClient) NewConsumer(ctx context.Context, queue string) (err err
 	var (
 		isStart      bool
 		partitionNum uint32
+		groups       []string
 	)
-	if isStart, partitionNum, err = mq.getConsumerConfig(queue); err != nil {
+	if isStart, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
 		return
 	}
 	if !isStart {
@@ -326,14 +342,33 @@ func (mq *RedisMQClient) NewConsumer(ctx context.Context, queue string) (err err
 	}
 	// 创建消费者
 	var (
-		consumerName  = mq.getConsumerName(queue)
-		fullQueueName = mq.getFullQueueName(queue)
-		group         = mq.getConsumerGroupName(queue)
+		consumerNameList = []string{mq.getConsumerName(queue)}
+		groupList        = []string{mq.getConsumerGroupName(queue)}
+		fullQueueName    = mq.getFullQueueName(queue)
 	)
-	if _, err = mq.rc.EvalSha(ctx, "XGROUP_CREATE", []string{fullQueueName, group}, partitionNum, mq.config.OffsetReset); err != nil {
-		return
+	if len(groups) > 0 {
+		consumerNameList = make([]string, 0, len(groups))
+		groupList = make([]string, 0, len(groups))
+		for _, g := range groups {
+			consumerNameList = append(consumerNameList, mq.getConsumerName(g))
+			groupList = append(groupList, mq.getConsumerGroupName(g))
+		}
 	}
-	mq.logger.Infof(ctx, "new consumer: %s, queue: %s, group: %s, partitionNum: %d success", consumerName, fullQueueName, group, partitionNum)
+
+	for i := 0; i < len(consumerNameList); i++ {
+		var (
+			consumerName = consumerNameList[i]
+			group        = groupList[i]
+		)
+		if _, ok := mq.consumerMap[consumerName]; ok {
+			return errors.Errorf("new consumer: %s, queue: %s, group: %s, partitionNum: %d already exists", consumerName, fullQueueName, group, partitionNum)
+		}
+		if _, err = mq.rc.EvalSha(ctx, "XGROUP_CREATE", []string{fullQueueName, group}, partitionNum, mq.config.OffsetReset); err != nil {
+			return
+		}
+		mq.consumerMap[consumerName] = true
+		mq.logger.Infof(ctx, "new consumer: %s, queue: %s, group: %s, partitionNum: %d success", consumerName, fullQueueName, group, partitionNum)
+	}
 	return
 }
 
@@ -356,15 +391,15 @@ func (mq *RedisMQClient) SendMessage(ctx context.Context, queue string, producer
 }
 
 // Subscribe 订阅数据
-func (mq *RedisMQClient) Subscribe(ctx context.Context, queue string, fn func(message *MQMessage) error) (err error) {
+func (mq *RedisMQClient) Subscribe(ctx context.Context, queue string, fn func(message *MQMessage) error, group ...string) (err error) {
 	return mq.handelSubscribe(ctx, queue, 1, func(messages []*MQMessage) error {
 		return fn(messages[0])
-	})
+	}, group...)
 }
 
 // BatchSubscribe 批量订阅数据
-func (mq *RedisMQClient) BatchSubscribe(ctx context.Context, queue string, fn func(messages []*MQMessage) error) (err error) {
-	return mq.handelSubscribe(ctx, queue, mq.config.BatchSize, fn)
+func (mq *RedisMQClient) BatchSubscribe(ctx context.Context, queue string, fn func(messages []*MQMessage) error, group ...string) (err error) {
+	return mq.handelSubscribe(ctx, queue, mq.config.BatchSize, fn, group...)
 }
 
 // GetExpiredMessages 获取过期消息，每个分区每次最多返回 100 条
@@ -436,22 +471,36 @@ func (mq *RedisMQClient) GetExpiredMessages(ctx context.Context, queue string, i
 //
 //	offset: 0-0 重置为最早位置
 //	offset: $ 重置为最新位置
-func (mq *RedisMQClient) ResetConsumerOffset(ctx context.Context, queue string, offset string) (err error) {
+func (mq *RedisMQClient) ResetConsumerOffset(ctx context.Context, queue string, offset string, group ...string) (err error) {
 	// 检查 offset 参数
 	if offset != "0-0" && offset != "$" {
 		err = errors.New("offset must be 0-0 or $")
 		return
 	}
-	// 获取消息队列的分区数量
-	var partitionNum uint32
-	if partitionNum, err = mq.getPartitionNum(queue); err != nil {
+	// 获取消费者配置
+	var (
+		partitionNum uint32
+		groups       []string
+	)
+	if _, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
 		return
+	}
+	if len(groups) > 0 && len(group) > 0 {
+		if !gtkarr.ContainsStr(groups, group[0]) {
+			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		}
 	}
 	// 组装命令参数
 	cmdArgsList := make([][]any, 0, partitionNum)
 	for i := uint32(0); i < partitionNum; i++ {
-		partition := int32(i)
-		cmdArgsList = append(cmdArgsList, []any{"XGROUP", "SETID", mq.getPartitionQueueName(queue, partition), mq.getPartitionGroupName(queue, partition), offset})
+		var (
+			partition          = int32(i)
+			partitionGroupName = mq.getPartitionGroupName(queue, partition)
+		)
+		if len(group) > 0 {
+			partitionGroupName = mq.getPartitionGroupName(group[0], partition)
+		}
+		cmdArgsList = append(cmdArgsList, []any{"XGROUP", "SETID", mq.getPartitionQueueName(queue, partition), partitionGroupName, offset})
 	}
 	// 执行 redis 管道命令
 	var results []*gtkredis.PipelineResult
@@ -472,23 +521,51 @@ func (mq *RedisMQClient) ResetConsumerOffset(ctx context.Context, queue string, 
 //	offset: 0-0 重置为最早位置
 //	offset: $ 重置为最新位置
 //	offset: <ID> 重置为指定位置
-func (mq *RedisMQClient) ResetConsumerOffsetByPartition(ctx context.Context, queue string, partition int32, offset string) (err error) {
-	_, err = mq.rc.Do(ctx, "XGROUP", "SETID", mq.getPartitionQueueName(queue, partition), mq.getPartitionGroupName(queue, partition), offset)
+func (mq *RedisMQClient) ResetConsumerOffsetByPartition(ctx context.Context, queue string, partition int32, offset string, group ...string) (err error) {
+	// 获取消费者配置
+	var groups []string
+	if _, _, groups, err = mq.getConsumerConfig(queue); err != nil {
+		return
+	}
+	if len(groups) > 0 && len(group) > 0 {
+		if !gtkarr.ContainsStr(groups, group[0]) {
+			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		}
+	}
+	partitionGroupName := mq.getPartitionGroupName(queue, partition)
+	if len(group) > 0 {
+		partitionGroupName = mq.getPartitionGroupName(group[0], partition)
+	}
+	_, err = mq.rc.Do(ctx, "XGROUP", "SETID", mq.getPartitionQueueName(queue, partition), partitionGroupName, offset)
 	return
 }
 
 // DelGroup 删除消费者组（请谨慎使用）
-func (mq *RedisMQClient) DelGroup(ctx context.Context, queue string) (err error) {
-	// 获取消息队列的分区数量
-	var partitionNum uint32
-	if partitionNum, err = mq.getPartitionNum(queue); err != nil {
+func (mq *RedisMQClient) DelGroup(ctx context.Context, queue string, group ...string) (err error) {
+	// 获取消费者配置
+	var (
+		partitionNum uint32
+		groups       []string
+	)
+	if _, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
 		return
+	}
+	if len(groups) > 0 && len(group) > 0 {
+		if !gtkarr.ContainsStr(groups, group[0]) {
+			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		}
 	}
 	// 组装命令参数
 	cmdArgsList := make([][]any, 0, partitionNum)
 	for i := uint32(0); i < partitionNum; i++ {
-		partition := int32(i)
-		cmdArgsList = append(cmdArgsList, []any{"XGROUP", "DESTROY", mq.getPartitionQueueName(queue, partition), mq.getPartitionGroupName(queue, partition)})
+		var (
+			partition          = int32(i)
+			partitionGroupName = mq.getPartitionGroupName(queue, partition)
+		)
+		if len(group) > 0 {
+			partitionGroupName = mq.getPartitionGroupName(group[0], partition)
+		}
+		cmdArgsList = append(cmdArgsList, []any{"XGROUP", "DESTROY", mq.getPartitionQueueName(queue, partition), partitionGroupName})
 	}
 	// 执行 redis 管道命令
 	var results []*gtkredis.PipelineResult
@@ -617,17 +694,23 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 }
 
 // handelSubscribe 处理订阅数据
-func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, count int, fn func(messages []*MQMessage) error) (err error) {
+func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, count int, fn func(messages []*MQMessage) error, group ...string) (err error) {
 	// 获取消费者配置
 	var (
 		isStart      bool
 		partitionNum uint32
+		groups       []string
 	)
-	if isStart, partitionNum, err = mq.getConsumerConfig(queue); err != nil {
+	if isStart, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
 		return
 	}
 	if !isStart {
 		return
+	}
+	if len(groups) > 0 && len(group) > 0 {
+		if !gtkarr.ContainsStr(groups, group[0]) {
+			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		}
 	}
 	// 订阅数据
 	var block = mq.config.WaitTimeout.Milliseconds()
@@ -638,6 +721,10 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 				partitionConsumerName = mq.getPartitionConsumerName(queue, partition)
 				partitionQueueName    = mq.getPartitionQueueName(queue, partition)
 			)
+			if len(group) > 0 {
+				partitionGroupName = mq.getPartitionGroupName(group[0], partition)
+				partitionConsumerName = mq.getPartitionConsumerName(group[0], partition)
+			}
 			// 添加对 panic 的处理
 			defer func() {
 				if r := recover(); r != nil {
@@ -685,7 +772,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 							}
 						}
 						if len(mqMessageList) > 0 {
-							mq.handelData(ctx, mqMessageList, fn)
+							mq.handelData(ctx, partitionConsumerName, partitionGroupName, mqMessageList, fn)
 						}
 					}
 				}
@@ -696,7 +783,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 }
 
 // handelData 处理数据
-func (mq *RedisMQClient) handelData(ctx context.Context, messages []*MQMessage, fn func(messages []*MQMessage) error) {
+func (mq *RedisMQClient) handelData(ctx context.Context, partitionConsumerName, partitionGroupName string, messages []*MQMessage, fn func(messages []*MQMessage) error) {
 	// 判断是否有数据
 	length := len(messages)
 	if length == 0 {
@@ -711,7 +798,6 @@ func (mq *RedisMQClient) handelData(ctx context.Context, messages []*MQMessage, 
 	)
 	// 执行处理函数
 	if err := fn(messages); err != nil {
-		partitionConsumerName := mq.getPartitionConsumerName(queue, partition)
 		mq.logger.Errorf(ctx, "%s error: %+v, queue: %s, partition: %d, offset: %v, content: %s", partitionConsumerName, err, queue, partition, offset, string(lastMessage.Value))
 		// 重试处理函数
 		var (
@@ -729,10 +815,7 @@ func (mq *RedisMQClient) handelData(ctx context.Context, messages []*MQMessage, 
 		}
 	}
 	// 提交
-	var (
-		partitionGroupName = mq.getPartitionGroupName(queue, partition)
-		cmdArgs            = make([]any, 0, length+2)
-	)
+	var cmdArgs = make([]any, 0, length+2)
 	cmdArgs = append(cmdArgs, lastMessage.MQPartition.PartitionName, partitionGroupName)
 	for _, message := range messages {
 		cmdArgs = append(cmdArgs, message.MQPartition.Offset)
@@ -789,7 +872,7 @@ func (mq *RedisMQClient) getProducerConfig(queue string) (isStart bool, partitio
 }
 
 // getConsumerConfig 获取消费者配置
-func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, partitionNum uint32, err error) {
+func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, partitionNum uint32, groups []string, err error) {
 	if config, ok := mq.config.MQConfig[queue]; ok {
 		isStart = (config.Mode == ModeBoth || config.Mode == ModeConsumer)
 		if config.PartitionNum > 0 {
@@ -798,6 +881,7 @@ func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, partitio
 			// 默认分区数
 			partitionNum = defaultPartitionNum
 		}
+		groups = config.Groups
 		return
 	}
 	err = errors.Errorf("queue `%s` Not Found", queue)
