@@ -13,21 +13,21 @@ redis_mq:
   offsetReset: "0-0" # 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
   batchSize: 200 # 批量消费的条数，默认 200
   batchInterval: "1s" # 批量消费的间隔时间，默认 5s
-  env: "test" # 当前服务环境，默认 local
+  env: "test" # 消息队列服务环境，默认 local
+  consumerEnv: "gray" # 消费者服务环境，默认和消息队列服务环境一致
   # globalProducer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
   mqConfig: # 消息队列配置，key 为消息队列名称
     queue: # 队列名称
       partitionNum: 12 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-      groups: ["testname1", "testname2"] # 指定消费者组名称列表。如果未指定，将使用默认格式："$env_group_$topic"，其中`$env_group_`是系统根据当前环境自动添加的前缀。可以配置多个消费者组名称，系统会自动在每个名称前添加"$env_group_"前缀。
+      groups: ["testname1", "testname2"] # 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀。可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
     queue_100: # 队列名称
       partitionNum: 1 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
     queue_200: # 队列名称
       partitionNum: 1 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-  excludeEnvMQMap: # 指定哪些服务环境下对应的哪些消息队列不发送消息
-    test: ["queue_100", "queue_200"]
+  excludeMQList: ["queue_100", "queue_200"] # 指定哪些消息队列不发送消息
   logConfig: # 日志配置
     logPath: "logs/redis_mq" # 日志文件路径，默认 logs
     logType: "text" # 日志类型，json|text，默认 text

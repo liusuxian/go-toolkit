@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-27 18:23:53
+ * @LastEditTime: 2024-08-01 11:52:21
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -40,6 +40,7 @@ func TestNewWithOption(t *testing.T) {
 		// cc.Servers = "127.0.0.1:19092"
 		cc.IsClose = true
 		cc.Env = "test"
+		cc.ConsumerEnv = "gray"
 		cc.TopicConfig = map[string]gtkkafka.TopicConfig{
 			"topic_100": {
 				PartitionNum: 12,
@@ -50,10 +51,8 @@ func TestNewWithOption(t *testing.T) {
 				},
 			},
 		}
-		cc.ExcludeEnvTopicMap = map[string][]string{
-			"test": {
-				"topic_100",
-			},
+		cc.ExcludeTopics = []string{
+			"topic_100",
 		}
 		cc.LogConfig.LogPath = "logs/kafka"
 		cc.LogConfig.LogLevelFileName = map[gtklog.Level]string{

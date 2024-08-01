@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-27 18:31:36
+ * @LastEditTime: 2024-08-01 13:44:39
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -40,10 +40,11 @@ type RedisMQConfig struct {
 	OffsetReset           string              `json:"offsetReset" dc:"重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0"`     // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
 	BatchSize             int                 `json:"batchSize" dc:"批量消费的条数，默认 200"`                                // 批量消费的条数，默认 200
 	BatchInterval         time.Duration       `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                           // 批量消费的间隔时间，默认 5s
-	Env                   string              `json:"env" dc:"当前服务环境，默认 local"`                                     // 当前服务环境，默认 local
+	Env                   string              `json:"env" dc:"消息队列服务环境，默认 local"`                                   // 消息队列服务环境，默认 local
+	ConsumerEnv           string              `json:"consumerEnv" dc:"消费者服务环境，默认和消息队列服务环境一致"`                       // 消费者服务环境，默认和消息队列服务环境一致
 	GlobalProducer        string              `json:"globalProducer" dc:"全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空"` // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
 	MQConfig              map[string]MQConfig `json:"mqConfig" dc:"消息队列配置，key 为消息队列名称"`                             // 消息队列配置，key 为消息队列名称
-	ExcludeEnvMQMap       map[string][]string `json:"excludeEnvMQMap" dc:"指定哪些服务环境下对应的哪些消息队列不发送消息"`                 // 指定哪些服务环境下对应的哪些消息队列不发送消息
+	ExcludeMQList         []string            `json:"excludeMQList" dc:"指定哪些消息队列不发送消息"`                             // 指定哪些消息队列不发送消息
 	LogConfig             *gtklog.Config      `json:"logConfig" dc:"日志配置"`                                          // 日志配置
 }
 
@@ -100,7 +101,18 @@ var internalScriptMap = map[string]string{
 
 			for i = 0, partitionNum - 1 do
 				local partitionQueue = KEYS[1] .. "@" .. i
-				local partitionQueueLen = tonumber(redis.call('XLEN', partitionQueue), 10)
+				local rawLen = redis.call('XLEN', partitionQueue)
+				local partitionQueueLen = 0
+				-- 检查rawLen的类型来处理不同的返回值
+				if type(rawLen) == "table" then
+        	if #rawLen == 0 then
+            partitionQueueLen = 0
+        	else
+            partitionQueueLen = tonumber(rawLen[1], 10) or 0
+        	end
+    		else
+        	partitionQueueLen = tonumber(rawLen, 10) or 0
+    		end
 				-- 在第一次循环时, minPartitionQueueLen 会被设置为第一个队列的长度
 				if partitionQueueLen < minPartitionQueueLen then
 					minPartitionQueueLen = partitionQueueLen
@@ -127,9 +139,9 @@ const (
 func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption) (client *RedisMQClient, err error) {
 	client = &RedisMQClient{
 		config: &RedisMQConfig{
-			MQConfig:        make(map[string]MQConfig),
-			ExcludeEnvMQMap: make(map[string][]string),
-			LogConfig:       &gtklog.Config{},
+			MQConfig:      make(map[string]MQConfig),
+			ExcludeMQList: make([]string, 0),
+			LogConfig:     &gtklog.Config{},
 		},
 		producerMap: make(map[string]bool),
 		consumerMap: make(map[string]bool),
@@ -178,9 +190,13 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	if client.config.BatchInterval <= time.Duration(0) {
 		client.config.BatchInterval = time.Second * 5
 	}
-	// 当前服务环境，默认 local
+	// 消息队列服务环境，默认 local
 	if client.config.Env == "" {
 		client.config.Env = "local"
+	}
+	// 消费者服务环境，默认和消息队列服务环境一致
+	if client.config.ConsumerEnv == "" {
+		client.config.ConsumerEnv = client.config.Env
 	}
 	// redis 客户端
 	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
@@ -208,9 +224,9 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client *RedisMQClient, err error) {
 	if cfg == nil {
 		cfg = &RedisMQConfig{
-			MQConfig:        make(map[string]MQConfig),
-			ExcludeEnvMQMap: make(map[string][]string),
-			LogConfig:       &gtklog.Config{},
+			MQConfig:      make(map[string]MQConfig),
+			ExcludeMQList: make([]string, 0),
+			LogConfig:     &gtklog.Config{},
 		}
 	}
 	client = &RedisMQClient{
@@ -259,9 +275,13 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 	if client.config.BatchInterval <= time.Duration(0) {
 		client.config.BatchInterval = time.Second * 5
 	}
-	// 当前服务环境，默认 local
+	// 消息队列服务环境，默认 local
 	if client.config.Env == "" {
 		client.config.Env = "local"
+	}
+	// 消费者服务环境，默认和消息队列服务环境一致
+	if client.config.ConsumerEnv == "" {
+		client.config.ConsumerEnv = client.config.Env
 	}
 	// redis 客户端
 	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
@@ -638,11 +658,9 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 	if !isStart {
 		return
 	}
-	// 环境检测
-	if list, ok := mq.config.ExcludeEnvMQMap[mq.config.Env]; ok {
-		if gtkarr.ContainsStr(list, queue) {
-			return
-		}
+	// 检测哪些消息队列不发送消息
+	if gtkarr.ContainsStr(mq.config.ExcludeMQList, queue) {
+		return
 	}
 	// 计算分区号
 	var partition int32
@@ -930,7 +948,7 @@ func (mq *RedisMQClient) getPartitionQueueName(queue string, partition int32) (p
 
 // getConsumerGroupName 获取消费者组名称
 func (mq *RedisMQClient) getConsumerGroupName(queue string) (group string) {
-	return fmt.Sprintf("%s_group_%s", mq.config.Env, queue)
+	return fmt.Sprintf("%s_group_%s", mq.config.ConsumerEnv, queue)
 }
 
 // getPartitionGroupName 获取分区消费者组名称

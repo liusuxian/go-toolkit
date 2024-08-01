@@ -11,21 +11,21 @@ kafka:
   batchSize: 200 # 批量消费的条数，默认 200
   batchInterval: "5s" # 批量消费的间隔时间，默认 5s
   isClose: true # 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
-  env: "test" # 当前服务环境，默认 local
+  env: "test" # topic 服务环境，默认 local
+  # consumerEnv: "gray" # 消费者服务环境，默认和 topic 服务环境一致
   globalProducer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
   topicConfig: # topic 配置，key 为 topic 名称
     topic_100: # topic 名称
       partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-      groups: ["testname1", "testname2"] # 指定消费者组名称列表。如果未指定，将使用默认格式："$env_group_$topic"，其中`$env_group_`是系统根据当前环境自动添加的前缀。可以配置多个消费者组名称，系统会自动在每个名称前添加"$env_group_"前缀。
+      groups: ["testname1", "testname2"] # 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀。可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
     topic_101: # topic 名称
       partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
     topic_102: # topic 名称
       partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-  excludeEnvTopicMap: # 指定哪些服务环境下对应的哪些 Topic 不发送 Kafka 消息
-    test: ["topic_101", "topic_102"]
+  excludeTopics: ["topic_101", "topic_102"] # 指定哪些 topic 不发送 Kafka 消息
   logConfig: # 日志配置
     logPath: "logs/kafka" # 日志文件路径，默认 logs
     logType: "text" # 日志类型，json|text，默认 text

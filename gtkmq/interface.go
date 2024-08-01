@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-27 17:27:07
+ * @LastEditTime: 2024-08-01 13:35:27
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -26,12 +26,12 @@ const (
 
 // MQConfig 消息队列配置
 type MQConfig struct {
-	// topic 分区数量，默认 12 个分区。
+	// 消息队列分区数量，默认 12 个分区
 	PartitionNum uint32 `json:"partitionNum"`
-	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者。
+	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
 	Mode ProducerConsumerStartMode `json:"mode"`
-	// 指定消费者组名称列表。如果未指定，将使用默认格式："$env_group_$topic"，其中`$env_group_`是系统根据当前环境自动添加的前缀。
-	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$env_group_"前缀。
+	// 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀
+	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
 	Groups []string `json:"groups"`
 }
 
