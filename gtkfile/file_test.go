@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 00:16:21
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-15 20:23:43
+ * @LastEditTime: 2024-08-29 15:45:08
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,6 +12,7 @@ package gtkfile_test
 import (
 	"github.com/liusuxian/go-toolkit/gtkfile"
 	"github.com/stretchr/testify/assert"
+	"io/fs"
 	"testing"
 )
 
@@ -56,4 +57,21 @@ func TestGenRandomFileName(t *testing.T) {
 	t.Log(gtkfile.GenRandomFileName("example.png", true))
 	t.Log(gtkfile.GenRandomFileName("example.png", true))
 	t.Log(gtkfile.GenRandomFileName("example.png", true))
+}
+
+func TestGetFileStat(t *testing.T) {
+	var (
+		assert   = assert.New(t)
+		fileInfo fs.FileInfo
+		err      error
+	)
+	fileInfo, err = gtkfile.GetFileStat("example.png")
+	assert.Error(err)
+	assert.Nil(fileInfo)
+
+	fileInfo, err = gtkfile.GetFileStat("file.go")
+	assert.NoError(err)
+	assert.NotNil(fileInfo)
+	t.Log("fileName:", fileInfo.Name())
+	t.Log("fileSize:", fileInfo.Size())
 }

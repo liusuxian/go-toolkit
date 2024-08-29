@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-02-19 21:04:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-15 20:22:45
+ * @LastEditTime: 2024-08-29 16:07:32
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"hash"
+	"io/fs"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -82,8 +83,21 @@ func GenRandomFileName(originFileName string, isSha256 ...bool) (fileName string
 func MakeDirAll(path string) (err error) {
 	if !PathExists(path) {
 		if err = os.MkdirAll(path, os.ModePerm); err != nil {
-			return errors.Errorf("create <%s> error: %s", path, err)
+			return errors.Errorf("create <%s> error: %v", path, err)
 		}
+	}
+	return
+}
+
+// GetFileStat 获取文件的状态信息
+func GetFileStat(name string) (fileInfo fs.FileInfo, err error) {
+	if fileInfo, err = os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			err = errors.Errorf("file <%s> not exist", name)
+			return
+		}
+		err = errors.Errorf("get file <%s> stat error: %v", name, err)
+		return
 	}
 	return
 }

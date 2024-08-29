@@ -20,6 +20,7 @@ require (
 	github.com/spf13/viper v1.20.0-alpha.6
 	github.com/spf13/viper/remote v1.20.0-alpha.6
 	github.com/stretchr/testify v1.9.0
+	golang.org/x/image v0.19.0
 	google.golang.org/protobuf v1.34.2
 )
 
@@ -59,7 +60,7 @@ require (
 	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.2 // indirect
-	github.com/lestrrat-go/strftime v1.0.6 // indirect
+	github.com/lestrrat-go/strftime v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -96,9 +97,9 @@ require (
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/api v0.189.0 // indirect
 	google.golang.org/genproto v0.0.0-20240722135656-d784300faade // indirect
