@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 18:17:33
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-08-29 21:04:03
+ * @LastEditTime: 2024-09-05 12:04:32
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -26,8 +26,18 @@ import (
 	"strings"
 )
 
+type ImageOptions struct {
+	Width               int                    // 图片宽度，如果宽度或高度中的一个为0，则保持图像的宽高比
+	Height              int                    // 图片高度，如果宽度或高度中的一个为0，则保持图像的宽高比
+	Filter              imaging.ResampleFilter // 图片缩放滤波器
+	JpegQuality         int                    // 图片质量，仅对 JPEG 格式有效，范围 1-100
+	PngCompressionLevel png.CompressionLevel   // PNG 压缩级别，仅对 PNG 格式有效
+	GifNumColors        int                    // GIF 颜色数，仅对 GIF 格式有效，范围 1-256
+	TiffCompression     tiff.CompressionType   // TIFF 压缩类型，仅对 TIFF 格式有效
+}
+
 // ImageToBase64 图片转 Base64 编码
-func ImageToBase64(filePath string) (base64Image string, err error) {
+func ImageToBase64(filePath string, options ImageOptions) (base64Image string, err error) {
 	// 打开图片文件
 	var imageFile *os.File
 	if imageFile, err = os.Open(filePath); err != nil {
@@ -44,19 +54,22 @@ func ImageToBase64(filePath string) (base64Image string, err error) {
 		err = errors.Wrapf(err, "Failed To Decode Image File: %s", filePath)
 		return
 	}
+	// 调整图片尺寸
+	img = imaging.Resize(img, options.Width, options.Height, options.Filter)
 	// 编码图片
 	buf := new(bytes.Buffer)
 	switch strings.ToLower(format) {
 	case "jpeg", "jpg":
-		err = jpeg.Encode(buf, img, nil)
+		err = jpeg.Encode(buf, img, &jpeg.Options{Quality: options.JpegQuality}) // 调整质量
 	case "png":
-		err = png.Encode(buf, img)
+		encoder := png.Encoder{CompressionLevel: options.PngCompressionLevel} // 使用最佳压缩
+		err = encoder.Encode(buf, img)
 	case "gif":
-		err = gif.Encode(buf, img, nil)
+		err = gif.Encode(buf, img, &gif.Options{NumColors: options.GifNumColors}) // 减少颜色数以减小文件大小
 	case "bmp":
 		err = bmp.Encode(buf, img)
 	case "tiff":
-		err = tiff.Encode(buf, img, nil)
+		err = tiff.Encode(buf, img, &tiff.Options{Compression: options.TiffCompression})
 	default:
 		err = errors.New("Unsupported Image Format: " + format)
 	}

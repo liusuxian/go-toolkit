@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-08-29 19:04:14
+ * @LastEditTime: 2024-09-05 12:10:34
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,6 +12,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/disintegration/imaging"
 	"github.com/joho/godotenv"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkenv"
@@ -19,6 +20,8 @@ import (
 	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkresp"
 	"github.com/liusuxian/go-toolkit/gtksdk/aliyun/oss"
+	"golang.org/x/image/tiff"
+	"image/png"
 	"io/fs"
 	"net/http"
 	"os"
@@ -72,7 +75,14 @@ func main() {
 	fmt.Println("GetFileStat: ", fileStat.Name(), fileStat.Size()/1024)
 	// 图片转 Base64 编码
 	var base64Image string
-	if base64Image, err = gtkfile.ImageToBase64(filePath); err != nil {
+	if base64Image, err = gtkfile.ImageToBase64(filePath, gtkfile.ImageOptions{
+		Width:               512,
+		Filter:              imaging.Lanczos,
+		JpegQuality:         70,
+		PngCompressionLevel: png.BestCompression,
+		GifNumColors:        128,
+		TiffCompression:     tiff.Deflate,
+	}); err != nil {
 		fmt.Println("ImageToBase64 Error: ", err)
 		os.Exit(1)
 	}
