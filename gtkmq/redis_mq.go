@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-08-01 13:44:39
+ * @LastEditTime: 2024-10-20 22:47:06
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -30,6 +30,7 @@ type RedisMQConfig struct {
 	Addr                  string              `json:"addr" dc:"redis 地址"`                                           // redis 地址
 	Password              string              `json:"password" dc:"redis 密码"`                                       // redis 密码
 	DB                    int                 `json:"db" dc:"redis 数据库"`                                            // redis 数据库
+	PoolSize              int                 `json:"poolSize" dc:"redis 连接池大小，默认 20"`                              // redis 连接池大小，默认 20
 	Retries               uint                `json:"retries" dc:"发送消息失败后允许重试的次数，默认 3600"`                          // 发送消息失败后允许重试的次数，默认 3600
 	RetryBackoff          time.Duration       `json:"retryBackoff" dc:"发送消息失败后，下一次重试发送前的等待时间，默认 1s"`                // 发送消息失败后，下一次重试发送前的等待时间，默认 1s
 	ExpiredTime           time.Duration       `json:"expiredTime" dc:"消息过期时间，默认 3天"`                                // 消息过期时间，默认 3天
@@ -154,6 +155,10 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	if client.config.Addr == "" {
 		client.config.Addr = "127.0.0.1:6379"
 	}
+	// redis 连接池大小，默认 20
+	if client.config.PoolSize <= 0 {
+		client.config.PoolSize = 20
+	}
 	// 发送消息失败后允许重试的次数，默认 3600
 	if client.config.Retries == 0 {
 		client.config.Retries = 3600
@@ -203,6 +208,7 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 		cc.Addr = client.config.Addr
 		cc.Password = client.config.Password
 		cc.DB = client.config.DB
+		cc.PoolSize = client.config.PoolSize
 	})
 	for k, v := range internalScriptMap {
 		if err = client.rc.ScriptLoad(ctx, k, v); err != nil {
@@ -239,6 +245,10 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 	if client.config.Addr == "" {
 		client.config.Addr = "127.0.0.1:6379"
 	}
+	// redis 连接池大小，默认 20
+	if client.config.PoolSize <= 0 {
+		client.config.PoolSize = 20
+	}
 	// 发送消息失败后允许重试的次数，默认 3600
 	if client.config.Retries == 0 {
 		client.config.Retries = 3600
@@ -288,6 +298,7 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		cc.Addr = client.config.Addr
 		cc.Password = client.config.Password
 		cc.DB = client.config.DB
+		cc.PoolSize = client.config.PoolSize
 	})
 	for k, v := range internalScriptMap {
 		if err = client.rc.ScriptLoad(ctx, k, v); err != nil {
