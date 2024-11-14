@@ -22,7 +22,7 @@ require (
 	github.com/spf13/viper/remote v1.20.0-alpha.6
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/image v0.22.0
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.35.2
 )
 
 require (
