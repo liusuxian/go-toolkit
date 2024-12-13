@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 18:17:33
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-09-05 12:04:32
+ * @LastEditTime: 2024-12-13 17:43:21
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -30,6 +30,7 @@ type ImageOptions struct {
 	Width               int                    // 图片宽度，如果宽度或高度中的一个为0，则保持图像的宽高比
 	Height              int                    // 图片高度，如果宽度或高度中的一个为0，则保持图像的宽高比
 	Filter              imaging.ResampleFilter // 图片缩放滤波器
+	IsResize            bool                   // 图片是否缩放，如果为 true，则图片会按照给定的宽度或高度进行缩放
 	JpegQuality         int                    // 图片质量，仅对 JPEG 格式有效，范围 1-100
 	PngCompressionLevel png.CompressionLevel   // PNG 压缩级别，仅对 PNG 格式有效
 	GifNumColors        int                    // GIF 颜色数，仅对 GIF 格式有效，范围 1-256
@@ -55,7 +56,9 @@ func ImageToBase64(filePath string, options ImageOptions) (base64Image string, e
 		return
 	}
 	// 调整图片尺寸
-	img = imaging.Resize(img, options.Width, options.Height, options.Filter)
+	if options.IsResize {
+		img = imaging.Resize(img, options.Width, options.Height, options.Filter)
+	}
 	// 编码图片
 	buf := new(bytes.Buffer)
 	switch strings.ToLower(format) {
