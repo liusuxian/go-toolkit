@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-08-01 11:49:19
+ * @LastEditTime: 2025-01-15 19:55:15
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -56,23 +56,31 @@ type ProducerMessage struct {
 
 // Config kafka 客户端配置
 type Config struct {
-	Servers        string                 `json:"servers" dc:"SSL接入点的IP地址以及端口"`                                                                           // SSL接入点的IP地址以及端口
-	Protocol       string                 `json:"protocol" dc:"SASL用户认证协议"`                                                                               // SASL用户认证协议
-	Retries        int                    `json:"retries" dc:"发送消息失败后允许重试的次数，默认 2147483647"`                                                              // 发送消息失败后允许重试的次数，默认 2147483647
-	RetryBackoff   int                    `json:"retryBackoff" dc:"发送消息失败后，下一次重试发送前的等待时间，默认 1000 毫秒"`                                                     // 发送消息失败后，下一次重试发送前的等待时间，默认 1000 毫秒
-	WaitTimeout    time.Duration          `json:"waitTimeout" dc:"指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达"`                                                   // 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
-	RetryDelay     time.Duration          `json:"retryDelay" dc:"当消费失败时重试的间隔时间，默认 10s"`                                                                   // 当消费失败时重试的间隔时间，默认 10s
-	RetryMaxCount  int                    `json:"retryMaxCount" dc:"当消费失败时重试的最大次数，默认 0，无限重试"`                                                             // 当消费失败时重试的最大次数，默认 0，无限重试
-	OffsetReset    string                 `json:"offsetReset" dc:"重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest"` // 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-	BatchSize      int                    `json:"batchSize" dc:"批量消费的条数，默认 200"`                                                                          // 批量消费的条数，默认 200
-	BatchInterval  time.Duration          `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                                                                     // 批量消费的间隔时间，默认 5s
-	IsClose        bool                   `json:"isClose" dc:"是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）"`                                                   // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
-	Env            string                 `json:"env" dc:"topic 服务环境，默认 local"`                                                                           // topic 服务环境，默认 local
-	ConsumerEnv    string                 `json:"consumerEnv" dc:"消费者服务环境，默认和 topic 服务环境一致"`                                                              // 消费者服务环境，默认和 topic 服务环境一致
-	GlobalProducer string                 `json:"globalProducer" dc:"全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空"`                                           // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	TopicConfig    map[string]TopicConfig `json:"topicConfig" dc:"topic 配置，key 为 topic 名称"`                                                               // topic 配置，key 为 topic 名称
-	ExcludeTopics  []string               `json:"excludeTopics" dc:"指定哪些 topic 不发送 Kafka 消息"`                                                             // 指定哪些 topic 不发送 Kafka 消息
-	LogConfig      *gtklog.Config         `json:"logConfig" dc:"日志配置"`                                                                                    // 日志配置
+	BootstrapServers           string                 `json:"bootstrapServers"`           // Kafka 服务器的地址列表，格式为 host1:port1,host2:port2
+	SecurityProtocol           string                 `json:"securityProtocol"`           // Kafka 通信的安全协议，如 PLAINTEXT、SSL、SASL_PLAINTEXT、SASL_SSL
+	SaslMechanism              string                 `json:"saslMechanism"`              // SASL 认证机制，如 GSSAPI、PLAIN、OAUTHBEARER、SCRAM-SHA-256、SCRAM-SHA-512
+	SaslUsername               string                 `json:"saslUsername"`               // SASL 认证的用户名
+	SaslPassword               string                 `json:"saslPassword"`               // SASL 认证的密码
+	StickyPartitioningLingerMs int                    `json:"stickyPartitioningLingerMs"` // 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
+	BatchSize                  int                    `json:"batchSize"`                  // 批量发送大小，默认 10485760 字节
+	MessageMaxBytes            int                    `json:"messageMaxBytes"`            // 最大消息大小，默认 16384 字节
+	Retries                    int                    `json:"retries"`                    // 发送消息失败后允许重试的次数，默认 2147483647
+	RetryBackoffMs             int                    `json:"retryBackoffMs"`             // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	LingerMs                   int                    `json:"lingerMs"`                   // 发送延迟时间，默认 100ms
+	QueueBufferingMaxKbytes    int                    `json:"queueBufferingMaxKbytes"`    // Producer 攒批发送中，默认 1048576kb
+	WaitTimeout                time.Duration          `json:"waitTimeout"`                // 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
+	RetryDelay                 time.Duration          `json:"retryDelay"`                 // 当消费失败时重试的间隔时间，默认 10s
+	RetryMaxCount              int                    `json:"retryMaxCount"`              // 当消费失败时重试的最大次数，默认 0，无限重试
+	OffsetReset                string                 `json:"offsetReset"`                // 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
+	BatchConsumeSize           int                    `json:"batchConsumeSize"`           // 批量消费的条数，默认 200
+	BatchConsumeInterval       time.Duration          `json:"batchConsumeInterval"`       // 批量消费的间隔时间，默认 5s
+	IsClose                    bool                   `json:"isClose"`                    // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
+	Env                        string                 `json:"env"`                        // topic 服务环境，默认 local
+	ConsumerEnv                string                 `json:"consumerEnv"`                // 消费者服务环境，默认和 topic 服务环境一致
+	GlobalProducer             string                 `json:"globalProducer"`             // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	TopicConfig                map[string]TopicConfig `json:"topicConfig"`                // topic 配置，key 为 topic 名称
+	ExcludeTopics              []string               `json:"excludeTopics"`              // 指定哪些 topic 不发送 Kafka 消息
+	LogConfig                  *gtklog.Config         `json:"logConfig"`                  // 日志配置
 }
 
 // ConfigOption kafka 客户端配置选项
@@ -103,20 +111,40 @@ func NewWithOption(opts ...ConfigOption) (client *KafkaClient, err error) {
 		opt(client.config)
 	}
 	// SSL接入点的IP地址以及端口
-	if client.config.Servers == "" {
-		client.config.Servers = "127.0.0.1:9092"
+	if client.config.BootstrapServers == "" {
+		client.config.BootstrapServers = "127.0.0.1:9092"
 	}
 	// SASL用户认证协议
-	if client.config.Protocol == "" {
-		client.config.Protocol = "PLAINTEXT"
+	if client.config.SecurityProtocol == "" {
+		client.config.SecurityProtocol = "PLAINTEXT"
+	}
+	// 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
+	if client.config.StickyPartitioningLingerMs <= 0 {
+		client.config.StickyPartitioningLingerMs = 100
+	}
+	// 批量发送大小，默认 10485760 字节
+	if client.config.BatchSize <= 0 {
+		client.config.BatchSize = 10485760
+	}
+	// 最大消息大小，默认 16384 字节
+	if client.config.MessageMaxBytes <= 0 {
+		client.config.MessageMaxBytes = 16384
 	}
 	// 发送消息失败后允许重试的次数，默认 2147483647
 	if client.config.Retries <= 0 {
 		client.config.Retries = math.MaxInt32
 	}
-	// 发送消息失败后，下一次重试发送前的等待时间，默认 1000 毫秒
-	if client.config.RetryBackoff <= 0 {
-		client.config.RetryBackoff = 1000
+	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	if client.config.RetryBackoffMs <= 0 {
+		client.config.RetryBackoffMs = 100
+	}
+	// 发送延迟时间，默认 100ms
+	if client.config.LingerMs <= 0 {
+		client.config.LingerMs = 100
+	}
+	// Producer 攒批发送中，默认 1048576kb
+	if client.config.QueueBufferingMaxKbytes <= 0 {
+		client.config.QueueBufferingMaxKbytes = 1048576
 	}
 	// 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
 	if client.config.WaitTimeout <= time.Duration(0) {
@@ -131,12 +159,12 @@ func NewWithOption(opts ...ConfigOption) (client *KafkaClient, err error) {
 		client.config.OffsetReset = "earliest"
 	}
 	// 批量消费的条数，默认 200
-	if client.config.BatchSize == 0 {
-		client.config.BatchSize = 200
+	if client.config.BatchConsumeSize == 0 {
+		client.config.BatchConsumeSize = 200
 	}
 	// 批量消费的间隔时间，默认 5s
-	if client.config.BatchInterval == time.Duration(0) {
-		client.config.BatchInterval = time.Second * 5
+	if client.config.BatchConsumeInterval == time.Duration(0) {
+		client.config.BatchConsumeInterval = time.Second * 5
 	}
 	// topic 服务环境，默认 local
 	if client.config.Env == "" {
@@ -167,20 +195,40 @@ func NewWithConfig(cfg *Config) (client *KafkaClient, err error) {
 		config: cfg,
 	}
 	// SSL接入点的IP地址以及端口
-	if client.config.Servers == "" {
-		client.config.Servers = "127.0.0.1:9092"
+	if client.config.BootstrapServers == "" {
+		client.config.BootstrapServers = "127.0.0.1:9092"
 	}
 	// SASL用户认证协议
-	if client.config.Protocol == "" {
-		client.config.Protocol = "PLAINTEXT"
+	if client.config.SecurityProtocol == "" {
+		client.config.SecurityProtocol = "PLAINTEXT"
+	}
+	// 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
+	if client.config.StickyPartitioningLingerMs <= 0 {
+		client.config.StickyPartitioningLingerMs = 100
+	}
+	// 批量发送大小，默认 10485760 字节
+	if client.config.BatchSize <= 0 {
+		client.config.BatchSize = 10485760
+	}
+	// 最大消息大小，默认 16384 字节
+	if client.config.MessageMaxBytes <= 0 {
+		client.config.MessageMaxBytes = 16384
 	}
 	// 发送消息失败后允许重试的次数，默认 2147483647
 	if client.config.Retries <= 0 {
 		client.config.Retries = math.MaxInt32
 	}
-	// 发送消息失败后，下一次重试发送前的等待时间，默认 1000 毫秒
-	if client.config.RetryBackoff <= 0 {
-		client.config.RetryBackoff = 1000
+	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	if client.config.RetryBackoffMs <= 0 {
+		client.config.RetryBackoffMs = 100
+	}
+	// 发送延迟时间，默认 100ms
+	if client.config.LingerMs <= 0 {
+		client.config.LingerMs = 100
+	}
+	// Producer 攒批发送中，默认 1048576kb
+	if client.config.QueueBufferingMaxKbytes <= 0 {
+		client.config.QueueBufferingMaxKbytes = 1048576
 	}
 	// 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
 	if client.config.WaitTimeout <= time.Duration(0) {
@@ -195,12 +243,12 @@ func NewWithConfig(cfg *Config) (client *KafkaClient, err error) {
 		client.config.OffsetReset = "earliest"
 	}
 	// 批量消费的条数，默认 200
-	if client.config.BatchSize == 0 {
-		client.config.BatchSize = 200
+	if client.config.BatchConsumeSize == 0 {
+		client.config.BatchConsumeSize = 200
 	}
 	// 批量消费的间隔时间，默认 5s
-	if client.config.BatchInterval == time.Duration(0) {
-		client.config.BatchInterval = time.Second * 5
+	if client.config.BatchConsumeInterval == time.Duration(0) {
+		client.config.BatchConsumeInterval = time.Second * 5
 	}
 	// topic 服务环境，默认 local
 	if client.config.Env == "" {
@@ -263,20 +311,24 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 	}
 
 	var kafkaCnf = &kafka.ConfigMap{
-		"api.version.request":                   "true",
-		"message.max.bytes":                     16384,                  // 最大消息大小
-		"compression.type":                      "gzip",                 // 消息压缩方式
-		"max.in.flight.requests.per.connection": 1,                      // 生产者在收到服务器响应之前可以发送多少个消息，设置为 1 可以保证消息是按照发送的顺序写入服务器，即使发生了重试。
-		"sticky.partitioning.linger.ms":         1000,                   // 黏性分区策略
-		"batch.size":                            1048576,                // 批量发送大小
-		"linger.ms":                             100,                    // 发送延迟时间
-		"retries":                               kc.config.Retries,      // 发送消息失败后允许重试的次数，默认 2147483647
-		"retry.backoff.ms":                      kc.config.RetryBackoff, // 发送消息失败后，下一次重试发送前的等待时间，默认 1000 毫秒
-		"acks":                                  "1",                    // 回复
+		"compression.type":                      "none",                               // 消息压缩方式，如 none、gzip、snappy、lz4、zstd。默认 none
+		"sticky.partitioning.linger.ms":         kc.config.StickyPartitioningLingerMs, // 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
+		"batch.size":                            kc.config.BatchSize,                  // 批量发送大小，默认 10485760 字节
+		"message.max.bytes":                     kc.config.MessageMaxBytes,            // 最大消息大小，默认 16384 字节
+		"retries":                               kc.config.Retries,                    // 发送消息失败后允许重试的次数，默认 2147483647
+		"retry.backoff.ms":                      kc.config.RetryBackoffMs,             // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+		"linger.ms":                             kc.config.LingerMs,                   // 发送延迟时间，默认 100ms
+		"queue.buffering.max.kbytes":            kc.config.QueueBufferingMaxKbytes,    // Producer 攒批发送中，默认 1048576kb
+		"max.in.flight.requests.per.connection": 1,                                    // 生产者在收到服务器响应之前可以发送多少个消息，设置为 1 可以保证消息是按照发送的顺序写入服务器，即使发生了重试
+		"acks":                                  "1",                                  // 回复
 	}
 	if err = kafkaSetKey(kafkaCnf, map[string]string{
-		"bootstrap.servers": kc.config.Servers,
-		"security.protocol": kc.config.Protocol,
+		"api.version.request": "true",
+		"bootstrap.servers":   kc.config.BootstrapServers,
+		"security.protocol":   kc.config.SecurityProtocol,
+		"sasl.mechanism":      kc.config.SaslMechanism,
+		"sasl.username":       kc.config.SaslUsername,
+		"sasl.password":       kc.config.SaslPassword,
 	}); err != nil {
 		return
 	}
@@ -353,19 +405,22 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 			continue
 		}
 		var kafkaCnf = &kafka.ConfigMap{
-			"api.version.request":       "true",
 			"auto.offset.reset":         kc.config.OffsetReset, // 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-			"heartbeat.interval.ms":     3000,                  // 心跳间隔时间
-			"session.timeout.ms":        30000,                 // 会话超时时间
-			"max.poll.interval.ms":      60000,                 // 最大拉取间隔时间
+			"heartbeat.interval.ms":     3000,                  // 心跳间隔时间，默认3s
+			"session.timeout.ms":        45000,                 // 会话超时时间，默认45s
+			"max.poll.interval.ms":      300000,                // 最大拉取间隔时间，默认300s
 			"fetch.max.bytes":           52428800,              // 一次 fetch 请求，从一个 broker 中取得的 records 最大大小
 			"max.partition.fetch.bytes": 104857600,             // 服务器从每个分区里返回给消费者的最大字节数
 			"enable.auto.commit":        false,                 // 关闭自动提交
 		}
 		if err = kafkaSetKey(kafkaCnf, map[string]string{
-			"bootstrap.servers": kc.config.Servers,
-			"security.protocol": kc.config.Protocol,
-			"group.id":          group,
+			"api.version.request": "true",
+			"bootstrap.servers":   kc.config.BootstrapServers,
+			"security.protocol":   kc.config.SecurityProtocol,
+			"sasl.mechanism":      kc.config.SaslMechanism,
+			"sasl.username":       kc.config.SaslUsername,
+			"sasl.password":       kc.config.SaslPassword,
+			"group.id":            group,
 		}); err != nil {
 			return
 		}
@@ -535,9 +590,9 @@ func (kc *KafkaClient) BatchSubscribe(ctx context.Context, topic string, fn func
 			}()
 
 			// 批量数据
-			msgList := make([]*kafka.Message, 0, kc.config.BatchSize)
+			msgList := make([]*kafka.Message, 0, kc.config.BatchConsumeSize)
 			// 定时器
-			ticker := time.NewTicker(kc.config.BatchInterval)
+			ticker := time.NewTicker(kc.config.BatchConsumeInterval)
 			defer ticker.Stop()
 
 			// 读取消息
@@ -572,16 +627,16 @@ func (kc *KafkaClient) BatchSubscribe(ctx context.Context, topic string, fn func
 						// 批量处理数据
 						kc.handelBatchData(ctx, consumerName, consumer, msgList, fn)
 						// 重新创建一个新的 msgList
-						msgList = make([]*kafka.Message, 0, kc.config.BatchSize)
+						msgList = make([]*kafka.Message, 0, kc.config.BatchConsumeSize)
 					}
 				case msg, ok := <-readMsg:
 					if ok {
 						msgList = append(msgList, msg)
-						if len(msgList) == kc.config.BatchSize {
+						if len(msgList) == kc.config.BatchConsumeSize {
 							// 批量处理数据
 							kc.handelBatchData(ctx, consumerName, consumer, msgList, fn)
 							// 重新创建一个新的 msgList
-							msgList = make([]*kafka.Message, 0, kc.config.BatchSize)
+							msgList = make([]*kafka.Message, 0, kc.config.BatchConsumeSize)
 						}
 					}
 				case <-ctx.Done():
@@ -819,6 +874,9 @@ func (kc *KafkaClient) getConsumerGroupName(topic string) (group string) {
 // kafkaSetKey kafka 设置连接配置
 func kafkaSetKey(kafkaCnf *kafka.ConfigMap, kafkaCnfMap map[string]string) (err error) {
 	for k, v := range kafkaCnfMap {
+		if v == "" {
+			continue
+		}
 		if err = kafkaCnf.SetKey(k, v); err != nil {
 			return
 		}

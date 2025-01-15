@@ -1,15 +1,20 @@
 # kafka 配置
 kafka:
-  servers: "127.0.0.1:19092" # SSL接入点的IP地址以及端口
-  protocol: "PLAINTEXT" # SASL用户认证协议
+  bootstrapServers: "127.0.0.1:19092" # Kafka 服务器的地址列表，格式为 host1:port1,host2:port2
+  securityProtocol: "PLAINTEXT" # Kafka 通信的安全协议，如 PLAINTEXT、SSL、SASL_PLAINTEXT、SASL_SSL
+  stickyPartitioningLingerMs: 100 # 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
+  batchSize: 10485760 # 批量发送大小，默认 10485760 字节
+  messageMaxBytes: 16384 # 最大消息大小，默认 16384 字节
   retries: 2147483647 # 发送消息失败后允许重试的次数，默认 2147483647
-  retryBackoff: 1000 # 发送消息失败后，下一次重试发送前的等待时间，默认 1000 毫秒
+  retryBackoffMs: 100 # 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+  lingerMs: 100 # 发送延迟时间，默认 100ms
+  queueBufferingMaxKbytes: 1048576 # Producer 攒批发送中，默认 1048576kb
   waitTimeout: "5s" # 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
   retryDelay: "10s" # 当消费失败时重试的间隔时间，默认 10s
   retryMaxCount: 0 # 当消费失败时重试的最大次数，默认 0，无限重试
   offsetReset: "earliest" # 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-  batchSize: 200 # 批量消费的条数，默认 200
-  batchInterval: "5s" # 批量消费的间隔时间，默认 5s
+  batchConsumeSize: 200 # 批量消费的条数，默认 200
+  batchConsumeInterval: "5s" # 批量消费的间隔时间，默认 5s
   isClose: true # 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
   env: "test" # topic 服务环境，默认 local
   # consumerEnv: "gray" # 消费者服务环境，默认和 topic 服务环境一致
