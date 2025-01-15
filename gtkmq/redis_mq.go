@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-10-20 22:47:06
+ * @LastEditTime: 2025-01-16 00:22:52
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,6 +11,7 @@ package gtkmq
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/liusuxian/go-toolkit/gtkarr"
@@ -22,31 +23,34 @@ import (
 	"github.com/liusuxian/go-toolkit/gtktask"
 	"github.com/pkg/errors"
 	"hash/fnv"
+	"math"
 	"time"
 )
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Addr                  string              `json:"addr" dc:"redis 地址"`                                           // redis 地址
-	Password              string              `json:"password" dc:"redis 密码"`                                       // redis 密码
-	DB                    int                 `json:"db" dc:"redis 数据库"`                                            // redis 数据库
-	PoolSize              int                 `json:"poolSize" dc:"redis 连接池大小，默认 20"`                              // redis 连接池大小，默认 20
-	Retries               uint                `json:"retries" dc:"发送消息失败后允许重试的次数，默认 3600"`                          // 发送消息失败后允许重试的次数，默认 3600
-	RetryBackoff          time.Duration       `json:"retryBackoff" dc:"发送消息失败后，下一次重试发送前的等待时间，默认 1s"`                // 发送消息失败后，下一次重试发送前的等待时间，默认 1s
-	ExpiredTime           time.Duration       `json:"expiredTime" dc:"消息过期时间，默认 3天"`                                // 消息过期时间，默认 3天
-	DelExpiredMsgInterval time.Duration       `json:"delExpiredMsgInterval" dc:"删除过期消息的时间间隔，默认 3天"`                 // 删除过期消息的时间间隔，默认 3天
-	WaitTimeout           time.Duration       `json:"waitTimeout" dc:"指定等待消息的最大时间，默认最大 2500ms"`                     // 指定等待消息的最大时间，默认最大 2500ms
-	RetryDelay            time.Duration       `json:"retryDelay" dc:"当消费失败时重试的间隔时间，默认 10s"`                         // 当消费失败时重试的间隔时间，默认 10s
-	RetryMaxCount         int                 `json:"retryMaxCount" dc:"当消费失败时重试的最大次数，默认 0，无限重试"`                   // 当消费失败时重试的最大次数，默认 0，无限重试
-	OffsetReset           string              `json:"offsetReset" dc:"重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0"`     // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	BatchSize             int                 `json:"batchSize" dc:"批量消费的条数，默认 200"`                                // 批量消费的条数，默认 200
-	BatchInterval         time.Duration       `json:"batchInterval" dc:"批量消费的间隔时间，默认 5s"`                           // 批量消费的间隔时间，默认 5s
-	Env                   string              `json:"env" dc:"消息队列服务环境，默认 local"`                                   // 消息队列服务环境，默认 local
-	ConsumerEnv           string              `json:"consumerEnv" dc:"消费者服务环境，默认和消息队列服务环境一致"`                       // 消费者服务环境，默认和消息队列服务环境一致
-	GlobalProducer        string              `json:"globalProducer" dc:"全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空"` // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	MQConfig              map[string]MQConfig `json:"mqConfig" dc:"消息队列配置，key 为消息队列名称"`                             // 消息队列配置，key 为消息队列名称
-	ExcludeMQList         []string            `json:"excludeMQList" dc:"指定哪些消息队列不发送消息"`                             // 指定哪些消息队列不发送消息
-	LogConfig             *gtklog.Config      `json:"logConfig" dc:"日志配置"`                                          // 日志配置
+	Addr                  string              `json:"addr"`                  // redis 地址
+	Username              string              `json:"username"`              // redis 用户名
+	Password              string              `json:"password"`              // redis 密码
+	DB                    int                 `json:"db"`                    // redis 数据库
+	PoolSize              int                 `json:"poolSize"`              // redis 连接池大小，默认 20
+	TLSConfig             *tls.Config         `json:"tlsConfig"`             // tls 配置
+	Retries               uint                `json:"retries"`               // 发送消息失败后允许重试的次数，默认 2147483647
+	RetryBackoff          time.Duration       `json:"retryBackoff"`          // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	ExpiredTime           time.Duration       `json:"expiredTime"`           // 消息过期时间，默认 90天
+	DelExpiredMsgInterval time.Duration       `json:"delExpiredMsgInterval"` // 删除过期消息的时间间隔，默认 1天
+	WaitTimeout           time.Duration       `json:"waitTimeout"`           // 指定等待消息的最大时间，默认最大 2500ms
+	RetryDelay            time.Duration       `json:"retryDelay"`            // 当消费失败时重试的间隔时间，默认 10s
+	RetryMaxCount         int                 `json:"retryMaxCount"`         // 当消费失败时重试的最大次数，默认 0，无限重试
+	OffsetReset           string              `json:"offsetReset"`           // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+	BatchSize             int                 `json:"batchSize"`             // 批量消费的条数，默认 200
+	BatchInterval         time.Duration       `json:"batchInterval"`         // 批量消费的间隔时间，默认 5s
+	Env                   string              `json:"env"`                   // 消息队列服务环境，默认 local
+	ConsumerEnv           string              `json:"consumerEnv"`           // 消费者服务环境，默认和消息队列服务环境一致
+	GlobalProducer        string              `json:"globalProducer"`        // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	MQConfig              map[string]MQConfig `json:"mqConfig"`              // 消息队列配置，key 为消息队列名称
+	ExcludeMQList         []string            `json:"excludeMQList"`         // 指定哪些消息队列不发送消息
+	LogConfig             *gtklog.Config      `json:"logConfig"`             // 日志配置
 }
 
 // RedisMQConfigOption Redis 消息队列配置选项
@@ -159,21 +163,21 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	if client.config.PoolSize <= 0 {
 		client.config.PoolSize = 20
 	}
-	// 发送消息失败后允许重试的次数，默认 3600
+	// 发送消息失败后允许重试的次数，默认 2147483647
 	if client.config.Retries == 0 {
-		client.config.Retries = 3600
+		client.config.Retries = math.MaxInt32
 	}
-	// 发送消息失败后，下一次重试发送前的等待时间，默认 1s
+	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
 	if client.config.RetryBackoff <= time.Duration(0) {
-		client.config.RetryBackoff = time.Second
+		client.config.RetryBackoff = time.Millisecond * 100
 	}
-	// 消息过期时间，默认 3天
+	// 消息过期时间，默认 90天
 	if client.config.ExpiredTime <= time.Duration(0) {
-		client.config.ExpiredTime = time.Hour * 24 * 3
+		client.config.ExpiredTime = time.Hour * 24 * 90
 	}
-	// 删除过期消息的时间间隔，默认 3天
+	// 删除过期消息的时间间隔，默认 1天
 	if client.config.DelExpiredMsgInterval <= time.Duration(0) {
-		client.config.DelExpiredMsgInterval = time.Hour * 24 * 3
+		client.config.DelExpiredMsgInterval = time.Hour * 24 * 1
 	}
 	// 指定等待消息的最大时间，默认最大 2500ms
 	if client.config.WaitTimeout <= time.Duration(0) || client.config.WaitTimeout > time.Millisecond*2500 {
@@ -209,6 +213,7 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 		cc.Password = client.config.Password
 		cc.DB = client.config.DB
 		cc.PoolSize = client.config.PoolSize
+		cc.TLSConfig = client.config.TLSConfig
 	})
 	for k, v := range internalScriptMap {
 		if err = client.rc.ScriptLoad(ctx, k, v); err != nil {
@@ -249,21 +254,21 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 	if client.config.PoolSize <= 0 {
 		client.config.PoolSize = 20
 	}
-	// 发送消息失败后允许重试的次数，默认 3600
+	// 发送消息失败后允许重试的次数，默认 2147483647
 	if client.config.Retries == 0 {
-		client.config.Retries = 3600
+		client.config.Retries = math.MaxInt32
 	}
-	// 发送消息失败后，下一次重试发送前的等待时间，默认 1s
+	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
 	if client.config.RetryBackoff <= time.Duration(0) {
-		client.config.RetryBackoff = time.Second
+		client.config.RetryBackoff = time.Millisecond * 100
 	}
-	// 消息过期时间，默认 3天
+	// 消息过期时间，默认 90天
 	if client.config.ExpiredTime <= time.Duration(0) {
-		client.config.ExpiredTime = time.Hour * 24 * 3
+		client.config.ExpiredTime = time.Hour * 24 * 90
 	}
-	// 删除过期消息的时间间隔，默认 3天
+	// 删除过期消息的时间间隔，默认 1天
 	if client.config.DelExpiredMsgInterval <= time.Duration(0) {
-		client.config.DelExpiredMsgInterval = time.Hour * 24 * 3
+		client.config.DelExpiredMsgInterval = time.Hour * 24 * 1
 	}
 	// 指定等待消息的最大时间，默认最大 2500ms
 	if client.config.WaitTimeout <= time.Duration(0) || client.config.WaitTimeout > time.Millisecond*2500 {
@@ -299,6 +304,7 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		cc.Password = client.config.Password
 		cc.DB = client.config.DB
 		cc.PoolSize = client.config.PoolSize
+		cc.TLSConfig = client.config.TLSConfig
 	})
 	for k, v := range internalScriptMap {
 		if err = client.rc.ScriptLoad(ctx, k, v); err != nil {

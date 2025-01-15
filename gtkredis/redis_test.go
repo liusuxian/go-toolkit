@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-15 12:12:16
+ * @LastEditTime: 2025-01-15 23:53:33
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -36,9 +36,6 @@ func TestRedis(t *testing.T) {
 		cc.Username = "default"
 		cc.Password = ""
 		cc.DB = 1
-		// cc.TLSConfig = &tls.Config{
-		// 	InsecureSkipVerify: true,
-		// }
 	})
 	defer client.Close()
 
@@ -164,9 +161,6 @@ func TestRedisLuaScript(t *testing.T) {
 		Username: "default",
 		Password: "",
 		DB:       1,
-		// cc.TLSConfig = &tls.Config{
-		// 	InsecureSkipVerify: true,
-		// }
 	})
 	defer client.Close()
 
