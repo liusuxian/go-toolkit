@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-15 20:11:45
+ * @LastEditTime: 2025-01-16 20:01:54
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtkkafka_test
 
 import (
 	"context"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/liusuxian/go-toolkit/gtkconf"
 	"github.com/liusuxian/go-toolkit/gtkkafka"
 	"github.com/liusuxian/go-toolkit/gtklog"

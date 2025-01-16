@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-15 19:55:15
+ * @LastEditTime: 2025-01-16 20:02:02
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,7 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/liusuxian/go-toolkit/gtkarr"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkjson"
