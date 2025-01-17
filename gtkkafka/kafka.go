@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-16 20:02:02
+ * @LastEditTime: 2025-01-17 14:23:08
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -327,8 +327,6 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 		"bootstrap.servers":   kc.config.BootstrapServers,
 		"security.protocol":   kc.config.SecurityProtocol,
 		"sasl.mechanism":      kc.config.SaslMechanism,
-		"sasl.username":       kc.config.SaslUsername,
-		"sasl.password":       kc.config.SaslPassword,
 	}); err != nil {
 		return
 	}
@@ -340,6 +338,11 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 	if producer == nil {
 		err = errors.Errorf("new producer %s failed", producerName)
 		return
+	}
+	if kc.config.SaslUsername != "" || kc.config.SaslPassword != "" {
+		if err = producer.SetSaslCredentials(kc.config.SaslUsername, kc.config.SaslPassword); err != nil {
+			return
+		}
 	}
 
 	go func() {
@@ -418,8 +421,6 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 			"bootstrap.servers":   kc.config.BootstrapServers,
 			"security.protocol":   kc.config.SecurityProtocol,
 			"sasl.mechanism":      kc.config.SaslMechanism,
-			"sasl.username":       kc.config.SaslUsername,
-			"sasl.password":       kc.config.SaslPassword,
 			"group.id":            group,
 		}); err != nil {
 			return
@@ -433,6 +434,11 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 			}
 			if consumer == nil {
 				return errors.Errorf("new consumer %s failed", consumerName)
+			}
+			if kc.config.SaslUsername != "" || kc.config.SaslPassword != "" {
+				if err = consumer.SetSaslCredentials(kc.config.SaslUsername, kc.config.SaslPassword); err != nil {
+					return
+				}
 			}
 			consumerList = append(consumerList, consumer)
 		}
