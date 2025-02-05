@@ -21,8 +21,8 @@ require (
 	github.com/spf13/viper v1.20.0-alpha.6
 	github.com/spf13/viper/remote v1.20.0-alpha.6
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/image v0.23.0
-	google.golang.org/protobuf v1.36.3
+	golang.org/x/image v0.24.0
+	google.golang.org/protobuf v1.36.4
 )
 
 require (
@@ -97,9 +97,9 @@ require (
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3 // indirect
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	google.golang.org/api v0.189.0 // indirect
 	google.golang.org/genproto v0.0.0-20240722135656-d784300faade // indirect
