@@ -1,6 +1,6 @@
 module github.com/liusuxian/go-toolkit
 
-go 1.23.3
+go 1.24.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.34.0
