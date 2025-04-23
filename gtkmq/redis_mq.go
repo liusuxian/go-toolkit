@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-16 00:22:52
+ * @LastEditTime: 2025-04-23 19:16:10
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -16,11 +16,11 @@ import (
 	"fmt"
 	"github.com/liusuxian/go-toolkit/gtkarr"
 	"github.com/liusuxian/go-toolkit/gtkconv"
+	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtklog"
 	"github.com/liusuxian/go-toolkit/gtkredis"
 	"github.com/liusuxian/go-toolkit/gtkstr"
-	"github.com/liusuxian/go-toolkit/gtktask"
 	"github.com/pkg/errors"
 	"hash/fnv"
 	"math"
@@ -701,7 +701,7 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 		producerName = mq.getGlobalProducerName(globalProducerName)
 	}
 	// 发送消息
-	if err = gtktask.Retry(ctx, func(ctx context.Context) (e error) {
+	if err = gtkhttp.Retry(ctx, func(ctx context.Context) (e error) {
 		keys := []string{
 			mq.getFullQueueName(queue),
 		}
@@ -855,7 +855,7 @@ func (mq *RedisMQClient) handelData(ctx context.Context, partitionConsumerName, 
 	for _, message := range messages {
 		cmdArgs = append(cmdArgs, message.MQPartition.Offset)
 	}
-	gtktask.Retry(ctx, func(ctx context.Context) (err error) {
+	gtkhttp.Retry(ctx, func(ctx context.Context) (err error) {
 		_, err = mq.rc.Do(ctx, "XACK", cmdArgs...)
 		return
 	}, mq.config.Retries, mq.config.RetryBackoff, false)

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 11:56:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-28 14:26:36
+ * @LastEditTime: 2025-04-23 19:35:37
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -21,25 +21,23 @@ const (
 )
 
 // Integrated 集成API
-func (c *Client) Integrated(ctx context.Context, request IntegratedRequest) (response *IntegratedResponse, err error) {
+func (c *Client) Integrated(ctx context.Context, request IntegratedRequest) (response IntegratedResponse, err error) {
 	var (
 		setters = []gtkhttp.RequestOption{
-			gtkhttp.SetBody(map[string]any{
+			gtkhttp.WithBody(map[string]any{
 				"query":           request.Query,
 				"response_mode":   "blocking",
 				"conversation_id": request.ConversationId,
 			}),
-			gtkhttp.SetContentType("application/json; charset=utf-8"),
-			gtkhttp.SetKeyValue("Accept", "application/json; charset=utf-8"),
-			gtkhttp.SetKeyValue("X-Appbuilder-Authorization", fmt.Sprintf("Bearer %s", c.config.AppToken)),
+			gtkhttp.WithKeyValue("X-Appbuilder-Authorization", fmt.Sprintf("Bearer %s", c.appToken)),
 		}
 		req *http.Request
 	)
-	if req, err = c.requestBuilder.Build(ctx, http.MethodPost, c.fullURL(integratedURL), setters...); err != nil {
+	if req, err = c.httpClient.NewRequest(ctx, http.MethodPost, c.httpClient.FullURL(integratedURL), setters...); err != nil {
 		return
 	}
 
-	err = c.sendRequest(req, &response)
+	err = c.httpClient.SendRequest(req, &response)
 	return
 }
 
@@ -47,30 +45,26 @@ func (c *Client) Integrated(ctx context.Context, request IntegratedRequest) (res
 func (c *Client) IntegratedStream(ctx context.Context, request IntegratedRequest) (stream *IntegratedResponseStream, err error) {
 	var (
 		setters = []gtkhttp.RequestOption{
-			gtkhttp.SetBody(map[string]any{
+			gtkhttp.WithBody(map[string]any{
 				"query":           request.Query,
 				"response_mode":   "streaming",
 				"conversation_id": request.ConversationId,
 			}),
-			gtkhttp.SetContentType("application/json; charset=utf-8"),
-			gtkhttp.SetKeyValue("Accept", "text/event-stream"),
-			gtkhttp.SetKeyValue("Cache-Control", "no-cache"),
-			gtkhttp.SetKeyValue("Connection", "keep-alive"),
-			gtkhttp.SetKeyValue("X-Appbuilder-Authorization", fmt.Sprintf("Bearer %s", c.config.AppToken)),
+			gtkhttp.WithKeyValue("X-Appbuilder-Authorization", fmt.Sprintf("Bearer %s", c.appToken)),
 		}
 		req *http.Request
 	)
-	if req, err = c.requestBuilder.Build(ctx, http.MethodPost, c.fullURL(integratedURL), setters...); err != nil {
+	if req, err = c.httpClient.NewRequest(ctx, http.MethodPost, c.httpClient.FullURL(integratedURL), setters...); err != nil {
 		return
 	}
 
-	var resp *streamReader[IntegratedResponseResult]
-	if resp, err = sendRequestStream[IntegratedResponseResult](c, req); err != nil {
+	var resp *gtkhttp.StreamReader[IntegratedResponseResult]
+	if resp, err = gtkhttp.SendRequestStream[IntegratedResponseResult](c.httpClient, req); err != nil {
 		return
 	}
 
 	stream = &IntegratedResponseStream{
-		streamReader: resp,
+		StreamReader: resp,
 	}
 	return
 }

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-11 19:57:14
+ * @LastEditTime: 2025-04-23 18:57:28
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,11 +10,8 @@
 package gtktask_test
 
 import (
-	"context"
 	"github.com/liusuxian/go-toolkit/gtktask"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"sync"
 	"testing"
 	"time"
 )
@@ -54,53 +51,6 @@ func TestPoll(t *testing.T) {
 		t.Log("index: ", index)
 	}
 	poll.Stop()
-}
-
-func TestRetry(t *testing.T) {
-	var (
-		ctx    = context.Background()
-		assert = assert.New(t)
-		err    error
-	)
-	err = gtktask.Retry(ctx, func(ctx context.Context) (err error) {
-		t.Logf("Retry1: %+v\n", time.Now())
-		return errors.New("test error1")
-	}, 3, time.Second, false)
-	assert.Error(err)
-	t.Logf("\n")
-
-	err = gtktask.Retry(ctx, func(ctx context.Context) (err error) {
-		t.Logf("Retry2: %+v\n", time.Now())
-		return errors.New("test error2")
-	}, 3, time.Second, true)
-	assert.Error(err)
-	t.Logf("\n")
-
-	err = gtktask.Retry(ctx, func(ctx context.Context) (err error) {
-		t.Logf("Retry3: %+v\n", time.Now())
-		return errors.New("test error3")
-	}, 3, 0, false, time.Second, time.Second*3)
-	assert.Error(err)
-	t.Logf("\n")
-
-	// 创建一个可取消的上下文
-	var wg sync.WaitGroup
-	wg.Add(2)
-	cancelCtx, cancelFun := context.WithCancel(ctx)
-	go func() {
-		defer wg.Done()
-		err = gtktask.Retry(cancelCtx, func(ctx context.Context) (err error) {
-			t.Logf("Retry4: %+v\n", time.Now())
-			return errors.New("test error4")
-		}, 3, 0, false, time.Second, time.Second*3)
-		t.Logf("err: %v\n", err)
-	}()
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second * 2)
-		cancelFun()
-	}()
-	wg.Wait()
 }
 
 func TestGetGoroutinesAndTasks(t *testing.T) {

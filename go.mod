@@ -5,9 +5,9 @@ go 1.24.0
 require (
 	github.com/alicebob/miniredis/v2 v2.34.0
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
-	github.com/confluentinc/confluent-kafka-go/v2 v2.8.0
+	github.com/confluentinc/confluent-kafka-go/v2 v2.10.0
 	github.com/disintegration/imaging v1.6.2
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-viper/mapstructure/v2 v2.2.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gorilla/websocket v1.5.3
@@ -21,7 +21,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/spf13/viper/remote v1.20.1
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/image v0.25.0
+	golang.org/x/image v0.26.0
 	google.golang.org/protobuf v1.36.6
 )
 
@@ -97,9 +97,9 @@ require (
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	google.golang.org/api v0.215.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect

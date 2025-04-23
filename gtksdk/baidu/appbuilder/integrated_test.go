@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 11:56:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-31 20:37:20
+ * @LastEditTime: 2025-04-23 19:44:42
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -25,7 +25,7 @@ func TestIntegrated(t *testing.T) {
 	var (
 		assert   = assert.New(t)
 		ctx      = context.Background()
-		response *appbuilder.IntegratedResponse
+		response appbuilder.IntegratedResponse
 		err      error
 	)
 	err = godotenv.Load(".env")
@@ -47,7 +47,6 @@ func TestIntegrated(t *testing.T) {
 		Query: "请帮我写一遍新中式装修的小红书营销文案",
 	})
 	assert.Error(err)
-	assert.Nil(response)
 }
 
 func TestIntegratedStream(t *testing.T) {

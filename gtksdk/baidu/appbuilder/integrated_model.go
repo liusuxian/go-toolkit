@@ -2,12 +2,14 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-27 22:07:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-27 22:07:12
+ * @LastEditTime: 2025-04-23 19:18:54
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package appbuilder
+
+import "github.com/liusuxian/go-toolkit/gtkhttp"
 
 // IntegratedRequest 请求数据
 type IntegratedRequest struct {
@@ -20,6 +22,7 @@ type IntegratedResponse struct {
 	Code    int                       `json:"code" dc:"错误码。非0为错误"` // 错误码。非0为错误
 	Message string                    `json:"message" dc:"报错信息"`   // 报错信息
 	Result  *IntegratedResponseResult `json:"result" dc:"返回结果"`    // 返回结果
+	gtkhttp.HttpHeader
 }
 
 // IntegratedResponseResult 返回结果
@@ -30,5 +33,5 @@ type IntegratedResponseResult struct {
 
 // IntegratedResponseStream 流式响应数据
 type IntegratedResponseStream struct {
-	*streamReader[IntegratedResponseResult]
+	*gtkhttp.StreamReader[IntegratedResponseResult]
 }

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-11 19:56:04
+ * @LastEditTime: 2025-04-23 18:56:46
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,7 +10,6 @@
 package gtktask
 
 import (
-	"context"
 	"github.com/liusuxian/go-toolkit/gtkcontainer/linkedlist/doubly"
 	"github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -26,9 +25,6 @@ type PollInfo struct {
 	interval        time.Duration                         // 可用性检测时间间隔
 	quitChan        chan bool                             // 退出信号
 }
-
-// RetryFunc 重试函数的类型
-type RetryFunc func(ctx context.Context) (err error)
 
 // NewPoll 新建轮询对象
 func NewPoll(unavailableTime, interval time.Duration) (p *PollInfo) {
@@ -114,51 +110,6 @@ func (p *PollInfo) Poll() (id int, err error) {
 		return
 	}
 	id, err = strconv.Atoi(node.Uuid)
-	return
-}
-
-// Retry 重试
-//
-//	f: 要执行的函数
-//	maxRetries: 最大重试次数（包含首次尝试）
-//	delay: 默认重试之间的延迟时间。当配置了`delayList`时，该参数将失效
-//	increaseDelay: 是否让延迟时间随着重试次数增加而线性增加。当配置了`delayList`时，该参数将失效
-//	delayList: 自定义延迟列表
-func Retry(ctx context.Context, f RetryFunc, maxRetries uint, delay time.Duration, increaseDelay bool, delayList ...time.Duration) (err error) {
-	for i := uint(0); i < maxRetries; i++ {
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-			return
-		default:
-		}
-
-		if err = f(ctx); err != nil {
-			// 检查是否已经是最后一次尝试
-			if i == maxRetries-1 {
-				return
-			}
-
-			if len(delayList) > 0 && uint(len(delayList)) > i {
-				// 使用自定义延迟列表
-				time.Sleep(delayList[i])
-			} else if len(delayList) > 0 {
-				// 延迟列表长度不够时返回错误
-				err = errors.Errorf("not enough delay values provided, required: %d", maxRetries-1)
-				return
-			} else {
-				if increaseDelay {
-					// 重试延迟随重试次数线性增加
-					time.Sleep(delay * time.Duration(i+1))
-				} else {
-					// 每次重试的延迟时间保持不变
-					time.Sleep(delay)
-				}
-			}
-			continue
-		}
-		return
-	}
 	return
 }
 

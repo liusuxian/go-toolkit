@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-20 21:04:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-28 14:25:55
+ * @LastEditTime: 2025-04-23 19:21:11
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,15 +13,13 @@ import (
 	"context"
 	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkstr"
-	"github.com/pkg/errors"
 	"net/http"
 )
 
 // FeishuRobot
 type FeishuRobot struct {
-	webHookURL     string
-	requestBuilder gtkhttp.RequestBuilder // 请求构建器
-	httpClient     *http.Client
+	webHookURL string
+	httpClient *gtkhttp.HTTPClient // http 客户端
 }
 
 // FeiShuMessage 飞书消息
@@ -38,9 +36,8 @@ type FeishuContent struct {
 // NewFeishuRobot 新建飞书机器人
 func NewFeishuRobot(webHookURL string) (fr *FeishuRobot) {
 	return &FeishuRobot{
-		webHookURL:     webHookURL,
-		requestBuilder: gtkhttp.NewRequestBuilder(),
-		httpClient:     &http.Client{},
+		webHookURL: webHookURL,
+		httpClient: gtkhttp.NewHTTPClient(""),
 	}
 }
 
@@ -61,28 +58,13 @@ func (fr *FeishuRobot) SendTextMessage(ctx context.Context, content string) (err
 func (fr *FeishuRobot) send(ctx context.Context, data FeiShuMessage) (err error) {
 	var (
 		setters = []gtkhttp.RequestOption{
-			gtkhttp.SetBody(data),
-			gtkhttp.SetContentType("application/json; charset=utf-8"),
+			gtkhttp.WithBody(data),
+			gtkhttp.WithContentType("application/json; charset=utf-8"),
 		}
 		req *http.Request
 	)
-
-	if req, err = fr.requestBuilder.Build(ctx, http.MethodPost, fr.webHookURL, setters...); err != nil {
+	if req, err = fr.httpClient.NewRequest(ctx, http.MethodPost, fr.webHookURL, setters...); err != nil {
 		return
 	}
-	// 发送请求
-	var resp *http.Response
-	if resp, err = fr.httpClient.Do(req); err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	if gtkhttp.IsFailureStatusCode(resp) {
-		err = &gtkhttp.RequestError{
-			HTTPStatusCode: resp.StatusCode,
-			Err:            errors.New("Request Failed"),
-		}
-		return
-	}
-	return
+	return fr.httpClient.SendRequest(req, nil)
 }

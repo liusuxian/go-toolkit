@@ -1,17 +1,17 @@
 /*
  * @Author: liusuxian 382185882@qq.com
- * @Date: 2024-02-26 21:02:16
+ * @Date: 2025-04-07 18:25:49
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-26 21:21:29
+ * @LastEditTime: 2025-04-23 18:49:42
  * @Description:
  *
- * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
+ * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package gtkhttp
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
+	"fmt"
 	"io"
 )
 
@@ -21,11 +21,11 @@ type ErrorAccumulator interface {
 	Bytes() (errBytes []byte)   // Bytes
 }
 
-// errorBuffer 错误`Buffer`接口
+// errorBuffer 错误 Buffer 接口
 type errorBuffer interface {
 	io.Writer
-	Len() int
-	Bytes() []byte
+	Len() (n int)
+	Bytes() (b []byte)
 }
 
 // DefaultErrorAccumulator 默认错误收集器
@@ -43,8 +43,7 @@ func NewErrorAccumulator() (e ErrorAccumulator) {
 // Write
 func (e *DefaultErrorAccumulator) Write(p []byte) (err error) {
 	if _, err = e.Buffer.Write(p); err != nil {
-		err = errors.Errorf("error accumulator write error, %v", err)
-		return
+		return fmt.Errorf("error accumulator write error, %w", err)
 	}
 	return
 }
