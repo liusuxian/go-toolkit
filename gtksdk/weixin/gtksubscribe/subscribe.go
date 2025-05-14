@@ -2,12 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-13 18:51:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 18:52:20
+ * @LastEditTime: 2025-05-14 15:36:18
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package subscribe
+package gtksubscribe
 
 import (
 	"crypto/sha1"

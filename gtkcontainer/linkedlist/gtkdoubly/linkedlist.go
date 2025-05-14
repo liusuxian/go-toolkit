@@ -2,12 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-08 14:00:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 13:49:38
+ * @LastEditTime: 2025-05-14 15:31:02
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package doubly
+package gtkdoubly
 
 import (
 	"fmt"

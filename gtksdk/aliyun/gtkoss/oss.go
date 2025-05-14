@@ -2,12 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:06:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 11:47:33
+ * @LastEditTime: 2025-05-14 15:01:11
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package alioss
+package gtkoss
 
 import (
 	"context"
@@ -45,6 +45,8 @@ type AliyunOSS struct {
 	uploadFileNameFn func(filename string) (newFilename string) // 上传文件时生成文件名的函数
 	cache            Cache                                      // 缓存器
 	client           *oss.Client                                // 客户端
+	ossClientOptions []oss.ClientOption                         // 阿里云OSS客户端选项
+	ossOptions       []oss.Option                               // 阿里云OSS操作选项
 	bucket           *oss.Bucket                                // 存储空间
 }
 
@@ -62,6 +64,20 @@ func WithUploadFileNameFn(fn func(filename string) (newFilename string)) (opt Op
 func WithCache(cache Cache) (opt Option) {
 	return func(s *AliyunOSS) {
 		s.cache = cache
+	}
+}
+
+// WithOSSClientOptions 设置阿里云OSS客户端选项
+func WithOSSClientOptions(ossClientOptions ...oss.ClientOption) (opt Option) {
+	return func(s *AliyunOSS) {
+		s.ossClientOptions = ossClientOptions
+	}
+}
+
+// WithOSSOptions 设置阿里云OSS操作选项
+func WithOSSOptions(ossOptions ...oss.Option) (opt Option) {
+	return func(s *AliyunOSS) {
+		s.ossOptions = ossOptions
 	}
 }
 
@@ -92,7 +108,7 @@ func NewAliyunOSS(config OSSConfig, opts ...Option) (s *AliyunOSS, err error) {
 		}
 	}
 	// 连接OSS
-	if s.client, err = oss.New(s.config.EndpointAccelerate, s.config.AccessKeyID, s.config.AccessKeySecret); err != nil {
+	if s.client, err = oss.New(s.config.EndpointAccelerate, s.config.AccessKeyID, s.config.AccessKeySecret, s.ossClientOptions...); err != nil {
 		return
 	}
 	// 获取存储空间

@@ -2,12 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-24 20:51:23
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 11:46:14
+ * @LastEditTime: 2025-05-14 15:33:19
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package alioss
+package gtkoss
 
 import (
 	"context"

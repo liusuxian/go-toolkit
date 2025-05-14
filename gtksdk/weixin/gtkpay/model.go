@@ -7,7 +7,7 @@
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package pay
+package gtkpay
 
 import "time"
 

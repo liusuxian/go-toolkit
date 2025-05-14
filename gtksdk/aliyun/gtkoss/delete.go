@@ -7,7 +7,7 @@
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package alioss
+package gtkoss
 
 // DeleteObjects 删除多个对象
 func (s *AliyunOSS) DeleteObjects(objectKeys ...string) (err error) {

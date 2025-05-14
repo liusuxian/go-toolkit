@@ -2,15 +2,15 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-08 14:00:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-11 15:33:07
+ * @LastEditTime: 2025-05-14 15:31:13
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package doubly_test
+package gtkdoubly_test
 
 import (
-	"github.com/liusuxian/go-toolkit/gtkcontainer/linkedlist/doubly"
+	"github.com/liusuxian/go-toolkit/gtkcontainer/linkedlist/gtkdoubly"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
@@ -20,15 +20,15 @@ func TestLinkedList_PushFront(t *testing.T) {
 	var (
 		assert = assert.New(t)
 		index  = 0
-		list   = doubly.NewLinkedList()
+		list   = gtkdoubly.NewLinkedList()
 	)
 
 	assert.Equal(0, list.Len())
-	list.PushFront(doubly.Node{Uuid: "10", Value: 10}, doubly.Node{Uuid: "10", Value: 100}, doubly.Node{Uuid: "9", Value: 9}, doubly.Node{Uuid: "8", Value: 8})
+	list.PushFront(gtkdoubly.Node{Uuid: "10", Value: 10}, gtkdoubly.Node{Uuid: "10", Value: 100}, gtkdoubly.Node{Uuid: "9", Value: 9}, gtkdoubly.Node{Uuid: "8", Value: 8})
 	for i := 7; i >= 0; i-- {
-		list.PushFront(doubly.Node{Uuid: strconv.Itoa(i), Value: i})
+		list.PushFront(gtkdoubly.Node{Uuid: strconv.Itoa(i), Value: i})
 	}
-	list.PushFront(doubly.Node{Uuid: "9", Value: 100})
+	list.PushFront(gtkdoubly.Node{Uuid: "9", Value: 100})
 	assert.Equal(11, list.Len())
 
 	iterator := list.NewIterator()
@@ -43,15 +43,15 @@ func TestLinkedList_PushBack(t *testing.T) {
 	var (
 		assert = assert.New(t)
 		index  = 0
-		list   = doubly.NewLinkedList()
+		list   = gtkdoubly.NewLinkedList()
 	)
 
 	assert.Equal(0, list.Len())
-	list.PushBack(doubly.Node{Uuid: "0", Value: 0}, doubly.Node{Uuid: "0", Value: 100}, doubly.Node{Uuid: "1", Value: 1}, doubly.Node{Uuid: "2", Value: 2})
+	list.PushBack(gtkdoubly.Node{Uuid: "0", Value: 0}, gtkdoubly.Node{Uuid: "0", Value: 100}, gtkdoubly.Node{Uuid: "1", Value: 1}, gtkdoubly.Node{Uuid: "2", Value: 2})
 	for i := 3; i < 10; i++ {
-		list.PushBack(doubly.Node{Uuid: strconv.Itoa(i), Value: i})
+		list.PushBack(gtkdoubly.Node{Uuid: strconv.Itoa(i), Value: i})
 	}
-	list.PushBack(doubly.Node{Uuid: "9", Value: 100})
+	list.PushBack(gtkdoubly.Node{Uuid: "9", Value: 100})
 	assert.Equal(10, list.Len())
 
 	iterator := list.NewIterator()
@@ -66,18 +66,18 @@ func TestLinkedList_InsertBefore(t *testing.T) {
 	var (
 		assert = assert.New(t)
 		index  = 0
-		list   = doubly.NewLinkedList()
+		list   = gtkdoubly.NewLinkedList()
 		err    error
 	)
 
 	assert.Equal(0, list.Len())
-	err = list.InsertBefore("100", doubly.Node{Uuid: "9", Value: 9}, doubly.Node{Uuid: "9", Value: 100}, doubly.Node{Uuid: "8", Value: 8}, doubly.Node{Uuid: "7", Value: 7})
+	err = list.InsertBefore("100", gtkdoubly.Node{Uuid: "9", Value: 9}, gtkdoubly.Node{Uuid: "9", Value: 100}, gtkdoubly.Node{Uuid: "8", Value: 8}, gtkdoubly.Node{Uuid: "7", Value: 7})
 	assert.NoError(err)
 	assert.Equal(3, list.Len())
-	err = list.InsertBefore("100", doubly.Node{Uuid: "9", Value: 200})
+	err = list.InsertBefore("100", gtkdoubly.Node{Uuid: "9", Value: 200})
 	assert.Error(err)
 
-	err = list.InsertBefore("7", []doubly.Node{
+	err = list.InsertBefore("7", []gtkdoubly.Node{
 		{Uuid: "6", Value: 6},
 		{Uuid: "6", Value: 100},
 		{Uuid: "5", Value: 5},
@@ -102,18 +102,18 @@ func TestLinkedList_InsertAfter(t *testing.T) {
 	var (
 		assert = assert.New(t)
 		index  = 0
-		list   = doubly.NewLinkedList()
+		list   = gtkdoubly.NewLinkedList()
 		err    error
 	)
 
 	assert.Equal(0, list.Len())
-	err = list.InsertAfter("100", doubly.Node{Uuid: "0", Value: 0}, doubly.Node{Uuid: "0", Value: 100}, doubly.Node{Uuid: "1", Value: 1}, doubly.Node{Uuid: "2", Value: 2})
+	err = list.InsertAfter("100", gtkdoubly.Node{Uuid: "0", Value: 0}, gtkdoubly.Node{Uuid: "0", Value: 100}, gtkdoubly.Node{Uuid: "1", Value: 1}, gtkdoubly.Node{Uuid: "2", Value: 2})
 	assert.NoError(err)
 	assert.Equal(3, list.Len())
-	err = list.InsertAfter("100", doubly.Node{Uuid: "0", Value: 200})
+	err = list.InsertAfter("100", gtkdoubly.Node{Uuid: "0", Value: 200})
 	assert.Error(err)
 
-	err = list.InsertAfter("2", []doubly.Node{
+	err = list.InsertAfter("2", []gtkdoubly.Node{
 		{Uuid: "3", Value: 3},
 		{Uuid: "4", Value: 4},
 		{Uuid: "5", Value: 5},
@@ -138,11 +138,11 @@ func TestLinkedList_Remove(t *testing.T) {
 	var (
 		assert = assert.New(t)
 		index  = 0
-		list   = doubly.NewLinkedList()
+		list   = gtkdoubly.NewLinkedList()
 	)
 
 	assert.Equal(0, list.Len())
-	list.PushBack([]doubly.Node{
+	list.PushBack([]gtkdoubly.Node{
 		{Uuid: "0", Value: 0},
 		{Uuid: "1", Value: 1},
 		{Uuid: "2", Value: 2},
@@ -179,13 +179,13 @@ func TestLinkedList_Remove(t *testing.T) {
 func TestLinkedList_Poll(t *testing.T) {
 	var (
 		assert = assert.New(t)
-		list   = doubly.NewLinkedList()
-		node   *doubly.Node
+		list   = gtkdoubly.NewLinkedList()
+		node   *gtkdoubly.Node
 		err    error
 	)
 
 	assert.Equal(0, list.Len())
-	list.PushBack([]doubly.Node{
+	list.PushBack([]gtkdoubly.Node{
 		{Uuid: "0", Value: 0},
 		{Uuid: "1", Value: 1},
 		{Uuid: "2", Value: 2},
@@ -216,14 +216,14 @@ func TestLinkedList_Poll(t *testing.T) {
 func TestLinkedList_GetCurrentAndMoveToNext(t *testing.T) {
 	var (
 		assert = assert.New(t)
-		list   = doubly.NewLinkedList()
-		node   *doubly.Node
+		list   = gtkdoubly.NewLinkedList()
+		node   *gtkdoubly.Node
 		err    error
 		value  any
 	)
 
 	assert.Equal(0, list.Len())
-	list.PushBack([]doubly.Node{
+	list.PushBack([]gtkdoubly.Node{
 		{Uuid: "0", Value: 0},
 		{Uuid: "1", Value: 1},
 		{Uuid: "2", Value: 2},
