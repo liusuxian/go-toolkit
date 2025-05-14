@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-12 15:26:25
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 21:59:18
+ * @LastEditTime: 2025-05-15 03:10:18
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -95,19 +95,32 @@ func NewPaymentService(opts ...Option) (s *PaymentService, err error) {
 
 // NotifyUnsign 微信支付回调验签
 func (s *PaymentService) NotifyUnsign(ctx context.Context, request *http.Request, mch *Merchant) (result *TransactionResult, err error) {
-	// 加载私钥文件
-	var privateKey *rsa.PrivateKey
-	if privateKey, err = s.loadPrivateKey(ctx, mch.CertCacheKey, mch.OssCertFile); err != nil {
+	var handler *notify.Handler
+	if mch.PublicCacheKey != "" && mch.OssPublicFile != "" && mch.PublicKeyID != "" {
+		// 加载公钥文件
+		var publicKey *rsa.PublicKey
+		if publicKey, err = s.loadPublicKey(ctx, mch.PublicCacheKey, mch.OssPublicFile); err != nil {
+			return
+		}
+		handler = notify.NewNotifyHandler(mch.APIKey, verifiers.NewSHA256WithRSAPubkeyVerifier(mch.PublicKeyID, *publicKey))
+	} else if mch.PrivateCacheKey != "" && mch.OssPrivateFile != "" {
+		// 加载私钥文件
+		var privateKey *rsa.PrivateKey
+		if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey, mch.OssPrivateFile); err != nil {
+			return
+		}
+		// 使用 `RegisterDownloaderWithPrivateKey` 注册下载器
+		if err = downloader.MgrInstance().RegisterDownloaderWithPrivateKey(ctx, privateKey, mch.CertNo, mch.Mchid, mch.APIKey); err != nil {
+			return
+		}
+		// 获取商户号对应的微信支付平台证书访问器
+		certificateVisitor := downloader.MgrInstance().GetCertificateVisitor(mch.Mchid)
+		// 使用证书访问器初始化 `notify.Handler`
+		handler = notify.NewNotifyHandler(mch.APIKey, verifiers.NewSHA256WithRSAVerifier(certificateVisitor))
+	} else {
+		err = fmt.Errorf("mch `%v` is not valid", mch.Mchid)
 		return
 	}
-	// 使用 `RegisterDownloaderWithPrivateKey` 注册下载器
-	if err = downloader.MgrInstance().RegisterDownloaderWithPrivateKey(ctx, privateKey, mch.CertNo, mch.Mchid, mch.APIKey); err != nil {
-		return
-	}
-	// 获取商户号对应的微信支付平台证书访问器
-	certificateVisitor := downloader.MgrInstance().GetCertificateVisitor(mch.Mchid)
-	// 使用证书访问器初始化 `notify.Handler`
-	handler := notify.NewNotifyHandler(mch.APIKey, verifiers.NewSHA256WithRSAVerifier(certificateVisitor))
 	// 验签与解密
 	transaction := new(payments.Transaction)
 	var notifyReq *notify.Request
@@ -124,34 +137,61 @@ func (s *PaymentService) NotifyUnsign(ctx context.Context, request *http.Request
 
 // getClient 获取微信支付客户端
 func (s *PaymentService) getClient(ctx context.Context, mch *Merchant) (client *core.Client, err error) {
-	client, _, err = s.getClientAndPrivateKey(ctx, mch)
+	if mch.PublicCacheKey != "" && mch.OssPublicFile != "" && mch.PublicKeyID != "" {
+		client, err = s.newClientWithPublicKey(ctx, mch)
+	} else if mch.PrivateCacheKey != "" && mch.OssPrivateFile != "" {
+		client, err = s.newClientWithPrivateKey(ctx, mch)
+	} else {
+		err = fmt.Errorf("mch `%v` is not valid", mch.Mchid)
+	}
 	return
 }
 
-// getClientAndPrivateKey 获取微信支付客户端和私钥
-func (s *PaymentService) getClientAndPrivateKey(ctx context.Context, mch *Merchant) (client *core.Client, privateKey *rsa.PrivateKey, err error) {
-	// 获取私钥文件
-	var b []byte
-	if b, err = s.getPrivateKey(ctx, mch.CertCacheKey, mch.OssCertFile); err != nil {
-		return
-	}
-	// 通过私钥的文本内容加载私钥
-	if privateKey, err = wxUtils.LoadPrivateKey(string(b)); err != nil {
+// newClientWithPrivateKey 通过私钥创建微信支付客户端
+func (s *PaymentService) newClientWithPrivateKey(ctx context.Context, mch *Merchant) (client *core.Client, err error) {
+	// 加载私钥文件
+	var privateKey *rsa.PrivateKey
+	if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey, mch.OssPrivateFile); err != nil {
 		return
 	}
 	// 创建微信支付客户端
-	client, err = core.NewClient(ctx, []core.ClientOption{
+	client, err = core.NewClient(
+		ctx,
 		option.WithWechatPayAutoAuthCipher(mch.Mchid, mch.CertNo, privateKey, mch.APIKey),
 		option.WithWechatPayCipher(
 			encryptors.NewWechatPayEncryptor(downloader.MgrInstance().GetCertificateVisitor(mch.Mchid)),
 			decryptors.NewWechatPayDecryptor(privateKey),
 		),
-	}...)
+	)
 	return
 }
 
-// getPrivateKey 获取私钥文件
-func (s *PaymentService) getPrivateKey(ctx context.Context, certCacheKey, ossCertFile string) (b []byte, err error) {
+// newClientWithPublicKey 通过公钥创建微信支付客户端
+func (s *PaymentService) newClientWithPublicKey(ctx context.Context, mch *Merchant) (client *core.Client, err error) {
+	// 加载私钥文件
+	var privateKey *rsa.PrivateKey
+	if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey, mch.OssPrivateFile); err != nil {
+		return
+	}
+	// 加载公钥文件
+	var publicKey *rsa.PublicKey
+	if publicKey, err = s.loadPublicKey(ctx, mch.PublicCacheKey, mch.OssPublicFile); err != nil {
+		return
+	}
+	// 创建微信支付客户端
+	client, err = core.NewClient(
+		ctx,
+		option.WithWechatPayPublicKeyAuthCipher(mch.Mchid, mch.CertNo, privateKey, mch.PublicKeyID, publicKey),
+		option.WithWechatPayCipher(
+			encryptors.NewWechatPayEncryptor(downloader.MgrInstance().GetCertificateVisitor(mch.Mchid)),
+			decryptors.NewWechatPayDecryptor(privateKey),
+		),
+	)
+	return
+}
+
+// getCertFileContent 获取证书文件内容
+func (s *PaymentService) getCertFileContent(ctx context.Context, certCacheKey, ossCertFile string) (b []byte, err error) {
 	// 获取缓存
 	var val any
 	if val, err = s.cache.Get(ctx, certCacheKey); err != nil {
@@ -181,13 +221,24 @@ func (s *PaymentService) getPrivateKey(ctx context.Context, certCacheKey, ossCer
 
 // loadPrivateKey 加载私钥文件
 func (s *PaymentService) loadPrivateKey(ctx context.Context, certCacheKey, ossCertFile string) (privateKey *rsa.PrivateKey, err error) {
-	// 获取私钥文件
+	// 获取证书文件内容
 	var b []byte
-	if b, err = s.getPrivateKey(ctx, certCacheKey, ossCertFile); err != nil {
+	if b, err = s.getCertFileContent(ctx, certCacheKey, ossCertFile); err != nil {
 		return
 	}
 	// 通过私钥的文本内容加载私钥
 	return wxUtils.LoadPrivateKey(string(b))
+}
+
+// loadPublicKey 加载公钥文件
+func (s *PaymentService) loadPublicKey(ctx context.Context, certCacheKey, ossCertFile string) (publicKey *rsa.PublicKey, err error) {
+	// 获取证书文件内容
+	var b []byte
+	if b, err = s.getCertFileContent(ctx, certCacheKey, ossCertFile); err != nil {
+		return
+	}
+	// 通过公钥的文本内容加载公钥
+	return wxUtils.LoadPublicKey(string(b))
 }
 
 // convertTransaction 转换 Transaction

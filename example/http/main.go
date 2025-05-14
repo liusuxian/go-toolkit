@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 22:28:08
+ * @LastEditTime: 2025-05-15 03:19:58
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -42,7 +42,7 @@ func main() {
 	)
 	if err = godotenv.Load(".env"); err != nil {
 		fmt.Println("Load Error: ", err)
-		return
+		os.Exit(1)
 	}
 	if aliyunOSS, err = gtkoss.NewAliyunOSS(gtkoss.OSSConfig{
 		Bucket:             gtkenv.Get("bucket"),
@@ -56,7 +56,7 @@ func main() {
 		MaxCount:           gtkconv.ToInt(gtkenv.Get("maxCount")),
 	}); err != nil {
 		fmt.Println("NewAliyunOSS Error: ", err)
-		return
+		os.Exit(1)
 	}
 	uploadFileService = gtkhttp.NewUploadFileService(gtkhttp.UploadFileConfig{
 		AllowTypeList: gtkconv.ToStringSlice(gtkenv.Get("allowTypeList")),
