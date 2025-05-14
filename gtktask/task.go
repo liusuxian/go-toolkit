@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:32:50
+ * @LastEditTime: 2025-05-14 22:24:50
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtktask
 
 import (
 	"fmt"
-	"github.com/liusuxian/go-toolkit/gtkcontainer/linkedlist/doubly"
+	"github.com/liusuxian/go-toolkit/gtkcontainer/linkedlist/gtkdoubly"
 	"github.com/orcaman/concurrent-map/v2"
 	"strconv"
 	"time"
@@ -19,7 +19,7 @@ import (
 
 // PollInfo 用于存储轮询信息的结构体
 type PollInfo struct {
-	availableList   *doubly.LinkedList                    // 可用的轮询对象标识列表
+	availableList   *gtkdoubly.LinkedList                 // 可用的轮询对象标识列表
 	unavailableMap  cmap.ConcurrentMap[string, time.Time] // 不可用的轮询对象标识映射
 	unavailableTime time.Duration                         // 不可用的轮询对象的冷却时间
 	interval        time.Duration                         // 可用性检测时间间隔
@@ -35,7 +35,7 @@ func NewPoll(unavailableTime, interval time.Duration) (p *PollInfo) {
 		interval = time.Minute * 10
 	}
 	p = &PollInfo{
-		availableList:   doubly.NewLinkedList(),
+		availableList:   gtkdoubly.NewLinkedList(),
 		unavailableMap:  cmap.New[time.Time](),
 		unavailableTime: unavailableTime,
 		interval:        interval,
@@ -58,7 +58,7 @@ func (p *PollInfo) start() {
 				if now.After(unavailableTime) || now.Equal(unavailableTime) {
 					// 超过冷却时间，将不可用对象从不可用列表中移除
 					p.unavailableMap.Remove(uuid)
-					p.availableList.PushBack(doubly.Node{Uuid: uuid, Value: nil})
+					p.availableList.PushBack(gtkdoubly.Node{Uuid: uuid, Value: nil})
 				}
 			}
 		case <-p.quitChan:
@@ -75,9 +75,9 @@ func (p *PollInfo) Stop() {
 
 // Init 初始化轮询对象
 func (p *PollInfo) Init(ids ...int) {
-	items := make([]doubly.Node, 0, len(ids))
+	items := make([]gtkdoubly.Node, 0, len(ids))
 	for _, id := range ids {
-		items = append(items, doubly.Node{Uuid: strconv.Itoa(id), Value: nil})
+		items = append(items, gtkdoubly.Node{Uuid: strconv.Itoa(id), Value: nil})
 	}
 	p.availableList.PushBack(items...)
 }
@@ -104,7 +104,7 @@ func (p *PollInfo) SetUnavailable(ids ...int) {
 
 // Poll 轮询
 func (p *PollInfo) Poll() (id int, err error) {
-	var node *doubly.Node
+	var node *gtkdoubly.Node
 	if node, err = p.availableList.Poll(); err != nil {
 		err = fmt.Errorf("no available id found")
 		return
