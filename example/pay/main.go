@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-15 05:11:39
+ * @LastEditTime: 2025-05-15 05:20:03
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -22,9 +22,8 @@ import (
 	"github.com/liusuxian/go-toolkit/gtksdk/weixin/gtkpay"
 	"github.com/liusuxian/go-toolkit/gtktype"
 	"net/http"
-	"net/url"
 	"os"
-	"path"
+	"strings"
 	"time"
 )
 
@@ -101,10 +100,12 @@ func main() {
 		gtkresp.RespSucc(w, resp)
 	})
 	// 回调处理函数
-	http.HandleFunc("/notify/*", func(w http.ResponseWriter, r *http.Request) {
-		u, _ := url.Parse(r.URL.String())
-		merchantPayId := path.Base(u.Path)
-		fmt.Printf("merchantPayId: %v\n", merchantPayId)
+	http.HandleFunc("/notify/", func(w http.ResponseWriter, r *http.Request) {
+		segments := strings.Split(r.URL.Path, "/")
+		if len(segments) > 2 {
+			merchantPayId := segments[2]
+			fmt.Printf("merchantPayId: %v\n", merchantPayId)
+		}
 		result, err := paymentService.NotifyUnsign(ctx, r, mch)
 		if err != nil {
 			gtkresp.RespFail(w, 500, "{\"code\":\"FAIL\",\"message\":\"失败\"}")
