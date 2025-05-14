@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-15 04:44:58
+ * @LastEditTime: 2025-05-15 05:11:39
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -85,7 +85,7 @@ func main() {
 			OutTradeNo:  gtktype.String(outTradeNo),
 			TimeExpire:  gtktype.Time(time.Now().Add(time.Minute * 30)),
 			Attach:      gtktype.String("id=1"),
-			NotifyUrl:   gtktype.String("http://b3bcf662.natappfree.cc/notify/1"),
+			NotifyUrl:   gtktype.String(gtkenv.Get("notifyUrl")),
 			Amount: &gtkpay.Amount{
 				Total:    gtktype.Int64(1),
 				Currency: gtktype.String("CNY"),
@@ -101,7 +101,7 @@ func main() {
 		gtkresp.RespSucc(w, resp)
 	})
 	// 回调处理函数
-	http.HandleFunc("/notify/1", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/notify/*", func(w http.ResponseWriter, r *http.Request) {
 		u, _ := url.Parse(r.URL.String())
 		merchantPayId := path.Base(u.Path)
 		fmt.Printf("merchantPayId: %v\n", merchantPayId)
