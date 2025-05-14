@@ -7,7 +7,7 @@
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package oss
+package alioss
 
 import "github.com/aliyun/aliyun-oss-go-sdk/oss"
 

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 16:37:40
+ * @LastEditTime: 2025-05-14 11:49:22
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -19,7 +19,7 @@ import (
 	"github.com/liusuxian/go-toolkit/gtkfile"
 	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkresp"
-	"github.com/liusuxian/go-toolkit/gtksdk/aliyun/oss"
+	"github.com/liusuxian/go-toolkit/gtksdk/aliyun/alioss"
 	"golang.org/x/image/tiff"
 	"image/png"
 	"io/fs"
@@ -36,7 +36,7 @@ type User struct {
 
 func main() {
 	var (
-		aliyunOSS         *oss.AliyunOSS
+		aliyunOSS         *alioss.AliyunOSS
 		uploadFileService *gtkhttp.UploadFileService
 		err               error
 	)
@@ -44,7 +44,7 @@ func main() {
 		fmt.Println("Load Error: ", err)
 		return
 	}
-	if aliyunOSS, err = oss.NewAliyunOSS(oss.OSSConfig{
+	if aliyunOSS, err = alioss.NewAliyunOSS(alioss.OSSConfig{
 		Bucket:             gtkenv.Get("bucket"),
 		EndpointAccelerate: gtkenv.Get("endpointAccelerate"),
 		EndpointInternal:   gtkenv.Get("endpointInternal"),

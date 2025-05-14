@@ -2,12 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-13 11:23:37
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 12:33:08
+ * @LastEditTime: 2025-05-14 11:47:24
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package oss
+package alioss
 
 import (
 	"context"

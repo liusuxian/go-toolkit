@@ -2,12 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 15:14:48
+ * @LastEditTime: 2025-05-14 11:47:52
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package oss
+package alioss
 
 import (
 	"fmt"
