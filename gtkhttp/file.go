@@ -2,12 +2,14 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:14:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 19:46:15
+ * @LastEditTime: 2025-05-13 16:23:38
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package gtkhttp
+
+import "github.com/liusuxian/go-toolkit/internal/utils"
 
 const (
 	defaultMaxMemory = 32 << 20 // 32 MB
@@ -15,23 +17,52 @@ const (
 
 // UploadFileConfig 上传文件配置
 type UploadFileConfig struct {
-	AllowTypeList []string `json:"allowTypeList" dc:"允许上传的文件类型"`      // 允许上传的文件类型
-	MaxSize       int      `json:"maxSize" dc:"单个文件最大上传大小(MB)，默认1MB"` // 单个文件最大上传大小(MB)，默认1MB
-	MaxCount      int      `json:"maxCount" dc:"单次上传文件的最大数量，默认10"`    // 单次上传文件的最大数量，默认10
+	AllowTypeList []string `json:"allowTypeList"` // 允许上传的文件类型
+	MaxSize       int      `json:"maxSize"`       // 单个文件最大上传大小(MB)，默认1MB
+	MaxCount      int      `json:"maxCount"`      // 单次上传文件的最大数量，默认10
 }
 
-// InitUploadFileConfig 初始化上传文件配置
-func InitUploadFileConfig(config *UploadFileConfig) {
-	if len(config.AllowTypeList) == 0 {
-		config.AllowTypeList = []string{
+// UploadFileService 上传文件服务
+type UploadFileService struct {
+	config           UploadFileConfig                           // 配置
+	uploadFileNameFn func(filename string) (newFilename string) // 上传文件时生成文件名的函数
+}
+
+// Option 选项
+type Option func(s *UploadFileService)
+
+// WithUploadFileNameFn 设置上传文件时生成文件名的函数
+func WithUploadFileNameFn(fn func(filename string) (newFilename string)) (opt Option) {
+	return func(s *UploadFileService) {
+		s.uploadFileNameFn = fn
+	}
+}
+
+// NewUploadFileService 创建上传文件服务
+func NewUploadFileService(config UploadFileConfig, opts ...Option) (s *UploadFileService) {
+	s = &UploadFileService{config: config}
+	// 设置配置默认值
+	if len(s.config.AllowTypeList) == 0 {
+		s.config.AllowTypeList = []string{
 			"jpg", "jpeg", "png", "gif",
 			"doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf",
 		}
 	}
-	if config.MaxSize == 0 {
-		config.MaxSize = 1
+	if s.config.MaxSize == 0 {
+		s.config.MaxSize = 1
 	}
-	if config.MaxCount == 0 {
-		config.MaxCount = 10
+	if s.config.MaxCount == 0 {
+		s.config.MaxCount = 10
 	}
+	// 设置选项
+	for _, opt := range opts {
+		opt(s)
+	}
+	// 设置默认上传文件时生成文件名的函数
+	if s.uploadFileNameFn == nil {
+		s.uploadFileNameFn = func(filename string) (newFilename string) {
+			return utils.GenRandomFilename(filename)
+		}
+	}
+	return
 }

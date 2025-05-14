@@ -13,7 +13,7 @@ import (
 	"context"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkredis"
-	"github.com/liusuxian/go-toolkit/gtkreflect"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"time"
 )
 
@@ -387,7 +387,7 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 		if newVal, err = f(ctx); err != nil {
 			return
 		}
-		if gtkreflect.IsNil(newVal) && !force {
+		if utils.IsNil(newVal) && !force {
 			return
 		}
 		// 此处不判断`newVal == nil`是因为防止缓存穿透
@@ -419,7 +419,7 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, arg
 		if newVal, err = f(ctx); err != nil {
 			return
 		}
-		if gtkreflect.IsNil(newVal) && !force {
+		if utils.IsNil(newVal) && !force {
 			return
 		}
 		// 此处不判断`newVal == nil`是因为防止缓存穿透
@@ -498,7 +498,7 @@ func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func,
 	if val, err = f(ctx); err != nil {
 		return
 	}
-	if gtkreflect.IsNil(val) && !force {
+	if utils.IsNil(val) && !force {
 		return
 	}
 	// 此处不判断`val == nil`是因为防止缓存穿透

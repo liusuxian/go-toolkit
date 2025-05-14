@@ -11,7 +11,6 @@ package utils
 
 import (
 	"encoding/json"
-	"github.com/liusuxian/go-toolkit/gtkreflect"
 	"reflect"
 )
 
@@ -19,7 +18,7 @@ import (
 func DoRedisArgs(sidx int, args ...any) (err error) {
 	for k, v := range args {
 		if k > (sidx - 1) {
-			reflectInfo := gtkreflect.OriginTypeAndKind(v)
+			reflectInfo := OriginTypeAndKind(v)
 			switch reflectInfo.OriginKind {
 			case reflect.Struct, reflect.Map, reflect.Slice, reflect.Array:
 				// 忽略切片类型为 []byte 的情况

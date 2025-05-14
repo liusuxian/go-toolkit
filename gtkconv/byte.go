@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 16:52:17
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 22:32:07
+ * @LastEditTime: 2025-05-13 14:44:49
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,7 +12,7 @@ package gtkconv
 import (
 	"encoding/json"
 	"github.com/liusuxian/go-toolkit/gtkbinary"
-	"github.com/liusuxian/go-toolkit/gtkreflect"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"reflect"
 )
 
@@ -56,7 +56,7 @@ func ToBytesE(i any) (iv []byte, err error) {
 	case []byte:
 		return val, nil
 	default:
-		originValueAndKind := gtkreflect.OriginValueAndKind(i)
+		originValueAndKind := utils.OriginValueAndKind(i)
 		switch originValueAndKind.OriginKind {
 		case reflect.Map, reflect.Struct:
 			return json.Marshal(i)

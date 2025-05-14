@@ -2,14 +2,14 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-10 13:10:33
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-11 14:30:55
+ * @LastEditTime: 2025-05-13 13:48:49
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package doubly
 
-import "github.com/pkg/errors"
+import "fmt"
 
 // doPushFront 将一个或多个节点插入链表头部，如果 uuid 已存在则更新节点值
 func (list *LinkedList) doPushFront(items ...Node) {
@@ -72,7 +72,7 @@ func (list *LinkedList) doInsertBefore(targetUuid string, items ...Node) (err er
 		targetExists bool
 	)
 	if targetNode, targetExists = list.nodes[targetUuid]; !targetExists {
-		err = errors.Errorf("target node [%s] not found", targetUuid)
+		err = fmt.Errorf("target node [%s] not found", targetUuid)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (list *LinkedList) doInsertAfter(targetUuid string, items ...Node) (err err
 		targetExists bool
 	)
 	if targetNode, targetExists = list.nodes[targetUuid]; !targetExists {
-		err = errors.Errorf("target node [%s] not found", targetUuid)
+		err = fmt.Errorf("target node [%s] not found", targetUuid)
 		return
 	}
 

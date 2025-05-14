@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 18:17:33
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-12-13 17:43:21
+ * @LastEditTime: 2025-05-13 16:14:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,7 +14,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/disintegration/imaging"
-	"github.com/pkg/errors"
 	"golang.org/x/image/bmp"
 	"golang.org/x/image/tiff"
 	"image"
@@ -42,7 +41,7 @@ func ImageToBase64(filePath string, options ImageOptions) (base64Image string, e
 	// 打开图片文件
 	var imageFile *os.File
 	if imageFile, err = os.Open(filePath); err != nil {
-		err = errors.Wrapf(err, "Failed To Open Image File: %s", filePath)
+		err = fmt.Errorf("failed to open image file: %s, error: %w", filePath, err)
 		return
 	}
 	defer imageFile.Close()
@@ -52,7 +51,7 @@ func ImageToBase64(filePath string, options ImageOptions) (base64Image string, e
 		format string
 	)
 	if img, format, err = image.Decode(imageFile); err != nil {
-		err = errors.Wrapf(err, "Failed To Decode Image File: %s", filePath)
+		err = fmt.Errorf("failed to decode image file: %s, error: %w", filePath, err)
 		return
 	}
 	// 调整图片尺寸
@@ -74,10 +73,10 @@ func ImageToBase64(filePath string, options ImageOptions) (base64Image string, e
 	case "tiff":
 		err = tiff.Encode(buf, img, &tiff.Options{Compression: options.TiffCompression})
 	default:
-		err = errors.New("Unsupported Image Format: " + format)
+		err = fmt.Errorf("unsupported image format: %s", format)
 	}
 	if err != nil {
-		err = errors.Wrapf(err, "Failed To Encode Image File: %s", filePath)
+		err = fmt.Errorf("failed to encode image file: %s, error: %w", filePath, err)
 		return
 	}
 	// 转换为 Base64
@@ -92,7 +91,7 @@ func ImageSplit(imageName, dirPath string, rows, cols int) (imgPathList []string
 	// 加载图片
 	var img image.Image
 	if img, err = imaging.Open(imageName); err != nil {
-		err = errors.Wrapf(err, "Failed To Load Image File: %s", imageName)
+		err = fmt.Errorf("failed to load image file: %s, error: %w", imageName, err)
 		return
 	}
 	// 获取图片的尺寸
@@ -107,7 +106,7 @@ func ImageSplit(imageName, dirPath string, rows, cols int) (imgPathList []string
 	)
 	// 创建目录
 	if err = MakeDirAll(dirPath); err != nil {
-		err = errors.Wrapf(err, "Failed To Create Directory: %s", dirPath)
+		err = fmt.Errorf("failed to create directory: %s, error: %w", dirPath, err)
 		return
 	}
 	// 分割并保存每个子图像
@@ -117,10 +116,10 @@ func ImageSplit(imageName, dirPath string, rows, cols int) (imgPathList []string
 			var (
 				subImg     = imaging.Crop(img, image.Rect(c*singleWidth, r*singleHeight, (c+1)*singleWidth, (r+1)*singleHeight))
 				subImgName = fmt.Sprintf("%d_%d_%s", r, c, filepath.Base(imageName))
-				subImgPath = fmt.Sprintf("%s/%s", dirPath, GenRandomFileName(subImgName))
+				subImgPath = fmt.Sprintf("%s/%s", dirPath, GenRandomFilename(subImgName))
 			)
 			if err = imaging.Save(subImg, subImgPath); err != nil {
-				err = errors.Wrapf(err, "Failed To Save Image File: %s", subImgPath)
+				err = fmt.Errorf("failed to save image file: %s, error: %w", subImgPath, err)
 				return
 			}
 			imgPathList = append(imgPathList, subImgPath)

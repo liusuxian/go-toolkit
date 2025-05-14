@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-29 16:41:35
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-02 18:02:54
+ * @LastEditTime: 2025-05-13 14:29:33
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/liusuxian/go-toolkit/gtkconv"
-	"github.com/pkg/errors"
 	"net/http"
 	"time"
 )
@@ -154,7 +153,7 @@ func WriteStatus(w http.ResponseWriter, status int, data ...any) {
 func WriteJson(w http.ResponseWriter, resp Response) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if b, err := resp.Json(); err != nil {
-		w.Write(Fail(http.StatusInternalServerError, errors.Wrap(err, "WriteJson Failed").Error()).MustJson())
+		w.Write(Fail(http.StatusInternalServerError, "WriteJson Failed: %w").MustJson())
 	} else {
 		w.Write(b)
 	}

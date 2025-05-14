@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-26 15:33:37
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-05-22 02:29:17
+ * @LastEditTime: 2025-05-13 14:20:30
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,7 +10,7 @@
 package gtknet
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -41,7 +41,7 @@ func PrivateIPv4() (ip net.IP, err error) {
 		}
 	}
 
-	err = errors.New("no private ip address")
+	err = fmt.Errorf("no private ip address")
 	return
 }
 

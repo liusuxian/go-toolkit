@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-17 14:23:08
+ * @LastEditTime: 2025-05-13 14:04:59
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,14 +14,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/liusuxian/go-toolkit/gtkarr"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtklog"
-	"github.com/liusuxian/go-toolkit/gtkstr"
-	"github.com/pkg/errors"
 	"hash/fnv"
 	"math"
+	"slices"
+	"strings"
 	"time"
 )
 
@@ -290,7 +289,7 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 		fullTopicName = kc.getFullTopicName(topic)
 	)
 	// 判断是否配置了全局生产者名称
-	globalProducerName := gtkstr.TrimAll(kc.config.GlobalProducer)
+	globalProducerName := strings.Trim(kc.config.GlobalProducer, " ")
 	if globalProducerName != "" {
 		producerName = kc.getGlobalProducerName(globalProducerName)
 	}
@@ -306,7 +305,7 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 		}
 	} else {
 		if _, ok := kc.producerMap[producerName]; ok {
-			return errors.Errorf("new producer: %s, topic: %s, partitionNum: %d already exists", producerName, fullTopicName, partitionNum)
+			return fmt.Errorf("new producer: %s, topic: %s, partitionNum: %d already exists", producerName, fullTopicName, partitionNum)
 		}
 	}
 
@@ -336,7 +335,7 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 		return
 	}
 	if producer == nil {
-		err = errors.Errorf("new producer %s failed", producerName)
+		err = fmt.Errorf("new producer %s failed", producerName)
 		return
 	}
 	if kc.config.SaslUsername != "" || kc.config.SaslPassword != "" {
@@ -400,7 +399,7 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 			group        = groupList[i]
 		)
 		if _, ok := kc.consumerMap[consumerName]; ok {
-			return errors.Errorf("new consumer: %s, topic: %s, group: %s, partitionNum: %d already exists", consumerName, fullTopicName, group, partitionNum)
+			return fmt.Errorf("new consumer: %s, topic: %s, group: %s, partitionNum: %d already exists", consumerName, fullTopicName, group, partitionNum)
 		}
 		if kc.config.IsClose {
 			kc.logger.Infof(ctx, "new consumer: %s, topic: %s, group: %s, partitionNum: %d success (isClosed)", consumerName, fullTopicName, group, partitionNum)
@@ -433,7 +432,7 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 				return cErr
 			}
 			if consumer == nil {
-				return errors.Errorf("new consumer %s failed", consumerName)
+				return fmt.Errorf("new consumer %s failed", consumerName)
 			}
 			if kc.config.SaslUsername != "" || kc.config.SaslPassword != "" {
 				if err = consumer.SetSaslCredentials(kc.config.SaslUsername, kc.config.SaslPassword); err != nil {
@@ -481,8 +480,8 @@ func (kc *KafkaClient) Subscribe(ctx context.Context, topic string, fn func(mess
 		return
 	}
 	if len(groups) > 0 && len(group) > 0 {
-		if !gtkarr.ContainsStr(groups, group[0]) {
-			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		if !slices.Contains(groups, group[0]) {
+			return fmt.Errorf("group: %s not found in groups: %s", group[0], groups)
 		}
 	}
 
@@ -501,7 +500,7 @@ func (kc *KafkaClient) Subscribe(ctx context.Context, topic string, fn func(mess
 	var consumerList []*kafka.Consumer
 	var ok bool
 	if consumerList, ok = kc.consumerMap[consumerName]; !ok {
-		err = errors.Errorf("consumer: %s, topics: %v not found", consumerName, topics)
+		err = fmt.Errorf("consumer: %s, topics: %v not found", consumerName, topics)
 		return
 	}
 	for _, v := range consumerList {
@@ -558,8 +557,8 @@ func (kc *KafkaClient) BatchSubscribe(ctx context.Context, topic string, fn func
 		return
 	}
 	if len(groups) > 0 && len(group) > 0 {
-		if !gtkarr.ContainsStr(groups, group[0]) {
-			return errors.Errorf("group: %s not found in groups: %s", group[0], groups)
+		if !slices.Contains(groups, group[0]) {
+			return fmt.Errorf("group: %s not found in groups: %s", group[0], groups)
 		}
 	}
 
@@ -578,7 +577,7 @@ func (kc *KafkaClient) BatchSubscribe(ctx context.Context, topic string, fn func
 	var consumerList []*kafka.Consumer
 	var ok bool
 	if consumerList, ok = kc.consumerMap[consumerName]; !ok {
-		err = errors.Errorf("consumer: %s, topics: %v not found", consumerName, topics)
+		err = fmt.Errorf("consumer: %s, topics: %v not found", consumerName, topics)
 		return
 	}
 	for _, v := range consumerList {
@@ -776,7 +775,7 @@ func (kc *KafkaClient) sendMessage(ctx context.Context, topic string, producerMe
 		producerName = kc.getProducerName(topic)
 	)
 	// 判断是否配置了全局生产者名称
-	globalProducerName := gtkstr.TrimAll(kc.config.GlobalProducer)
+	globalProducerName := strings.Trim(kc.config.GlobalProducer, " ")
 	if globalProducerName != "" {
 		producerName = kc.getGlobalProducerName(globalProducerName)
 	}
@@ -785,7 +784,7 @@ func (kc *KafkaClient) sendMessage(ctx context.Context, topic string, producerMe
 		return
 	}
 	// 检测哪些 topic 不发送 Kafka 消息
-	if gtkarr.ContainsStr(kc.config.ExcludeTopics, topic) {
+	if slices.Contains(kc.config.ExcludeTopics, topic) {
 		kc.logger.Debugf(ctx, "%s producer sendMessage: %s, data: %s", producerName, gtkjson.MustString(msg), string(producerMessage.dataBytes))
 		return
 	}
@@ -793,11 +792,11 @@ func (kc *KafkaClient) sendMessage(ctx context.Context, topic string, producerMe
 	var producer *kafka.Producer
 	var ok bool
 	if producer, ok = kc.producerMap[producerName]; !ok {
-		err = errors.Errorf("sendMessage producer: %s, msg: %s, data: %s not found", producerName, gtkjson.MustString(msg), string(producerMessage.dataBytes))
+		err = fmt.Errorf("sendMessage producer: %s, msg: %s, data: %s not found", producerName, gtkjson.MustString(msg), string(producerMessage.dataBytes))
 		return
 	}
 	if producer == nil {
-		err = errors.Errorf("sendMessage producer: %s, msg: %s, data: %s producer nil", producerName, gtkjson.MustString(msg), string(producerMessage.dataBytes))
+		err = fmt.Errorf("sendMessage producer: %s, msg: %s, data: %s producer nil", producerName, gtkjson.MustString(msg), string(producerMessage.dataBytes))
 		return
 	}
 	if err = producer.Produce(msg, nil); err != nil {
@@ -819,7 +818,7 @@ func (kc *KafkaClient) getProducerConfig(topic string) (isStart bool, partitionN
 		}
 		return
 	}
-	err = errors.Errorf("topic `%s` Not Found", topic)
+	err = fmt.Errorf("topic `%s` Not Found", topic)
 	return
 }
 
@@ -836,7 +835,7 @@ func (kc *KafkaClient) getConsumerConfig(topic string) (isStart bool, partitionN
 		groups = config.Groups
 		return
 	}
-	err = errors.Errorf("topic `%s` Not Found", topic)
+	err = fmt.Errorf("topic `%s` Not Found", topic)
 	return
 }
 

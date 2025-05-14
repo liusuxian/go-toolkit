@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-05 17:56:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:47:34
+ * @LastEditTime: 2025-05-13 13:50:36
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtkconv
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -186,5 +186,5 @@ func parseDateWith(s string, location *time.Location, formats []timeFormat) (d t
 			return
 		}
 	}
-	return d, errors.Errorf("unable to parse date: %s", s)
+	return d, fmt.Errorf("unable to parse date: %s", s)
 }

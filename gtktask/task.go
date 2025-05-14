@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 18:56:46
+ * @LastEditTime: 2025-05-13 14:32:50
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,9 +10,9 @@
 package gtktask
 
 import (
+	"fmt"
 	"github.com/liusuxian/go-toolkit/gtkcontainer/linkedlist/doubly"
 	"github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"strconv"
 	"time"
 )
@@ -106,7 +106,7 @@ func (p *PollInfo) SetUnavailable(ids ...int) {
 func (p *PollInfo) Poll() (id int, err error) {
 	var node *doubly.Node
 	if node, err = p.availableList.Poll(); err != nil {
-		err = errors.New("no available id found")
+		err = fmt.Errorf("no available id found")
 		return
 	}
 	id, err = strconv.Atoi(node.Uuid)

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-20 21:04:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 19:21:11
+ * @LastEditTime: 2025-05-13 14:35:57
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,8 +12,8 @@ package gtkrobot
 import (
 	"context"
 	"github.com/liusuxian/go-toolkit/gtkhttp"
-	"github.com/liusuxian/go-toolkit/gtkstr"
 	"net/http"
+	"strings"
 )
 
 // FeishuRobot
@@ -43,7 +43,7 @@ func NewFeishuRobot(webHookURL string) (fr *FeishuRobot) {
 
 // SendTextMessage 发送文本消息
 func (fr *FeishuRobot) SendTextMessage(ctx context.Context, content string) (err error) {
-	if gtkstr.TrimAll(fr.webHookURL) == "" {
+	if strings.Trim(fr.webHookURL, " ") == "" {
 		return
 	}
 	return fr.send(ctx, FeiShuMessage{

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-23 02:52:30
+ * @LastEditTime: 2025-05-13 14:28:16
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,11 +11,10 @@ package gtkredis
 
 import (
 	"context"
-	"github.com/gofrs/uuid"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/liusuxian/go-toolkit/gtkconv"
-	"github.com/liusuxian/go-toolkit/gtkfile"
 	"github.com/liusuxian/go-toolkit/internal/utils"
-	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 	"strings"
 	"time"
@@ -134,7 +133,7 @@ func (rc *RedisClient) Do(ctx context.Context, cmd string, args ...any) (value a
 // Pipeline 执行 redis 管道命令
 func (rc *RedisClient) Pipeline(ctx context.Context, cmdArgsList ...[]any) (results []*PipelineResult, err error) {
 	if len(cmdArgsList) == 0 {
-		err = errors.New("pipeline cmd args list is empty")
+		err = fmt.Errorf("pipeline cmd args list is empty")
 		return
 	}
 	if ctx == nil {
@@ -181,16 +180,16 @@ func (rc *RedisClient) ScriptLoad(ctx context.Context, name, script string) (err
 
 // ScriptLoadByPath 通过 lua 脚本文件的路径加载 lua 脚本
 func (rc *RedisClient) ScriptLoadByPath(ctx context.Context, scriptPath string) (err error) {
-	script := gtkfile.GetContents(scriptPath)
+	script := utils.GetContents(scriptPath)
 	if strings.EqualFold("", script) {
-		err = errors.Errorf("[%s] script not found", scriptPath)
+		err = fmt.Errorf("[%s] script not found", scriptPath)
 		return
 	}
 	var evalsha string
 	if evalsha, err = rc.client.ScriptLoad(ctx, script).Result(); err != nil {
 		return
 	}
-	name := gtkfile.Name(scriptPath)
+	name := utils.Name(scriptPath)
 	rc.luaEvalShaMap[name] = evalsha
 	return
 }
@@ -212,7 +211,7 @@ func (rc *RedisClient) Eval(ctx context.Context, script string, keys []string, a
 func (rc *RedisClient) EvalSha(ctx context.Context, name string, keys []string, args ...any) (value any, err error) {
 	evalsha, ok := rc.luaEvalShaMap[name]
 	if !ok {
-		err = errors.Errorf("[%s] Script Not Found", name)
+		err = fmt.Errorf("[%s] Script Not Found", name)
 		return
 	}
 	// 处理`redis`命令参数
@@ -283,7 +282,7 @@ func (rc *RedisClient) Close() (err error) {
 // NewRedisLock 创建 redis 分布式锁
 func (rc *RedisClient) NewRedisLock(key string) (rl *RedisLock, err error) {
 	var id uuid.UUID
-	if id, err = uuid.NewV4(); err != nil {
+	if id, err = uuid.NewV7(); err != nil {
 		return
 	}
 	rl = &RedisLock{

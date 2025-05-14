@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 13:29:45
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:33:39
+ * @LastEditTime: 2025-05-13 13:51:09
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,6 @@ package gtkconv
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"reflect"
 	"time"
 )
@@ -82,5 +81,5 @@ func trimZeroDecimal(s string) (v string) {
 
 // convertError 转换错误
 func convertError(i any, typ string) (err error) {
-	return errors.Errorf("unable to convert %#v of type %T to %s", i, i, typ)
+	return fmt.Errorf("unable to convert %#v of type %T to %s", i, i, typ)
 }

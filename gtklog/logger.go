@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-18 20:48:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-15 18:25:25
+ * @LastEditTime: 2025-05-13 14:15:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -16,10 +16,8 @@ import (
 	"fmt"
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/liusuxian/go-toolkit/gtkconf"
-	"github.com/liusuxian/go-toolkit/gtkfile"
 	"github.com/liusuxian/go-toolkit/gtkjson"
-	"github.com/liusuxian/go-toolkit/gtkstr"
-	"github.com/pkg/errors"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -97,11 +95,11 @@ func init() {
 		err    error
 	)
 	if err = gtkconf.StructKey("logger", &config); err != nil {
-		panic(errors.Wrapf(err, "Get Logger Config Error"))
+		panic(fmt.Errorf("get logger config error: %w", err))
 	}
 	// 新建日志
 	if gLogger, err = NewWithConfig(config); err != nil {
-		panic(errors.Wrapf(err, "New Logger Error"))
+		panic(fmt.Errorf("new logger error: %w", err))
 	}
 }
 
@@ -228,7 +226,7 @@ func (jf *jsonFormatter) Format(entry *logrus.Entry) (bs []byte, err error) {
 		encoder.SetIndent("", "  ")
 	}
 	if err = encoder.Encode(data); err != nil {
-		err = errors.Errorf("failed to marshal fields to JSON, %v", err)
+		err = fmt.Errorf("failed to marshal fields to JSON, %v", err)
 		return
 	}
 	bs = buf.Bytes()
@@ -563,7 +561,7 @@ func newLogger(cfg *Config, opts ...ConfigOption) (logger *Logger, err error) {
 		logger.config.RotationSize = 1024 * 1024 * 1024 * 5
 	}
 	// 创建日志目录
-	if err = gtkfile.MakeDirAll(logger.config.LogPath); err != nil {
+	if err = utils.MakeDirAll(logger.config.LogPath); err != nil {
 		return
 	}
 	// 是否输出到控制台
@@ -590,7 +588,8 @@ func newLogger(cfg *Config, opts ...ConfigOption) (logger *Logger, err error) {
 
 // getFileName 获取日志文件名称
 func getFileName(levelFileName, fileNameDateFormat string) (fileName string) {
-	fileNameList := gtkstr.Split(levelFileName, ".")
+	levelFileName = strings.Trim(levelFileName, " ")
+	fileNameList := strings.Split(levelFileName, ".")
 	fileNameListLen := len(fileNameList)
 	if fileNameListLen == 1 {
 		fileName = fmt.Sprintf("%s-%s.log", fileNameList[0], fileNameDateFormat)

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 20:35:57
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 20:49:48
+ * @LastEditTime: 2025-05-13 13:44:30
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/pkg/errors"
 	"math"
 )
 
@@ -80,7 +79,7 @@ func LeDecode(b []byte, vals ...any) (err error) {
 	var buf = bytes.NewBuffer(b)
 	for i := 0; i < len(vals); i++ {
 		if err = binary.Read(buf, binary.LittleEndian, vals[i]); err != nil {
-			err = errors.Wrap(err, `Binary.Read Failed`)
+			err = fmt.Errorf("binary.read failed: %w", err)
 			return
 		}
 	}

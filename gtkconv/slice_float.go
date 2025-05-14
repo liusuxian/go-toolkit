@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-05 14:55:53
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-02-29 16:22:04
+ * @LastEditTime: 2025-05-13 14:46:29
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtkconv
 
 import (
 	"encoding/json"
-	"github.com/liusuxian/go-toolkit/gtkreflect"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"reflect"
 )
 
@@ -209,7 +209,7 @@ func ToFloat64SliceE(i any) (iv []float64, err error) {
 		return []float64{}, convertError(i, "[]float64")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflect.OriginValueAndKind(i)
+		originValueAndKind := utils.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
@@ -422,7 +422,7 @@ func ToFloat32SliceE(i any) (iv []float32, err error) {
 		return []float32{}, convertError(i, "[]float32")
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflect.OriginValueAndKind(i)
+		originValueAndKind := utils.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()

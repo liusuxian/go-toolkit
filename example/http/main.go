@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 19:47:43
+ * @LastEditTime: 2025-05-13 16:37:40
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -36,33 +36,38 @@ type User struct {
 
 func main() {
 	var (
-		ossConfig        = oss.AliyunOSS{}
-		uploadFileConfig = gtkhttp.UploadFileConfig{}
-		err              error
+		aliyunOSS         *oss.AliyunOSS
+		uploadFileService *gtkhttp.UploadFileService
+		err               error
 	)
 	if err = godotenv.Load(".env"); err != nil {
 		fmt.Println("Load Error: ", err)
 		return
 	}
-	ossConfig.Bucket = gtkenv.Get("bucket")
-	ossConfig.EndpointAccelerate = gtkenv.Get("endpointAccelerate")
-	ossConfig.EndpointInternal = gtkenv.Get("endpointInternal")
-	ossConfig.EndpointAccess = gtkenv.Get("endpointAccess")
-	ossConfig.AccessKeyID = gtkenv.Get("accessKeyID")
-	ossConfig.AccessKeySecret = gtkenv.Get("accessKeySecret")
-	ossConfig.AllowTypeList = gtkconv.ToStringSlice(gtkenv.Get("allowTypeList"))
-	ossConfig.MaxSize = gtkconv.ToInt(gtkenv.Get("maxSize"))
-	ossConfig.MaxCount = gtkconv.ToInt(gtkenv.Get("maxCount"))
-	oss.InitAliyunOSS(&ossConfig)
-	fmt.Printf("ossConfig: %+v\n", ossConfig)
-	uploadFileConfig.AllowTypeList = gtkconv.ToStringSlice(gtkenv.Get("allowTypeList"))
-	uploadFileConfig.MaxSize = gtkconv.ToInt(gtkenv.Get("maxSize"))
-	uploadFileConfig.MaxCount = gtkconv.ToInt(gtkenv.Get("maxCount"))
-	gtkhttp.InitUploadFileConfig(&uploadFileConfig)
-	fmt.Printf("uploadFileConfig: %+v\n", uploadFileConfig)
+	if aliyunOSS, err = oss.NewAliyunOSS(oss.OSSConfig{
+		Bucket:             gtkenv.Get("bucket"),
+		EndpointAccelerate: gtkenv.Get("endpointAccelerate"),
+		EndpointInternal:   gtkenv.Get("endpointInternal"),
+		EndpointAccess:     gtkenv.Get("endpointAccess"),
+		AccessKeyID:        gtkenv.Get("accessKeyID"),
+		AccessKeySecret:    gtkenv.Get("accessKeySecret"),
+		AllowTypeList:      gtkconv.ToStringSlice(gtkenv.Get("allowTypeList")),
+		MaxSize:            gtkconv.ToInt(gtkenv.Get("maxSize")),
+		MaxCount:           gtkconv.ToInt(gtkenv.Get("maxCount")),
+	}); err != nil {
+		fmt.Println("NewAliyunOSS Error: ", err)
+		return
+	}
+	uploadFileService = gtkhttp.NewUploadFileService(gtkhttp.UploadFileConfig{
+		AllowTypeList: gtkconv.ToStringSlice(gtkenv.Get("allowTypeList")),
+		MaxSize:       gtkconv.ToInt(gtkenv.Get("maxSize")),
+		MaxCount:      gtkconv.ToInt(gtkenv.Get("maxCount")),
+	}, gtkhttp.WithUploadFileNameFn(func(filename string) (newFilename string) {
+		return filename
+	}))
 	// 从指定的 URL 下载文件到本地路径
 	var filePath string
-	if filePath, err = gtkhttp.DownloadFile("http://image.lovelyn1314.com/aitest/2.jpg", "test_upload"); err != nil {
+	if filePath, err = gtkhttp.DownloadFile("https://img.lovelyn1314.com/aitest/2.jpg", "test_upload"); err != nil {
 		fmt.Println("DownloadFile Error: ", err)
 		os.Exit(1)
 	}
@@ -99,14 +104,14 @@ func main() {
 		os.Exit(1)
 	}
 	// 通过文件名（包含文件路径）上传
-	fileInfo := ossConfig.UploadFromFile("test_upload", "upload.html")
+	fileInfo := aliyunOSS.UploadFromFile("test_upload", "upload.html")
 	if fileInfo.GetErr() != nil {
 		fmt.Println("UploadFromFile Error: ", fileInfo.GetErr())
 		os.Exit(1)
 	}
 	fmt.Println("UploadFromFile: ", fileInfo)
 	// 通过文件名（包含文件路径）批量上传
-	fileInfos := ossConfig.BatchUploadFromFile("test_upload", "upload.html", ".env", "main.go")
+	fileInfos := aliyunOSS.BatchUploadFromFile("test_upload", []string{"upload.html", ".env", "main.go"})
 	for _, v := range fileInfos {
 		if v.GetErr() != nil {
 			fmt.Println("BatchUploadFromFile Error: ", v.GetErr())
@@ -118,7 +123,7 @@ func main() {
 	}
 	// 单文件上传处理函数
 	http.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
-		fileInfo := uploadFileConfig.Upload(r, "test_upload")
+		fileInfo := uploadFileService.Upload(r, "test_upload")
 		if fileInfo.GetErr() != nil {
 			if errors.Is(fileInfo.GetErr(), http.ErrMissingFile) {
 				gtkresp.RespFail(w, -1, "Missing File")
@@ -131,7 +136,7 @@ func main() {
 	})
 	// 批量文件上传处理函数
 	http.HandleFunc("/batchUpload", func(w http.ResponseWriter, r *http.Request) {
-		fileInfos := uploadFileConfig.BatchUpload(r, "test_upload")
+		fileInfos := uploadFileService.BatchUpload(r, "test_upload")
 		for _, v := range fileInfos {
 			if v.GetErr() != nil {
 				if errors.Is(v.GetErr(), http.ErrMissingFile) {
@@ -146,7 +151,7 @@ func main() {
 	})
 	// 单文件OSS上传处理函数
 	http.HandleFunc("/ossUpload", func(w http.ResponseWriter, r *http.Request) {
-		fileInfo := ossConfig.Upload(r, "test_upload")
+		fileInfo := aliyunOSS.Upload(r, "test_upload")
 		if fileInfo.GetErr() != nil {
 			if errors.Is(fileInfo.GetErr(), http.ErrMissingFile) {
 				gtkresp.RespFail(w, -1, "Missing File")
@@ -159,7 +164,7 @@ func main() {
 	})
 	// 批量文件OSS上传处理函数
 	http.HandleFunc("/ossBatchUpload", func(w http.ResponseWriter, r *http.Request) {
-		fileInfos := ossConfig.BatchUpload(r, "test_upload")
+		fileInfos := aliyunOSS.BatchUpload(r, "test_upload")
 		for _, v := range fileInfos {
 			if v.GetErr() != nil {
 				if errors.Is(v.GetErr(), http.ErrMissingFile) {
@@ -174,7 +179,7 @@ func main() {
 	})
 	// 删除OSS文件
 	http.HandleFunc("/ossDelete", func(w http.ResponseWriter, r *http.Request) {
-		if err := ossConfig.DeleteObjects("test_upload/text.xlsx"); err != nil {
+		if err := aliyunOSS.DeleteObjects("test_upload/text.xlsx"); err != nil {
 			gtkresp.RespFail(w, -1, err.Error())
 			return
 		}

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-02-19 21:04:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-08-29 16:07:32
+ * @LastEditTime: 2025-05-13 16:11:42
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,94 +10,46 @@
 package gtkfile
 
 import (
-	"crypto/md5"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"github.com/pkg/errors"
-	"hash"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"io/fs"
-	"math/big"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // PathExists 判断文件或者目录是否存在
 func PathExists(path string) (isExist bool) {
-	_, err := os.Stat(path)
-	return err == nil || os.IsExist(err)
+	return utils.PathExists(path)
 }
 
 // ExtName 获取文件扩展名
 func ExtName(path string) (extName string) {
-	return strings.TrimLeft(filepath.Ext(path), ".")
+	return utils.ExtName(path)
 }
 
 // GetContents 获取文件的内容
 func GetContents(path string) (str string) {
-	return string(GetBytes(path))
+	return utils.GetContents(path)
 }
 
 // GetBytes 获取文件的内容
 func GetBytes(path string) (buf []byte) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	return data
+	return utils.GetBytes(path)
 }
 
 // Name 返回路径的最后一个元素，但不包括文件扩展名
 func Name(path string) (str string) {
-	base := filepath.Base(path)
-	if i := strings.LastIndexByte(base, '.'); i != -1 {
-		return base[:i]
-	}
-	return base
+	return utils.Name(path)
 }
 
-// GenRandomFileName 生成随机文件名，默认使用 MD5 算法生成文件名，可选 SHA256 算法
-func GenRandomFileName(originFileName string, isSha256 ...bool) (fileName string) {
-	baseName := strconv.FormatInt(time.Now().UnixNano(), 36)
-	randomPart, _ := rand.Int(rand.Reader, big.NewInt(1000000))
-	input := fmt.Sprintf("%s-%s-%s", originFileName, baseName, randomPart.String())
-
-	var hasher hash.Hash
-	if len(isSha256) > 0 && isSha256[0] {
-		hasher = sha256.New()
-	} else {
-		hasher = md5.New()
-	}
-	hasher.Write([]byte(input))
-	hashed := hex.EncodeToString(hasher.Sum(nil))
-	ext := filepath.Ext(originFileName)
-	fileName = fmt.Sprintf("%s%s", hashed, ext)
-	return
+// GenRandomFilename 生成随机文件名
+func GenRandomFilename(filename string) (newFilename string) {
+	return utils.GenRandomFilename(filename)
 }
 
 // MakeDirAll 创建给定路径的所有目录，包括任何必要的父目录
 func MakeDirAll(path string) (err error) {
-	if !PathExists(path) {
-		if err = os.MkdirAll(path, os.ModePerm); err != nil {
-			return errors.Errorf("create <%s> error: %v", path, err)
-		}
-	}
-	return
+	return utils.MakeDirAll(path)
 }
 
 // GetFileStat 获取文件的状态信息
 func GetFileStat(name string) (fileInfo fs.FileInfo, err error) {
-	if fileInfo, err = os.Stat(name); err != nil {
-		if os.IsNotExist(err) {
-			err = errors.Errorf("file <%s> not exist", name)
-			return
-		}
-		err = errors.Errorf("get file <%s> stat error: %v", name, err)
-		return
-	}
-	return
+	return utils.GetFileStat(name)
 }

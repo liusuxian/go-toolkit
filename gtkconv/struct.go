@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-18 17:32:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2023-05-11 14:50:06
+ * @LastEditTime: 2025-05-13 13:50:18
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,7 @@ package gtkconv
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // ToStructE 将 any 转换为 struct/[]struct 类型
@@ -20,7 +20,7 @@ func ToStructE(input, output any, opts ...DecoderConfigOption) (err error) {
 		return nil
 	}
 	if output == nil {
-		return errors.New("object output cannot be nil")
+		return fmt.Errorf("object output cannot be nil")
 	}
 
 	switch val := input.(type) {

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 11:56:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 19:44:42
+ * @LastEditTime: 2025-05-13 14:32:25
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,10 +11,10 @@ package appbuilder_test
 
 import (
 	"context"
+	"errors"
 	"github.com/joho/godotenv"
 	"github.com/liusuxian/go-toolkit/gtkenv"
 	"github.com/liusuxian/go-toolkit/gtksdk/baidu/appbuilder"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-08 14:00:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-11 15:21:25
+ * @LastEditTime: 2025-05-13 13:49:38
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,7 +10,7 @@
 package doubly
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"sync"
 )
 
@@ -139,7 +139,7 @@ func (list *LinkedList) SetCurrent(uuid string) (err error) {
 		list.current = node
 		return nil
 	}
-	return errors.Errorf("node [%s] not found", uuid)
+	return fmt.Errorf("node [%s] not found", uuid)
 }
 
 // GetNodeValue 获取节点的值
@@ -150,7 +150,7 @@ func (list *LinkedList) GetNodeValue(uuid string) (value any, err error) {
 	if node, exists := list.nodes[uuid]; exists {
 		return node.Value, nil
 	}
-	return nil, errors.Errorf("node [%s] not found", uuid)
+	return nil, fmt.Errorf("node [%s] not found", uuid)
 }
 
 // UpdateNodeValue 更新节点的值
@@ -162,7 +162,7 @@ func (list *LinkedList) UpdateNodeValue(uuid string, value any) (err error) {
 		node.Value = value
 		return nil
 	}
-	return errors.Errorf("node [%s] not found", uuid)
+	return fmt.Errorf("node [%s] not found", uuid)
 }
 
 // Poll 获取当前节点并移动到下一个节点，当到达链表末尾时，移动到链表头部
@@ -172,11 +172,11 @@ func (list *LinkedList) Poll() (node *Node, err error) {
 
 	// 空链表
 	if list.length == 0 {
-		return nil, errors.New("empty linked list")
+		return nil, fmt.Errorf("empty linked list")
 	}
 
 	if list.current == nil {
-		return nil, errors.New("current node is nil")
+		return nil, fmt.Errorf("current node is nil")
 	}
 
 	node = &Node{}
@@ -198,11 +198,11 @@ func (list *LinkedList) GetCurrentAndMoveToNext() (node *Node, err error) {
 
 	// 空链表
 	if list.length == 0 {
-		return nil, errors.New("empty linked list")
+		return nil, fmt.Errorf("empty linked list")
 	}
 
 	if list.current == nil {
-		return nil, errors.New("current node is nil")
+		return nil, fmt.Errorf("current node is nil")
 	}
 
 	node = &Node{}

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-08-29 16:58:24
+ * @LastEditTime: 2025-05-13 15:14:48
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,12 +12,11 @@ package oss
 import (
 	"fmt"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
-	"github.com/liusuxian/go-toolkit/gtkarr"
-	"github.com/liusuxian/go-toolkit/gtkfile"
-	"github.com/pkg/errors"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"io/fs"
 	"mime/multipart"
 	"net/http"
+	"slices"
 	"sync"
 )
 
@@ -36,9 +35,9 @@ func (u *UploadFileInfo) GetErr() (err error) {
 }
 
 // Upload 上传
-func (s *AliyunOSS) Upload(r *http.Request, dirPath string) (fileInfo *UploadFileInfo) {
+func (s *AliyunOSS) Upload(r *http.Request, dirPath string, options ...oss.Option) (fileInfo *UploadFileInfo) {
 	if r.Method != "POST" {
-		fileInfo = &UploadFileInfo{err: errors.New("Unsupported Method")}
+		fileInfo = &UploadFileInfo{err: fmt.Errorf("unsupported method")}
 		return
 	}
 	var (
@@ -55,7 +54,7 @@ func (s *AliyunOSS) Upload(r *http.Request, dirPath string) (fileInfo *UploadFil
 	// 判断上传文件类型是否合法
 	if !s.checkFileType(fileHeader.Filename) {
 		fileInfo = &UploadFileInfo{
-			err:      errors.New("Unsupported File Type"),
+			err:      fmt.Errorf("unsupported file type"),
 			FileName: fileHeader.Filename,
 			FileSize: fileHeader.Size,
 			FileType: fileHeader.Header.Get("Content-type"),
@@ -65,7 +64,7 @@ func (s *AliyunOSS) Upload(r *http.Request, dirPath string) (fileInfo *UploadFil
 	// 检查上传文件大小是否合法
 	if !s.checkSize(fileHeader.Size) {
 		fileInfo = &UploadFileInfo{
-			err:      errors.New("Unsupported File Size"),
+			err:      fmt.Errorf("unsupported file size"),
 			FileName: fileHeader.Filename,
 			FileSize: fileHeader.Size,
 			FileType: fileHeader.Header.Get("Content-type"),
@@ -74,7 +73,7 @@ func (s *AliyunOSS) Upload(r *http.Request, dirPath string) (fileInfo *UploadFil
 	}
 	// 执行上传
 	var filePath string
-	if filePath, err = s.doUpload(file, fileHeader, dirPath); err != nil {
+	if filePath, err = s.doUpload(file, fileHeader, dirPath, options...); err != nil {
 		fileInfo = &UploadFileInfo{err: err}
 		return
 	}
@@ -89,39 +88,39 @@ func (s *AliyunOSS) Upload(r *http.Request, dirPath string) (fileInfo *UploadFil
 }
 
 // UploadFromFile 通过文件名（包含文件路径）上传
-func (s *AliyunOSS) UploadFromFile(dirPath, fileName string) (fileInfo *UploadFileInfo) {
+func (s *AliyunOSS) UploadFromFile(dirPath, fileName string, options ...oss.Option) (fileInfo *UploadFileInfo) {
 	// 获取文件的状态信息
 	var (
 		fileStat fs.FileInfo
 		err      error
 	)
-	if fileStat, err = gtkfile.GetFileStat(fileName); err != nil {
+	if fileStat, err = utils.GetFileStat(fileName); err != nil {
 		fileInfo = &UploadFileInfo{err: err}
 		return
 	}
 	// 判断上传文件类型是否合法
 	if !s.checkFileType(fileStat.Name()) {
 		fileInfo = &UploadFileInfo{
-			err:      errors.New("Unsupported File Type"),
+			err:      fmt.Errorf("unsupported file type"),
 			FileName: fileName,
 			FileSize: fileStat.Size(),
-			FileType: gtkfile.ExtName(fileStat.Name()),
+			FileType: utils.ExtName(fileStat.Name()),
 		}
 		return
 	}
 	// 检查上传文件大小是否合法
 	if !s.checkSize(fileStat.Size()) {
 		fileInfo = &UploadFileInfo{
-			err:      errors.New("Unsupported File Size"),
+			err:      fmt.Errorf("unsupported file size"),
 			FileName: fileName,
 			FileSize: fileStat.Size(),
-			FileType: gtkfile.ExtName(fileStat.Name()),
+			FileType: utils.ExtName(fileStat.Name()),
 		}
 		return
 	}
 	// 执行上传
 	var filePath string
-	if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat); err != nil {
+	if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat, options...); err != nil {
 		fileInfo = &UploadFileInfo{err: err}
 		return
 	}
@@ -130,15 +129,15 @@ func (s *AliyunOSS) UploadFromFile(dirPath, fileName string) (fileInfo *UploadFi
 		FileName: fileName,
 		FileSize: fileStat.Size(),
 		FilePath: filePath,
-		FileType: gtkfile.ExtName(fileStat.Name()),
+		FileType: utils.ExtName(fileStat.Name()),
 	}
 	return
 }
 
 // BatchUpload 批量上传
-func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string) (fileInfos []*UploadFileInfo) {
+func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string, options ...oss.Option) (fileInfos []*UploadFileInfo) {
 	if r.Method != "POST" {
-		fileInfos = []*UploadFileInfo{{err: errors.New("Unsupported Method")}}
+		fileInfos = []*UploadFileInfo{{err: fmt.Errorf("unsupported method")}}
 		return
 	}
 	var err error
@@ -152,8 +151,8 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string) (fileInfos []*U
 		fileInfos = []*UploadFileInfo{{err: http.ErrMissingFile}}
 		return
 	}
-	if len(files) > s.MaxCount {
-		fileInfos = []*UploadFileInfo{{err: errors.Errorf("Only Allowed To Upload A Maximum Of %v Files At A Time", s.MaxCount)}}
+	if len(files) > s.config.MaxCount {
+		fileInfos = []*UploadFileInfo{{err: fmt.Errorf("only allowed to upload a maximum of %v files at a time", s.config.MaxCount)}}
 		return
 	}
 	// 并发处理所有文件
@@ -177,7 +176,7 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string) (fileInfos []*U
 			// 判断上传文件类型是否合法
 			if !s.checkFileType(fileHeader.Filename) {
 				fileInfos[idx] = &UploadFileInfo{
-					err:      errors.New("Unsupported File Type"),
+					err:      fmt.Errorf("unsupported file type"),
 					FileName: fileHeader.Filename,
 					FileSize: fileHeader.Size,
 					FileType: fileHeader.Header.Get("Content-type"),
@@ -187,7 +186,7 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string) (fileInfos []*U
 			// 检查上传文件大小是否合法
 			if !s.checkSize(fileHeader.Size) {
 				fileInfos[idx] = &UploadFileInfo{
-					err:      errors.New("Unsupported File Size"),
+					err:      fmt.Errorf("unsupported file size"),
 					FileName: fileHeader.Filename,
 					FileSize: fileHeader.Size,
 					FileType: fileHeader.Header.Get("Content-type"),
@@ -196,7 +195,7 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string) (fileInfos []*U
 			}
 			// 执行上传
 			var filePath string
-			if filePath, err = s.doUpload(file, fileHeader, dirPath); err != nil {
+			if filePath, err = s.doUpload(file, fileHeader, dirPath, options...); err != nil {
 				fileInfos[idx] = &UploadFileInfo{err: err}
 				return
 			}
@@ -214,14 +213,14 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string) (fileInfos []*U
 }
 
 // BatchUploadFromFile 通过文件名（包含文件路径）批量上传
-func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList ...string) (fileInfos []*UploadFileInfo) {
+func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList []string, options ...oss.Option) (fileInfos []*UploadFileInfo) {
 	// 检查文件数量
 	if len(fileNameList) == 0 {
 		fileInfos = []*UploadFileInfo{{err: http.ErrMissingFile}}
 		return
 	}
-	if len(fileNameList) > s.MaxCount {
-		fileInfos = []*UploadFileInfo{{err: errors.Errorf("Only Allowed To Upload A Maximum Of %v Files At A Time", s.MaxCount)}}
+	if len(fileNameList) > s.config.MaxCount {
+		fileInfos = []*UploadFileInfo{{err: fmt.Errorf("only allowed to upload a maximum of %v files at a time", s.config.MaxCount)}}
 		return
 	}
 	// 并发处理所有文件
@@ -236,33 +235,33 @@ func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList ...string) 
 				fileStat fs.FileInfo
 				err      error
 			)
-			if fileStat, err = gtkfile.GetFileStat(fileName); err != nil {
+			if fileStat, err = utils.GetFileStat(fileName); err != nil {
 				fileInfos[idx] = &UploadFileInfo{err: err}
 				return
 			}
 			// 判断上传文件类型是否合法
 			if !s.checkFileType(fileStat.Name()) {
 				fileInfos[idx] = &UploadFileInfo{
-					err:      errors.New("Unsupported File Type"),
+					err:      fmt.Errorf("unsupported file type"),
 					FileName: fileName,
 					FileSize: fileStat.Size(),
-					FileType: gtkfile.ExtName(fileStat.Name()),
+					FileType: utils.ExtName(fileStat.Name()),
 				}
 				return
 			}
 			// 检查上传文件大小是否合法
 			if !s.checkSize(fileStat.Size()) {
 				fileInfos[idx] = &UploadFileInfo{
-					err:      errors.New("Unsupported File Size"),
+					err:      fmt.Errorf("unsupported file size"),
 					FileName: fileName,
 					FileSize: fileStat.Size(),
-					FileType: gtkfile.ExtName(fileStat.Name()),
+					FileType: utils.ExtName(fileStat.Name()),
 				}
 				return
 			}
 			// 执行上传
 			var filePath string
-			if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat); err != nil {
+			if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat, options...); err != nil {
 				fileInfos[idx] = &UploadFileInfo{err: err}
 				return
 			}
@@ -271,7 +270,7 @@ func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList ...string) 
 				FileName: fileName,
 				FileSize: fileStat.Size(),
 				FilePath: filePath,
-				FileType: gtkfile.ExtName(fileStat.Name()),
+				FileType: utils.ExtName(fileStat.Name()),
 			}
 		}(k, v)
 	}
@@ -281,51 +280,31 @@ func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList ...string) 
 
 // checkFileType 判断上传文件类型是否合法
 func (s *AliyunOSS) checkFileType(fileName string) (ok bool) {
-	return gtkarr.ContainsStr(s.AllowTypeList, gtkfile.ExtName(fileName))
+	return slices.Contains(s.config.AllowTypeList, utils.ExtName(fileName))
 }
 
 // checkSize 检查上传文件大小是否合法
 func (s *AliyunOSS) checkSize(fileSize int64) (ok bool) {
-	return int64(s.MaxSize*1024*1024) >= fileSize
+	return int64(s.config.MaxSize*1024*1024) >= fileSize
 }
 
 // doUpload 执行上传
-func (s *AliyunOSS) doUpload(file multipart.File, fileHeader *multipart.FileHeader, dirPath string) (filePath string, err error) {
-	// 连接OSS
-	var client *oss.Client
-	if client, err = oss.New(s.EndpointAccelerate, s.AccessKeyID, s.AccessKeySecret); err != nil {
-		return
-	}
-	// 获取存储空间
-	var bucket *oss.Bucket
-	if bucket, err = client.Bucket(s.Bucket); err != nil {
-		return
-	}
+func (s *AliyunOSS) doUpload(file multipart.File, fileHeader *multipart.FileHeader, dirPath string, options ...oss.Option) (filePath string, err error) {
 	// 构建文件完整路径
-	filePath = fmt.Sprintf("%s/%s", dirPath, gtkfile.GenRandomFileName(fileHeader.Filename))
+	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileHeader.Filename))
 	// 上传文件
-	if err = bucket.PutObject(filePath, file); err != nil {
+	if err = s.bucket.PutObject(filePath, file, options...); err != nil {
 		return
 	}
 	return
 }
 
 // doUploadFromFile 执行上传
-func (s *AliyunOSS) doUploadFromFile(fileName, dirPath string, fileStat fs.FileInfo) (filePath string, err error) {
-	// 连接OSS
-	var client *oss.Client
-	if client, err = oss.New(s.EndpointAccelerate, s.AccessKeyID, s.AccessKeySecret); err != nil {
-		return
-	}
-	// 获取存储空间
-	var bucket *oss.Bucket
-	if bucket, err = client.Bucket(s.Bucket); err != nil {
-		return
-	}
+func (s *AliyunOSS) doUploadFromFile(fileName, dirPath string, fileStat fs.FileInfo, options ...oss.Option) (filePath string, err error) {
 	// 构建文件完整路径
-	filePath = fmt.Sprintf("%s/%s", dirPath, gtkfile.GenRandomFileName(fileStat.Name()))
+	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileStat.Name()))
 	// 上传文件
-	if err = bucket.PutObjectFromFile(filePath, fileName); err != nil {
+	if err = s.bucket.PutObjectFromFile(filePath, fileName, options...); err != nil {
 		return
 	}
 	return

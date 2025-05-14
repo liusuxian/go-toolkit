@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-12 18:19:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-27 18:36:18
+ * @LastEditTime: 2025-05-13 14:35:10
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,12 +10,12 @@
 package gtkconf
 
 import (
+	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkenv"
-	"github.com/liusuxian/go-toolkit/gtkfile"
-	"github.com/pkg/errors"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
 	"strings"
@@ -50,14 +50,14 @@ type Config struct {
 func NewConfig(path string) (cfg *Config, err error) {
 	v := viper.New()
 	v.SetConfigFile(path)
-	configType := gtkfile.ExtName(path)
+	configType := utils.ExtName(path)
 	v.SetConfigType(configType)
 	// 加载配置文件内容
 	if err = v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			err = errors.Wrapf(err, "no such config file, path: %s, configType: %s", path, configType)
+			err = fmt.Errorf("no such config file, path: %s, configType: %s", path, configType)
 		} else {
-			err = errors.Wrapf(err, "read config error, path: %s, configType: %s", path, configType)
+			err = fmt.Errorf("read config error: %w, path: %s, configType: %s", err, path, configType)
 		}
 		return
 	}
@@ -73,9 +73,9 @@ func NewRemoteConfig(provider, endpoint, path, configType string) (cfg *Config, 
 	// 加载配置文件内容
 	if err = v.ReadRemoteConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			err = errors.Wrapf(err, "no such config file, provider: %s, endpoint: %s, path: %s, configType: %s", provider, endpoint, path, configType)
+			err = fmt.Errorf("no such config file, provider: %s, endpoint: %s, path: %s, configType: %s", provider, endpoint, path, configType)
 		} else {
-			err = errors.Wrapf(err, "read config error, provider: %s, endpoint: %s, path: %s, configType: %s", provider, endpoint, path, configType)
+			err = fmt.Errorf("read config error: %w, provider: %s, endpoint: %s, path: %s, configType: %s", err, provider, endpoint, path, configType)
 		}
 		return
 	}
@@ -91,9 +91,9 @@ func NewSecureRemoteConfig(provider, endpoint, path, secretkeyring, configType s
 	// 加载配置文件内容
 	if err = v.ReadRemoteConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			err = errors.Wrapf(err, "no such config file, provider: %s, endpoint: %s, path: %s, configType: %s", provider, endpoint, path, configType)
+			err = fmt.Errorf("no such config file, provider: %s, endpoint: %s, path: %s, configType: %s", provider, endpoint, path, configType)
 		} else {
-			err = errors.Wrapf(err, "read config error, provider: %s, endpoint: %s, path: %s, configType: %s", provider, endpoint, path, configType)
+			err = fmt.Errorf("read config error: %w, provider: %s, endpoint: %s, path: %s, configType: %s", err, provider, endpoint, path, configType)
 		}
 		return
 	}
@@ -335,7 +335,7 @@ func init() {
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 		} else {
-			panic(errors.Wrapf(err, "read default config error"))
+			panic(fmt.Errorf("read default config error: %w", err))
 		}
 	}
 	defaultConfig = &Config{v: v}

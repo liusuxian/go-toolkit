@@ -11,7 +11,7 @@ package gtkconv
 
 import (
 	"encoding/json"
-	"github.com/liusuxian/go-toolkit/gtkreflect"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"reflect"
 	"strings"
 )
@@ -216,7 +216,7 @@ func ToStringSliceE(i any) (iv []string, err error) {
 		return
 	default:
 		// 使用反射进行转换
-		originValueAndKind := gtkreflect.OriginValueAndKind(i)
+		originValueAndKind := utils.OriginValueAndKind(i)
 		originKind := originValueAndKind.OriginKind
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()

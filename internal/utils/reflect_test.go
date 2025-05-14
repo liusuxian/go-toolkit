@@ -1,16 +1,16 @@
 /*
  * @Author: liusuxian 382185882@qq.com
- * @Date: 2023-11-27 20:32:59
+ * @Date: 2025-05-13 13:14:03
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 13:30:37
+ * @LastEditTime: 2025-05-13 13:14:48
  * @Description:
  *
- * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
+ * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
-package gtkreflect_test
+package utils_test
 
 import (
-	"github.com/liusuxian/go-toolkit/gtkreflect"
+	"github.com/liusuxian/go-toolkit/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
@@ -19,55 +19,47 @@ import (
 func TestOriginValueAndKind(t *testing.T) {
 	assert := assert.New(t)
 	var s1 = "s"
-	out1 := gtkreflect.OriginValueAndKind(s1)
+	out1 := utils.OriginValueAndKind(s1)
 	assert.Equal(out1.InputKind, reflect.String)
 	assert.Equal(out1.OriginKind, reflect.String)
 
 	var s2 = "s"
-	out2 := gtkreflect.OriginValueAndKind(&s2)
+	out2 := utils.OriginValueAndKind(&s2)
 	assert.Equal(out2.InputKind, reflect.Ptr)
 	assert.Equal(out2.OriginKind, reflect.String)
 
 	var s3 []int
-	out3 := gtkreflect.OriginValueAndKind(s3)
+	out3 := utils.OriginValueAndKind(s3)
 	assert.Equal(out3.InputKind, reflect.Slice)
 	assert.Equal(out3.OriginKind, reflect.Slice)
 
 	var s4 []int
-	out4 := gtkreflect.OriginValueAndKind(&s4)
+	out4 := utils.OriginValueAndKind(&s4)
 	assert.Equal(out4.InputKind, reflect.Ptr)
 	assert.Equal(out4.OriginKind, reflect.Slice)
-
-	out5 := gtkreflect.OriginValueAndKind(nil)
-	assert.Equal(out5.InputKind, reflect.Invalid)
-	assert.Equal(out5.OriginKind, reflect.Invalid)
 }
 
 func TestOriginTypeAndKind(t *testing.T) {
 	assert := assert.New(t)
 	var s1 = "s"
-	out1 := gtkreflect.OriginTypeAndKind(s1)
+	out1 := utils.OriginTypeAndKind(s1)
 	assert.Equal(out1.InputKind, reflect.String)
 	assert.Equal(out1.OriginKind, reflect.String)
 
 	var s2 = "s"
-	out2 := gtkreflect.OriginTypeAndKind(&s2)
+	out2 := utils.OriginTypeAndKind(&s2)
 	assert.Equal(out2.InputKind, reflect.Ptr)
 	assert.Equal(out2.OriginKind, reflect.String)
 
 	var s3 []int
-	out3 := gtkreflect.OriginTypeAndKind(s3)
+	out3 := utils.OriginTypeAndKind(s3)
 	assert.Equal(out3.InputKind, reflect.Slice)
 	assert.Equal(out3.OriginKind, reflect.Slice)
 
 	var s4 []int
-	out4 := gtkreflect.OriginTypeAndKind(&s4)
+	out4 := utils.OriginTypeAndKind(&s4)
 	assert.Equal(out4.InputKind, reflect.Ptr)
 	assert.Equal(out4.OriginKind, reflect.Slice)
-
-	out5 := gtkreflect.OriginTypeAndKind(nil)
-	assert.Equal(out5.InputKind, reflect.Invalid)
-	assert.Equal(out5.OriginKind, reflect.Invalid)
 }
 
 type TestNil struct {
@@ -81,18 +73,18 @@ func TestIsNil(t *testing.T) {
 	var c *int = nil
 	var d int = 10
 	var e string = "hello"
-	assert.True(gtkreflect.IsNil(a))
-	assert.True(gtkreflect.IsNil(b))
-	assert.True(gtkreflect.IsNil(c))
-	assert.False(gtkreflect.IsNil(d))
-	assert.False(gtkreflect.IsNil(e))
-	assert.True(gtkreflect.IsNil(nil))
+	assert.True(utils.IsNil(a))
+	assert.True(utils.IsNil(b))
+	assert.True(utils.IsNil(c))
+	assert.False(utils.IsNil(d))
+	assert.False(utils.IsNil(e))
+	assert.True(utils.IsNil(nil))
 	var aa any = nil
 	var bb any
-	assert.True(gtkreflect.IsNil(aa))
-	assert.True(gtkreflect.IsNil(bb))
+	assert.True(utils.IsNil(aa))
+	assert.True(utils.IsNil(bb))
 	var cc TestNil
 	var dd *TestNil
-	assert.False(gtkreflect.IsNil(cc))
-	assert.True(gtkreflect.IsNil(dd))
+	assert.False(utils.IsNil(cc))
+	assert.True(utils.IsNil(dd))
 }

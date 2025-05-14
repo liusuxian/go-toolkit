@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-18 20:48:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-21 19:42:09
+ * @LastEditTime: 2025-05-13 14:06:54
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,8 +11,8 @@ package gtklog_test
 
 import (
 	"context"
+	"errors"
 	"github.com/liusuxian/go-toolkit/gtklog"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
