@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-24 20:51:23
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 15:33:19
+ * @LastEditTime: 2025-05-15 17:48:28
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -16,7 +16,7 @@ import (
 )
 
 // GetAccessUrl 文件访问Url
-func (s *AliyunOSS) GetAccessUrl(ctx context.Context, objectKey, cacheKey string, expiredInSec int64, options ...oss.Option) (fileUrl string, err error) {
+func (s *AliyunOSS) GetAccessUrl(ctx context.Context, objectKey, cacheKey string, expiredInSec int64, opts ...Option) (fileUrl string, err error) {
 	// 从缓存获取url
 	if s.cache != nil {
 		var val any
@@ -31,8 +31,18 @@ func (s *AliyunOSS) GetAccessUrl(ctx context.Context, objectKey, cacheKey string
 			}
 		}
 	}
+	// 获取存储空间
+	var (
+		client *oss.Client
+		bucket *oss.Bucket
+	)
+	if client, bucket, err = s.getBucket(opts...); err != nil {
+		return
+	}
+	// 关闭空闲连接
+	defer s.closeIdleConnections(client)
 	// 授权访问
-	if fileUrl, err = s.bucket.SignURL(objectKey, oss.HTTPGet, expiredInSec, options...); err != nil {
+	if fileUrl, err = bucket.SignURL(objectKey, oss.HTTPGet, expiredInSec, s.ossOptions...); err != nil {
 		return
 	}
 	// 添加缓存

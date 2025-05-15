@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 11:47:52
+ * @LastEditTime: 2025-05-15 18:02:40
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -35,7 +35,7 @@ func (u *UploadFileInfo) GetErr() (err error) {
 }
 
 // Upload 上传
-func (s *AliyunOSS) Upload(r *http.Request, dirPath string, options ...oss.Option) (fileInfo *UploadFileInfo) {
+func (s *AliyunOSS) Upload(r *http.Request, dirPath string, opts ...Option) (fileInfo *UploadFileInfo) {
 	if r.Method != "POST" {
 		fileInfo = &UploadFileInfo{err: fmt.Errorf("unsupported method")}
 		return
@@ -73,7 +73,7 @@ func (s *AliyunOSS) Upload(r *http.Request, dirPath string, options ...oss.Optio
 	}
 	// 执行上传
 	var filePath string
-	if filePath, err = s.doUpload(file, fileHeader, dirPath, options...); err != nil {
+	if filePath, err = s.doUpload(file, fileHeader, dirPath, opts...); err != nil {
 		fileInfo = &UploadFileInfo{err: err}
 		return
 	}
@@ -88,7 +88,7 @@ func (s *AliyunOSS) Upload(r *http.Request, dirPath string, options ...oss.Optio
 }
 
 // UploadFromFile 通过文件名（包含文件路径）上传
-func (s *AliyunOSS) UploadFromFile(dirPath, fileName string, options ...oss.Option) (fileInfo *UploadFileInfo) {
+func (s *AliyunOSS) UploadFromFile(dirPath, fileName string, opts ...Option) (fileInfo *UploadFileInfo) {
 	// 获取文件的状态信息
 	var (
 		fileStat fs.FileInfo
@@ -120,7 +120,7 @@ func (s *AliyunOSS) UploadFromFile(dirPath, fileName string, options ...oss.Opti
 	}
 	// 执行上传
 	var filePath string
-	if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat, options...); err != nil {
+	if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat, opts...); err != nil {
 		fileInfo = &UploadFileInfo{err: err}
 		return
 	}
@@ -135,7 +135,7 @@ func (s *AliyunOSS) UploadFromFile(dirPath, fileName string, options ...oss.Opti
 }
 
 // BatchUpload 批量上传
-func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string, options ...oss.Option) (fileInfos []*UploadFileInfo) {
+func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string, opts ...Option) (fileInfos []*UploadFileInfo) {
 	if r.Method != "POST" {
 		fileInfos = []*UploadFileInfo{{err: fmt.Errorf("unsupported method")}}
 		return
@@ -195,7 +195,7 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string, options ...oss.
 			}
 			// 执行上传
 			var filePath string
-			if filePath, err = s.doUpload(file, fileHeader, dirPath, options...); err != nil {
+			if filePath, err = s.doUpload(file, fileHeader, dirPath, opts...); err != nil {
 				fileInfos[idx] = &UploadFileInfo{err: err}
 				return
 			}
@@ -213,7 +213,7 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string, options ...oss.
 }
 
 // BatchUploadFromFile 通过文件名（包含文件路径）批量上传
-func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList []string, options ...oss.Option) (fileInfos []*UploadFileInfo) {
+func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList []string, opts ...Option) (fileInfos []*UploadFileInfo) {
 	// 检查文件数量
 	if len(fileNameList) == 0 {
 		fileInfos = []*UploadFileInfo{{err: http.ErrMissingFile}}
@@ -261,7 +261,7 @@ func (s *AliyunOSS) BatchUploadFromFile(dirPath string, fileNameList []string, o
 			}
 			// 执行上传
 			var filePath string
-			if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat, options...); err != nil {
+			if filePath, err = s.doUploadFromFile(fileName, dirPath, fileStat, opts...); err != nil {
 				fileInfos[idx] = &UploadFileInfo{err: err}
 				return
 			}
@@ -289,22 +289,42 @@ func (s *AliyunOSS) checkSize(fileSize int64) (ok bool) {
 }
 
 // doUpload 执行上传
-func (s *AliyunOSS) doUpload(file multipart.File, fileHeader *multipart.FileHeader, dirPath string, options ...oss.Option) (filePath string, err error) {
+func (s *AliyunOSS) doUpload(file multipart.File, fileHeader *multipart.FileHeader, dirPath string, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
 	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileHeader.Filename))
+	// 获取存储空间
+	var (
+		client *oss.Client
+		bucket *oss.Bucket
+	)
+	if client, bucket, err = s.getBucket(opts...); err != nil {
+		return
+	}
+	// 关闭空闲连接
+	defer s.closeIdleConnections(client)
 	// 上传文件
-	if err = s.bucket.PutObject(filePath, file, options...); err != nil {
+	if err = bucket.PutObject(filePath, file, s.ossOptions...); err != nil {
 		return
 	}
 	return
 }
 
 // doUploadFromFile 执行上传
-func (s *AliyunOSS) doUploadFromFile(fileName, dirPath string, fileStat fs.FileInfo, options ...oss.Option) (filePath string, err error) {
+func (s *AliyunOSS) doUploadFromFile(fileName, dirPath string, fileStat fs.FileInfo, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
 	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileStat.Name()))
+	// 获取存储空间
+	var (
+		client *oss.Client
+		bucket *oss.Bucket
+	)
+	if client, bucket, err = s.getBucket(opts...); err != nil {
+		return
+	}
+	// 关闭空闲连接
+	defer s.closeIdleConnections(client)
 	// 上传文件
-	if err = s.bucket.PutObjectFromFile(filePath, fileName, options...); err != nil {
+	if err = bucket.PutObjectFromFile(filePath, fileName, s.ossOptions...); err != nil {
 		return
 	}
 	return

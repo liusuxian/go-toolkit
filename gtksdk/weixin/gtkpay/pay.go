@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-12 15:26:25
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-15 03:10:18
+ * @LastEditTime: 2025-05-15 18:07:42
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,7 +14,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/aliyun/aliyun-oss-go-sdk/oss"
+	"github.com/liusuxian/go-toolkit/gtksdk/aliyun/gtkoss"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/auth/verifiers"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/cipher/decryptors"
@@ -32,7 +32,7 @@ import (
 
 // OssManager	OSS文件管理
 type OssManager interface {
-	GetObject(ctx context.Context, objectKey string, options ...oss.Option) (b []byte, err error) // 获取文件
+	GetObject(ctx context.Context, objectKey string, opts ...gtkoss.Option) (b []byte, err error) // 获取文件
 }
 
 // Cache 缓存

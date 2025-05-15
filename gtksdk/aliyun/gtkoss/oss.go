@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:06:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 15:01:11
+ * @LastEditTime: 2025-05-15 17:50:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -39,15 +39,23 @@ type Cache interface {
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) // 设置缓存
 }
 
+// EndpointType 节点类型
+type EndpointType string
+
+const (
+	EndpointTypeAccelerate EndpointType = "accelerate"
+	EndpointTypeInternal   EndpointType = "internal"
+	EndpointTypeAccess     EndpointType = "access"
+)
+
 // AliyunOSS 阿里云OSS服务
 type AliyunOSS struct {
 	config           OSSConfig                                  // 配置
 	uploadFileNameFn func(filename string) (newFilename string) // 上传文件时生成文件名的函数
 	cache            Cache                                      // 缓存器
-	client           *oss.Client                                // 客户端
 	ossClientOptions []oss.ClientOption                         // 阿里云OSS客户端选项
 	ossOptions       []oss.Option                               // 阿里云OSS操作选项
-	bucket           *oss.Bucket                                // 存储空间
+	endpointType     EndpointType                               // 节点类型
 }
 
 // Option 选项
@@ -81,6 +89,13 @@ func WithOSSOptions(ossOptions ...oss.Option) (opt Option) {
 	}
 }
 
+// WithEndpointType 设置节点类型
+func WithEndpointType(endpointType EndpointType) (opt Option) {
+	return func(s *AliyunOSS) {
+		s.endpointType = endpointType
+	}
+}
+
 // NewAliyunOSS 新建阿里云OSS服务
 func NewAliyunOSS(config OSSConfig, opts ...Option) (s *AliyunOSS, err error) {
 	s = &AliyunOSS{config: config}
@@ -107,18 +122,45 @@ func NewAliyunOSS(config OSSConfig, opts ...Option) (s *AliyunOSS, err error) {
 			return utils.GenRandomFilename(filename)
 		}
 	}
+	// 设置默认节点类型
+	if s.endpointType == "" {
+		s.endpointType = EndpointTypeAccelerate
+	}
+	return
+}
+
+// getBucket 获取存储空间
+func (s *AliyunOSS) getBucket(opts ...Option) (client *oss.Client, bucket *oss.Bucket, err error) {
+	// 设置选项
+	for _, opt := range opts {
+		opt(s)
+	}
+	// 根据节点类型获取节点
+	var endpoint string
+	switch s.endpointType {
+	case EndpointTypeAccelerate:
+		endpoint = s.config.EndpointAccelerate
+	case EndpointTypeInternal:
+		endpoint = s.config.EndpointInternal
+	case EndpointTypeAccess:
+		endpoint = s.config.EndpointAccess
+	default:
+		endpoint = s.config.EndpointAccelerate
+	}
 	// 连接OSS
-	if s.client, err = oss.New(s.config.EndpointAccelerate, s.config.AccessKeyID, s.config.AccessKeySecret, s.ossClientOptions...); err != nil {
+	if client, err = oss.New(endpoint, s.config.AccessKeyID, s.config.AccessKeySecret, s.ossClientOptions...); err != nil {
 		return
 	}
 	// 获取存储空间
-	if s.bucket, err = s.client.Bucket(s.config.Bucket); err != nil {
+	if bucket, err = client.Bucket(s.config.Bucket); err != nil {
 		return
 	}
 	return
 }
 
-// CloseIdleConnections 关闭空闲连接
-func (s *AliyunOSS) CloseIdleConnections() {
-	s.client.HTTPClient.CloseIdleConnections()
+// closeIdleConnections 关闭空闲连接
+func (s *AliyunOSS) closeIdleConnections(client *oss.Client) {
+	if client.HTTPClient != nil {
+		client.HTTPClient.CloseIdleConnections()
+	}
 }

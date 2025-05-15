@@ -179,7 +179,7 @@ func main() {
 	})
 	// 删除OSS文件
 	http.HandleFunc("/ossDelete", func(w http.ResponseWriter, r *http.Request) {
-		if err := aliyunOSS.DeleteObjects("test_upload/text.xlsx"); err != nil {
+		if _, err := aliyunOSS.DeleteObjects([]string{"test_upload/text.xlsx"}); err != nil {
 			gtkresp.RespFail(w, -1, err.Error())
 			return
 		}
