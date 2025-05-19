@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-07-27 18:29:26
+ * @LastEditTime: 2025-05-18 05:27:27
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -55,7 +55,24 @@ func TestRedisMQProducer(t *testing.T) {
 			}})
 		assert.NoError(err)
 	}
-	time.Sleep(time.Minute * 6)
+
+	err = client.SendMessage(ctx, "queue_delay", &gtkmq.ProducerMessage{
+		Data: map[string]any{
+			"a": "hello world",
+			"b": []int{1, 2, 3},
+		},
+		DelayTime: time.Second * 10,
+	})
+	assert.NoError(err)
+	err = client.SendMessage(ctx, "queue_delay", &gtkmq.ProducerMessage{
+		Data: map[string]any{
+			"a": "hello world",
+			"b": []int{1, 2, 3},
+		},
+		DelayTime: time.Second * 10,
+	})
+	assert.NoError(err)
+	time.Sleep(time.Second * 60)
 }
 
 func TestRedisMQConsumerSubscribe(t *testing.T) {

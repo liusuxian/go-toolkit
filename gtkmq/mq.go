@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-08-01 13:35:27
+ * @LastEditTime: 2025-05-18 22:06:48
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -33,31 +33,34 @@ type MQConfig struct {
 	// 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀
 	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
 	Groups []string `json:"groups"`
+	// 是否开启延迟队列
+	IsDelayQueue bool `json:"isDelayQueue"`
 }
 
 // ProducerMessage 生产者消息
 type ProducerMessage struct {
-	Key       string    `json:"key" dc:"键"`              // 键
-	Data      any       `json:"data" dc:"数据"`            // 数据
-	Timestamp time.Time `json:"timestamp" dc:"发送消息的时间戳"` // 发送消息的时间戳
-	dataBytes []byte    // 数据字节数组
+	Key       string        `json:"key,omitempty"`        // 键
+	Data      any           `json:"data"`                 // 数据
+	Timestamp time.Time     `json:"timestamp"`            // 发送消息的时间戳
+	DelayTime time.Duration `json:"delay_time,omitempty"` // 延迟投递时间
+	dataBytes []byte        // 数据字节数组
 }
 
 // MQPartition 消息队列分区
 type MQPartition struct {
-	Queue         string `json:"queue" dc:"队列名称"`         // 队列名称
-	PartitionName string `json:"partitionName" dc:"分区名称"` // 分区名称
-	Partition     int32  `json:"partition" dc:"分区号"`      // 分区号
-	Offset        string `json:"offset" dc:"偏移量"`         // 偏移量
+	Queue         string `json:"queue"`          // 队列名称
+	PartitionName string `json:"partition_name"` // 分区名称
+	Partition     int32  `json:"partition"`      // 分区号
+	Offset        string `json:"offset"`         // 偏移量
 }
 
 // MQMessage 消息队列消息
 type MQMessage struct {
-	MQPartition MQPartition `json:"mqPartition" dc:"消息队列分区"` // 消息队列分区
-	Key         []byte      `json:"key" dc:"键"`              // 键
-	Value       []byte      `json:"value" dc:"值"`            // 值
-	Timestamp   time.Time   `json:"timestamp" dc:"发送消息的时间戳"` // 发送消息的时间戳
-	ExpireTime  time.Time   `json:"expireTime" dc:"消息过期时间"`  // 消息过期时间
+	MQPartition MQPartition `json:"mq_partition"` // 消息队列分区
+	Key         []byte      `json:"key"`          // 键
+	Value       []byte      `json:"value"`        // 值
+	Timestamp   time.Time   `json:"timestamp"`    // 发送消息的时间戳
+	ExpireTime  time.Time   `json:"expire_time"`  // 消息过期时间
 }
 
 // MQClient 消息队列客户端接口

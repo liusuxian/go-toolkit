@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-11 11:48:30
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-11 16:57:27
+ * @LastEditTime: 2025-05-18 00:12:27
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -24,11 +24,11 @@ type RetryFunc func(ctx context.Context) (err error)
 //	retryDelay: 默认重试之间的延迟时间。当配置了`delayList`时，该参数将失效
 //	increaseDelay: 是否让延迟时间随着重试次数增加而线性增加。当配置了`delayList`时，该参数将失效
 //	delayList: 自定义延迟列表
-func Retry(ctx context.Context, f RetryFunc, maxRetries uint, retryDelay time.Duration, increaseDelay bool, delayList ...time.Duration) (err error) {
+func Retry(ctx context.Context, f RetryFunc, maxRetries int, retryDelay time.Duration, increaseDelay bool, delayList ...time.Duration) (err error) {
 	if len(delayList) > 0 {
-		maxRetries = uint(len(delayList))
+		maxRetries = len(delayList)
 	}
-	for retry := uint(0); retry <= maxRetries; retry++ {
+	for retry := 0; retry <= maxRetries; retry++ {
 		if retry > 0 {
 			// 重试前等待
 			select {

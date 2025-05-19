@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:19:09
+ * @LastEditTime: 2025-05-18 23:24:53
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,10 +14,10 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkjson"
-	"github.com/liusuxian/go-toolkit/gtklog"
 	"github.com/liusuxian/go-toolkit/gtkredis"
 	"hash/fnv"
 	"math"
@@ -28,28 +28,29 @@ import (
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Addr                  string              `json:"addr"`                  // redis 地址
-	Username              string              `json:"username"`              // redis 用户名
-	Password              string              `json:"password"`              // redis 密码
-	DB                    int                 `json:"db"`                    // redis 数据库
-	PoolSize              int                 `json:"poolSize"`              // redis 连接池大小，默认 20
-	TLSConfig             *tls.Config         `json:"tlsConfig"`             // tls 配置
-	Retries               uint                `json:"retries"`               // 发送消息失败后允许重试的次数，默认 2147483647
-	RetryBackoff          time.Duration       `json:"retryBackoff"`          // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-	ExpiredTime           time.Duration       `json:"expiredTime"`           // 消息过期时间，默认 90天
-	DelExpiredMsgInterval time.Duration       `json:"delExpiredMsgInterval"` // 删除过期消息的时间间隔，默认 1天
-	WaitTimeout           time.Duration       `json:"waitTimeout"`           // 指定等待消息的最大时间，默认最大 2500ms
-	RetryDelay            time.Duration       `json:"retryDelay"`            // 当消费失败时重试的间隔时间，默认 10s
-	RetryMaxCount         int                 `json:"retryMaxCount"`         // 当消费失败时重试的最大次数，默认 0，无限重试
-	OffsetReset           string              `json:"offsetReset"`           // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	BatchSize             int                 `json:"batchSize"`             // 批量消费的条数，默认 200
-	BatchInterval         time.Duration       `json:"batchInterval"`         // 批量消费的间隔时间，默认 5s
-	Env                   string              `json:"env"`                   // 消息队列服务环境，默认 local
-	ConsumerEnv           string              `json:"consumerEnv"`           // 消费者服务环境，默认和消息队列服务环境一致
-	GlobalProducer        string              `json:"globalProducer"`        // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	MQConfig              map[string]MQConfig `json:"mqConfig"`              // 消息队列配置，key 为消息队列名称
-	ExcludeMQList         []string            `json:"excludeMQList"`         // 指定哪些消息队列不发送消息
-	LogConfig             *gtklog.Config      `json:"logConfig"`             // 日志配置
+	Addr                    string              `json:"addr"`                    // redis 地址
+	Username                string              `json:"username"`                // redis 用户名
+	Password                string              `json:"password"`                // redis 密码
+	DB                      int                 `json:"db"`                      // redis 数据库
+	PoolSize                int                 `json:"poolSize"`                // redis 连接池大小，默认 20
+	TLSConfig               *tls.Config         `json:"tlsConfig"`               // tls 配置
+	Retries                 int                 `json:"retries"`                 // 发送消息失败后允许重试的次数，默认 2147483647
+	RetryBackoff            time.Duration       `json:"retryBackoff"`            // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	ExpiredTime             time.Duration       `json:"expiredTime"`             // 消息过期时间，默认 90天
+	DelExpiredMsgInterval   time.Duration       `json:"delExpiredMsgInterval"`   // 删除过期消息的时间间隔，默认 1天
+	WaitTimeout             time.Duration       `json:"waitTimeout"`             // 指定等待消息的最大时间，默认最大 2500ms
+	RetryDelay              time.Duration       `json:"retryDelay"`              // 当消费失败时重试的间隔时间，默认 10s
+	RetryMaxCount           int                 `json:"retryMaxCount"`           // 当消费失败时重试的最大次数，默认 0，无限重试
+	OffsetReset             string              `json:"offsetReset"`             // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+	BatchSize               int                 `json:"batchSize"`               // 批量消费的条数，默认 200
+	BatchInterval           time.Duration       `json:"batchInterval"`           // 批量消费的间隔时间，默认 5s
+	Env                     string              `json:"env"`                     // 消息队列服务环境，默认 local
+	ConsumerEnv             string              `json:"consumerEnv"`             // 消费者服务环境，默认和消息队列服务环境一致
+	GlobalProducer          string              `json:"globalProducer"`          // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	MQConfig                map[string]MQConfig `json:"mqConfig"`                // 消息队列配置，key 为消息队列名称
+	ExcludeMQList           []string            `json:"excludeMQList"`           // 指定哪些消息队列不发送消息
+	DelayQueueCheckInterval time.Duration       `json:"delayQueueCheckInterval"` // 延迟队列检查间隔，默认 10s
+	DelayQueueBatchSize     int                 `json:"delayQueueBatchSize"`     // 延迟队列批处理大小，默认 100
 }
 
 // RedisMQConfigOption Redis 消息队列配置选项
@@ -61,8 +62,8 @@ type RedisMQClient struct {
 	config      *RedisMQConfig        // Redis 消息队列配置
 	producerMap map[string]bool
 	consumerMap map[string]bool
-	logger      *gtklog.Logger // 日志对象
-	quitChan    chan bool      // 退出信号
+	logger      ILogger   // 日志接口
+	quitChan    chan bool // 退出信号
 }
 
 // 内置 lua 脚本
@@ -129,15 +130,33 @@ var internalScriptMap = map[string]string{
 		end
 		-- 发送消息到目标分区
 		local targetPartitionQueue = KEYS[1] .. "@" .. targetPartition
-		redis.call("XADD", targetPartitionQueue, "*", "key", ARGV[3], "value", ARGV[4], "timestamp", ARGV[5], "expireTime", ARGV[6])
+		redis.call("XADD", targetPartitionQueue, "*", "key", ARGV[3], "value", ARGV[4], "timestamp", ARGV[5], "expire_time", ARGV[6])
 		return targetPartition
+		`,
+
+	"GET_DELAY_MESSAGES": `
+		local messages = redis.call('ZRANGEBYSCORE', KEYS[1], 0, tonumber(ARGV[1], 10), 'LIMIT', 0, tonumber(ARGV[2], 10))
+		if #messages > 0 then
+			redis.call('ZREM', KEYS[1], unpack(messages))
+		end
+		return messages
 		`,
 }
 
 const (
-	defaultPartitionNum uint32 = 12 // 默认分区数
-	partitionAny        int32  = -1 // 任意分区
+	defaultPartitionNum uint32 = 12                        // 默认分区数
+	partitionAny        int32  = -1                        // 任意分区
+	delayQueueKey       string = "gtkmq:delay:queue:%s_%s" // 延迟队列redis key
 )
+
+// delayMessage 延迟消息
+type delayMessage struct {
+	UUID      string `json:"uuid"`          // 消息唯一标识
+	Queue     string `json:"queue"`         // 队列名称
+	Key       string `json:"key,omitempty"` // 键
+	Data      any    `json:"data"`          // 数据
+	Timestamp int64  `json:"timestamp"`     // 发送消息的时间戳
+}
 
 // NewRedisMQClientWithOption 创建 Redis 消息队列客户端
 func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption) (client *RedisMQClient, err error) {
@@ -145,7 +164,6 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 		config: &RedisMQConfig{
 			MQConfig:      make(map[string]MQConfig),
 			ExcludeMQList: make([]string, 0),
-			LogConfig:     &gtklog.Config{},
 		},
 		producerMap: make(map[string]bool),
 		consumerMap: make(map[string]bool),
@@ -163,7 +181,7 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 		client.config.PoolSize = 20
 	}
 	// 发送消息失败后允许重试的次数，默认 2147483647
-	if client.config.Retries == 0 {
+	if client.config.Retries <= 0 {
 		client.config.Retries = math.MaxInt32
 	}
 	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
@@ -191,7 +209,7 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 		client.config.OffsetReset = "0-0"
 	}
 	// 批量消费的条数，默认 200
-	if client.config.BatchSize == 0 {
+	if client.config.BatchSize <= 0 {
 		client.config.BatchSize = 200
 	}
 	// 批量消费的间隔时间，默认 5s
@@ -205,6 +223,14 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	// 消费者服务环境，默认和消息队列服务环境一致
 	if client.config.ConsumerEnv == "" {
 		client.config.ConsumerEnv = client.config.Env
+	}
+	// 延迟队列检查间隔，默认 10s
+	if client.config.DelayQueueCheckInterval <= time.Duration(0) {
+		client.config.DelayQueueCheckInterval = time.Second * 10
+	}
+	// 延迟队列批处理大小，默认 100
+	if client.config.DelayQueueBatchSize <= 0 {
+		client.config.DelayQueueBatchSize = 100
 	}
 	// redis 客户端
 	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
@@ -220,13 +246,12 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 			return
 		}
 	}
-	// 日志对象
-	if client.logger, err = gtklog.NewWithConfig(client.config.LogConfig); err != nil {
-		client.rc.Close()
-		return
-	}
-	// 启动定期删除过期消息的协程
-	go client.startIntervalDelExpiredMsg(ctx)
+	// 默认日志对象
+	client.logger = newDefaultLogger()
+	// 启动所有队列删除过期消息处理器
+	client.startAllQueueDelExpiredMsgProcessor(ctx)
+	// 启动所有延迟队列处理器
+	client.startAllDelayQueueProcessor(ctx)
 	return
 }
 
@@ -236,7 +261,6 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		cfg = &RedisMQConfig{
 			MQConfig:      make(map[string]MQConfig),
 			ExcludeMQList: make([]string, 0),
-			LogConfig:     &gtklog.Config{},
 		}
 	}
 	client = &RedisMQClient{
@@ -254,7 +278,7 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		client.config.PoolSize = 20
 	}
 	// 发送消息失败后允许重试的次数，默认 2147483647
-	if client.config.Retries == 0 {
+	if client.config.Retries <= 0 {
 		client.config.Retries = math.MaxInt32
 	}
 	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
@@ -282,7 +306,7 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 		client.config.OffsetReset = "0-0"
 	}
 	// 批量消费的条数，默认 200
-	if client.config.BatchSize == 0 {
+	if client.config.BatchSize <= 0 {
 		client.config.BatchSize = 200
 	}
 	// 批量消费的间隔时间，默认 5s
@@ -296,6 +320,14 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 	// 消费者服务环境，默认和消息队列服务环境一致
 	if client.config.ConsumerEnv == "" {
 		client.config.ConsumerEnv = client.config.Env
+	}
+	// 延迟队列检查间隔，默认 10s
+	if client.config.DelayQueueCheckInterval <= time.Duration(0) {
+		client.config.DelayQueueCheckInterval = time.Second * 10
+	}
+	// 延迟队列批处理大小，默认 100
+	if client.config.DelayQueueBatchSize <= 0 {
+		client.config.DelayQueueBatchSize = 100
 	}
 	// redis 客户端
 	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
@@ -311,14 +343,18 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 			return
 		}
 	}
-	// 日志对象
-	if client.logger, err = gtklog.NewWithConfig(client.config.LogConfig); err != nil {
-		client.rc.Close()
-		return
-	}
-	// 启动定期删除过期消息的协程
-	go client.startIntervalDelExpiredMsg(ctx)
+	// 默认日志对象
+	client.logger = newDefaultLogger()
+	// 启动所有队列删除过期消息处理器
+	client.startAllQueueDelExpiredMsgProcessor(ctx)
+	// 启动所有延迟队列处理器
+	client.startAllDelayQueueProcessor(ctx)
 	return
+}
+
+// SetLogger 设置日志对象
+func (mq *RedisMQClient) SetLogger(logger ILogger) {
+	mq.logger = logger
 }
 
 // PrintClientConfig 打印消息队列客户端配置
@@ -410,20 +446,28 @@ func (mq *RedisMQClient) NewConsumer(ctx context.Context, queue string) (err err
 
 // SendMessage 发送消息
 func (mq *RedisMQClient) SendMessage(ctx context.Context, queue string, producerMessage *ProducerMessage) (err error) {
-	var dataMap map[string]any
-	if dataMap, err = gtkconv.ToStringMapE(producerMessage.Data); err != nil {
-		return
+	// 处理发送消息的时间戳
+	if producerMessage.Timestamp.IsZero() {
+		producerMessage.Timestamp = time.Now()
 	}
-	delete(dataMap, "created_at")
-	delete(dataMap, "updated_at")
-	delete(dataMap, "deleted_at")
-	// 处理数据
-	var dataBytes []byte
-	if dataBytes, err = json.Marshal(dataMap); err != nil {
-		return
+	// 检查延迟时间是否大于0
+	if producerMessage.DelayTime <= time.Duration(0) {
+		// 序列化消息
+		var dataMap map[string]any
+		if dataMap, err = gtkconv.ToStringMapE(producerMessage.Data); err != nil {
+			return
+		}
+		// 处理数据
+		var dataBytes []byte
+		if dataBytes, err = json.Marshal(dataMap); err != nil {
+			return
+		}
+		producerMessage.dataBytes = dataBytes
+		// 发送消息
+		return mq.sendMessage(ctx, queue, producerMessage)
 	}
-	producerMessage.dataBytes = dataBytes
-	return mq.sendMessage(ctx, queue, producerMessage)
+	// 发送延迟消息
+	return mq.sendDelayMessage(ctx, queue, producerMessage)
 }
 
 // Subscribe 订阅数据
@@ -641,18 +685,82 @@ func (mq *RedisMQClient) Close() (err error) {
 	return mq.rc.Close()
 }
 
-// startIntervalDelExpiredMsg 启动定期删除过期消息的协程
-func (mq *RedisMQClient) startIntervalDelExpiredMsg(ctx context.Context) {
+// startAllQueueDelExpiredMsgProcessor 启动所有队列删除过期消息处理器
+func (mq *RedisMQClient) startAllQueueDelExpiredMsgProcessor(ctx context.Context) {
+	for queue, mqConfig := range mq.config.MQConfig {
+		if mqConfig.Mode == ModeBoth || mqConfig.Mode == ModeProducer {
+			go mq.startQueueDelExpiredMsgProcessor(ctx, queue)
+		}
+	}
+}
+
+// startQueueDelExpiredMsgProcessor 启动队列删除过期消息处理器
+func (mq *RedisMQClient) startQueueDelExpiredMsgProcessor(ctx context.Context, queue string) {
 	ticker := time.NewTicker(mq.config.DelExpiredMsgInterval)
 	for {
 		select {
 		case <-ticker.C:
-			for queue, mqConfig := range mq.config.MQConfig {
-				if mqConfig.Mode == ModeBoth || mqConfig.Mode == ModeProducer {
-					if _, err := mq.GetExpiredMessages(ctx, queue, true); err != nil {
-						mq.logger.Errorf(ctx, "Delete Expired Messages Error: %+v", err)
-					}
+			if _, err := mq.GetExpiredMessages(ctx, queue, true); err != nil {
+				mq.logger.Errorf(ctx, "delete expired messages, queue: %s error: %+v", queue, err)
+			}
+		case <-mq.quitChan:
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+// startAllDelayQueueProcessor 启动所有延迟队列处理器
+func (mq *RedisMQClient) startAllDelayQueueProcessor(ctx context.Context) {
+	for queue, mqConfig := range mq.config.MQConfig {
+		if mqConfig.Mode == ModeBoth || mqConfig.Mode == ModeProducer {
+			if mqConfig.IsDelayQueue {
+				go mq.startDelayQueueProcessor(ctx, queue)
+			}
+		}
+	}
+}
+
+// startDelayQueueProcessor 启动延迟队列处理器
+func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue string) {
+	ticker := time.NewTicker(mq.config.DelayQueueCheckInterval)
+	for {
+		select {
+		case <-ticker.C:
+			// 执行 lua 脚本
+			var (
+				keys = []string{fmt.Sprintf(delayQueueKey, mq.config.Env, queue)}
+				args = []any{
+					time.Now().Unix(),
+					mq.config.DelayQueueBatchSize,
 				}
+				value any
+				err   error
+			)
+			if value, err = mq.rc.EvalSha(ctx, "GET_DELAY_MESSAGES", keys, args...); err != nil {
+				mq.logger.Errorf(ctx, "get delay messages, queue: %s error: %+v", queue, err)
+				return
+			}
+			// 解析结果数据
+			var (
+				anyList     = gtkconv.ToSlice(value)
+				messageList = make([]*delayMessage, 0, len(anyList))
+			)
+			for _, v := range anyList {
+				message := &delayMessage{}
+				if err = gtkconv.ToStructE(v, &message); err != nil {
+					mq.logger.Errorf(ctx, "parse delay message, queue: %s error: %+v", queue, err)
+					continue
+				}
+				messageList = append(messageList, message)
+			}
+			// 发送到实际队列
+			for _, message := range messageList {
+				mq.SendMessage(ctx, message.Queue, &ProducerMessage{
+					Key:       message.Key,
+					Data:      message.Data,
+					Timestamp: time.UnixMilli(message.Timestamp),
+				})
 			}
 		case <-mq.quitChan:
 			ticker.Stop()
@@ -687,10 +795,6 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 		hash.Write([]byte(producerMessage.Key))
 		partition = int32(hash.Sum32() % partitionNum)
 	}
-	// 处理发送消息的时间戳
-	if producerMessage.Timestamp.IsZero() {
-		producerMessage.Timestamp = time.Now().Local()
-	}
 	// 判断是否配置了全局生产者名称
 	var (
 		producerName       = mq.getProducerName(queue)
@@ -710,7 +814,7 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 			producerMessage.Key,
 			producerMessage.dataBytes,
 			producerMessage.Timestamp.UnixMilli(),
-			time.Now().Local().Add(mq.config.ExpiredTime).Unix(),
+			time.Now().Add(mq.config.ExpiredTime).Unix(),
 		}
 		// 执行 lua 脚本
 		var value any
@@ -720,10 +824,54 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 		partition = gtkconv.ToInt32(value)
 		return
 	}, mq.config.Retries, mq.config.RetryBackoff, false); err != nil {
-		mq.logger.Errorf(ctx, "producer: %s send message, partition: %d, data: %s error: %+v", producerName, partition, gtkjson.MustString(producerMessage), err)
+		mq.logger.Errorf(ctx, "producer: %s send message, queue: %s, partition: %d, data: %s error: %+v", producerName, queue, partition, gtkjson.MustString(producerMessage), err)
 		return
 	}
-	mq.logger.Debugf(ctx, "producer: %s send message, partition: %d, data: %s success", producerName, partition, gtkjson.MustString(producerMessage))
+	mq.logger.Debugf(ctx, "producer: %s send message, queue: %s, partition: %d, data: %s success", producerName, queue, partition, gtkjson.MustString(producerMessage))
+	return
+}
+
+// sendDelayMessage 发送延迟消息
+func (mq *RedisMQClient) sendDelayMessage(ctx context.Context, queue string, producerMessage *ProducerMessage) (err error) {
+	// 计算执行时间
+	executeAt := time.Now().Add(producerMessage.DelayTime).Unix()
+	// 获取生产者配置
+	var isStart bool
+	if isStart, _, err = mq.getProducerConfig(queue); err != nil {
+		return
+	}
+	if !isStart {
+		return
+	}
+	// 检测哪些消息队列不发送消息
+	if slices.Contains(mq.config.ExcludeMQList, queue) {
+		return
+	}
+	// 判断是否配置了全局生产者名称
+	var (
+		producerName       = mq.getProducerName(queue)
+		globalProducerName = strings.Trim(mq.config.GlobalProducer, " ")
+	)
+	if globalProducerName != "" {
+		producerName = mq.getGlobalProducerName(globalProducerName)
+	}
+	// 构造延迟消息
+	delayMsg := &delayMessage{
+		UUID:      uuid.New().String(),
+		Queue:     queue,
+		Key:       producerMessage.Key,
+		Data:      producerMessage.Data,
+		Timestamp: producerMessage.Timestamp.UnixMilli(),
+	}
+	// 将消息添加到延迟队列
+	if err = gtkhttp.Retry(ctx, func(ctx context.Context) (e error) {
+		_, e = mq.rc.Do(ctx, "ZADD", fmt.Sprintf(delayQueueKey, mq.config.Env, queue), executeAt, delayMsg)
+		return
+	}, mq.config.Retries, mq.config.RetryBackoff, false); err != nil {
+		mq.logger.Errorf(ctx, "producer: %s send delay message, data: %s error: %+v", producerName, gtkjson.MustString(delayMsg), err)
+		return
+	}
+	mq.logger.Debugf(ctx, "producer: %s send delay message, data: %s success", producerName, gtkjson.MustString(delayMsg))
 	return
 }
 
@@ -762,7 +910,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 			// 添加对 panic 的处理
 			defer func() {
 				if r := recover(); r != nil {
-					mq.logger.Errorf(ctx, "%s panic: %+v", partitionConsumerName, r)
+					mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, panic: %+v", partitionConsumerName, partitionQueueName, r)
 				}
 			}()
 
@@ -774,7 +922,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 					// 读取数据
 					value, e := mq.rc.Do(ctx, "XREADGROUP", "GROUP", partitionGroupName, partitionConsumerName, "COUNT", count, "BLOCK", block, "STREAMS", partitionQueueName, ">")
 					if e != nil {
-						mq.logger.Errorf(ctx, "%s error: %+v", partitionConsumerName, e)
+						mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, error: %+v", partitionConsumerName, partitionQueueName, e)
 						time.Sleep(time.Millisecond * 100)
 					} else if value != nil {
 						// 处理结果数据
@@ -825,14 +973,16 @@ func (mq *RedisMQClient) handelData(ctx context.Context, partitionConsumerName, 
 	}
 
 	var (
-		lastMessage = messages[length-1]
-		queue       = lastMessage.MQPartition.Queue
-		partition   = lastMessage.MQPartition.Partition
-		offset      = lastMessage.MQPartition.Offset
+		lastMessage        = messages[length-1]
+		partitionQueueName = lastMessage.MQPartition.PartitionName
+		partition          = lastMessage.MQPartition.Partition
+		offset             = lastMessage.MQPartition.Offset
+		key                = string(lastMessage.Key)
+		content            = string(lastMessage.Value)
 	)
 	// 执行处理函数
 	if err := fn(messages); err != nil {
-		mq.logger.Errorf(ctx, "%s error: %+v, queue: %s, partition: %d, offset: %v, content: %s", partitionConsumerName, err, queue, partition, offset, string(lastMessage.Value))
+		mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, error: %+v", partitionConsumerName, partitionQueueName, partition, offset, key, content, err)
 		// 重试处理函数
 		var (
 			retryMaxCount = mq.config.RetryMaxCount
@@ -842,7 +992,7 @@ func (mq *RedisMQClient) handelData(ctx context.Context, partitionConsumerName, 
 			count++
 			time.Sleep(mq.config.RetryDelay)
 			if err := fn(messages); err != nil {
-				mq.logger.Errorf(ctx, "%s error: %+v, queue: %s, partition: %d, offset: %v, content: %s", partitionConsumerName, err, queue, partition, offset, string(lastMessage.Value))
+				mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, error: %+v", partitionConsumerName, partitionQueueName, partition, offset, key, content, err)
 				continue
 			}
 			break

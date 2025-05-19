@@ -31,25 +31,3 @@ kafka:
       partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
   excludeTopics: ["topic_101", "topic_102"] # 指定哪些 topic 不发送 Kafka 消息
-  logConfig: # 日志配置
-    logPath: "logs/kafka" # 日志文件路径，默认 logs
-    logType: "text" # 日志类型，json|text，默认 text
-    logLevel: "debug" # 日志级别，panic、fatal、error、warning、info、debug、trace，默认 debug
-    ctxKeys: [] # 自定义 Context 上下文变量名称，自动打印 Context 的变量到日志中，默认为空
-    logLevelFileName: # 日志级别所对应的日志文件名称，默认 gtklog.log
-      panic: "error.log"
-      fatal: "error.log"
-      error: "error.log"
-      warning: "access.log"
-      info: "access.log"
-      debug: "access.log"
-      trace: "access.log"
-    fileNameDateFormat: "%Y-%m-%d" # 文件名的日期格式，默认 %Y-%m-%d
-    timestampFormat: "2006-01-02 15:04:05.000" # 日志中日期时间格式，默认 2006-01-02 15:04:05.000
-    fileInfoField: "caller" # 文件名和行号字段名，默认 caller
-    jsonPrettyPrint: true # json日志是否美化输出，默认 false
-    jsonDataKey: "" # json日志条目中，数据字段都会作为该字段的嵌入字段，默认为空
-    maxAge: "168h" # 保留旧日志文件的最长时间，默认 7天
-    rotationTime: "24h" # 日志轮转的时间间隔，默认 24小时
-    rotationSize: 5368709120 # 日志文件达到指定大小时进行轮转，默认 1024*1024*1024*5
-    stdout: true # 是否输出到控制台，默认 false

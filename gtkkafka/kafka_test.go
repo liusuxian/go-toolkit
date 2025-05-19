@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-16 20:01:54
+ * @LastEditTime: 2025-05-19 22:39:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,7 +14,6 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/liusuxian/go-toolkit/gtkconf"
 	"github.com/liusuxian/go-toolkit/gtkkafka"
-	"github.com/liusuxian/go-toolkit/gtklog"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -54,17 +53,6 @@ func TestNewWithOption(t *testing.T) {
 		cc.ExcludeTopics = []string{
 			"topic_100",
 		}
-		cc.LogConfig.LogPath = "logs/kafka"
-		cc.LogConfig.LogLevelFileName = map[gtklog.Level]string{
-			gtklog.TraceLevel: "access.log",
-			gtklog.DebugLevel: "access.log",
-			gtklog.InfoLevel:  "access.log",
-			gtklog.WarnLevel:  "access.log",
-			gtklog.ErrorLevel: "error.log",
-			gtklog.FatalLevel: "error.log",
-			gtklog.PanicLevel: "error.log",
-		}
-		cc.LogConfig.Stdout = true
 	})
 	assert.NoError(err)
 	// 打印消息队列客户端配置

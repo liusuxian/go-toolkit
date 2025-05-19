@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-15 05:20:03
+ * @LastEditTime: 2025-05-17 02:29:56
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/liusuxian/go-toolkit/gtkcache"
+	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkenv"
 	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtkredis"
@@ -82,11 +83,11 @@ func main() {
 			Appid:       gtktype.String("wx212cac3df738c5bd"),
 			Description: gtktype.String("测试支付"),
 			OutTradeNo:  gtktype.String(outTradeNo),
-			TimeExpire:  gtktype.Time(time.Now().Add(time.Minute * 30)),
+			TimeExpire:  gtktype.Time(time.Now().Add(time.Minute)),
 			Attach:      gtktype.String("id=1"),
-			NotifyUrl:   gtktype.String(gtkenv.Get("notifyUrl")),
+			NotifyUrl:   gtktype.String(gtkenv.Get("payNotifyUrl")),
 			Amount: &gtkpay.Amount{
-				Total:    gtktype.Int64(1),
+				Total:    gtktype.Int64(100),
 				Currency: gtktype.String("CNY"),
 			},
 			Payer: &gtkpay.Payer{
@@ -99,21 +100,59 @@ func main() {
 		}
 		gtkresp.RespSucc(w, resp)
 	})
-	// 回调处理函数
-	http.HandleFunc("/notify/", func(w http.ResponseWriter, r *http.Request) {
-		segments := strings.Split(r.URL.Path, "/")
-		if len(segments) > 2 {
-			merchantPayId := segments[2]
-			fmt.Printf("merchantPayId: %v\n", merchantPayId)
+	// 发起退款
+	http.HandleFunc("/refund", func(w http.ResponseWriter, r *http.Request) {
+		resp, err := paymentService.Refund(ctx, mch, &gtkpay.RefundRequest{
+			OutTradeNo:  gtktype.String(r.PostFormValue("outTradeNo")),
+			OutRefundNo: gtktype.String(r.PostFormValue("outRefundNo")),
+			Reason:      gtktype.String("测试退款"),
+			NotifyUrl:   gtktype.String(gtkenv.Get("refundNotifyUrl")),
+			Amount: &gtkpay.Amount{
+				Total:    gtktype.Int64(gtkconv.ToInt64(r.PostFormValue("total"))),
+				Refund:   gtktype.Int64(gtkconv.ToInt64(r.PostFormValue("refund"))),
+				Currency: gtktype.String("CNY"),
+			},
+		})
+		if err != nil {
+			gtkresp.RespFail(w, -1, err.Error())
+			return
 		}
-		result, err := paymentService.NotifyUnsign(ctx, r, mch)
+		gtkresp.RespSucc(w, resp)
+	})
+	// 支付回调处理函数
+	http.HandleFunc("/pay/notify/", func(w http.ResponseWriter, r *http.Request) {
+		segments := strings.Split(r.URL.Path, "/")
+		merchantPayId := segments[len(segments)-1]
+		fmt.Printf("merchantPayId: %v\n", merchantPayId)
+		result, err := paymentService.PayNotifyUnsign(ctx, r, mch)
 		if err != nil {
 			gtkresp.RespFail(w, 500, "{\"code\":\"FAIL\",\"message\":\"失败\"}")
 			return
 		}
 		// 处理回调
-		fmt.Printf("result: %v\n", gtkjson.MustString(result))
+		fmt.Printf("pay result: %v\n", gtkjson.MustString(result))
 		if gtktype.StringValue(result.TradeState) == "SUCCESS" {
+			gtkresp.RespSucc(w, map[string]any{
+				"code":    "SUCCESS",
+				"message": "",
+			})
+		} else {
+			gtkresp.RespFail(w, 500, "{\"code\":\"FAIL\",\"message\":\"失败\"}")
+		}
+	})
+	// 退款回调处理函数
+	http.HandleFunc("/refund/notify/", func(w http.ResponseWriter, r *http.Request) {
+		segments := strings.Split(r.URL.Path, "/")
+		merchantPayId := segments[len(segments)-1]
+		fmt.Printf("merchantPayId: %v\n", merchantPayId)
+		result, err := paymentService.RefundNotifyUnsign(ctx, r, mch)
+		if err != nil {
+			gtkresp.RespFail(w, 500, "{\"code\":\"FAIL\",\"message\":\"失败\"}")
+			return
+		}
+		// 处理回调
+		fmt.Printf("refund result: %v\n", gtkjson.MustString(result))
+		if gtktype.StringValue(result.RefundStatus) == "SUCCESS" {
 			gtkresp.RespSucc(w, map[string]any{
 				"code":    "SUCCESS",
 				"message": "",
