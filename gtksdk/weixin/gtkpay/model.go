@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-12 15:56:02
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-17 00:44:51
+ * @LastEditTime: 2025-05-22 15:49:35
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -238,14 +238,14 @@ type QueryByOutRefundNoRequest struct {
 
 // RefundResult 退款结果
 type RefundResult struct {
-	SpMchid             *string    `json:"sp_mchid,omitempty"`              // 服务商商户号
-	SubMchid            *string    `json:"sub_mchid,omitempty"`             // 子商户号（也叫特约商户号）
-	OutTradeNo          *string    `json:"out_trade_no,omitempty"`          // 商户订单号
-	TransactionId       *string    `json:"transaction_id,omitempty"`        // 微信支付订单号
-	OutRefundNo         *string    `json:"out_refund_no,omitempty"`         // 商户退款单号
-	RefundId            *string    `json:"refund_id,omitempty"`             // 微信支付退款单号
-	RefundStatus        *string    `json:"refund_status,omitempty"`         // 退款状态
-	SuccessTime         *time.Time `json:"success_time,omitempty"`          // 退款成功时间
-	UserReceivedAccount *string    `json:"user_received_account,omitempty"` // 退款入账账户
-	Amount              *Amount    `json:"amount,omitempty"`                // 金额信息
+	SpMchid             *string `json:"sp_mchid,omitempty"`              // 服务商商户号
+	SubMchid            *string `json:"sub_mchid,omitempty"`             // 子商户号（也叫特约商户号）
+	OutTradeNo          *string `json:"out_trade_no,omitempty"`          // 商户订单号
+	TransactionId       *string `json:"transaction_id,omitempty"`        // 微信支付订单号
+	OutRefundNo         *string `json:"out_refund_no,omitempty"`         // 商户退款单号
+	RefundId            *string `json:"refund_id,omitempty"`             // 微信支付退款单号
+	RefundStatus        *string `json:"refund_status,omitempty"`         // 退款状态
+	SuccessTime         *string `json:"success_time,omitempty"`          // 退款成功时间
+	UserReceivedAccount *string `json:"user_received_account,omitempty"` // 退款入账账户
+	Amount              *Amount `json:"amount,omitempty"`                // 金额信息
 }
