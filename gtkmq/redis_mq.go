@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-22 09:38:58
+ * @LastEditTime: 2025-05-22 10:31:13
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -28,25 +28,23 @@ import (
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Addr                  string        `json:"addr"`                  // redis 地址
-	Username              string        `json:"username"`              // redis 用户名
-	Password              string        `json:"password"`              // redis 密码
-	DB                    int           `json:"db"`                    // redis 数据库
-	PoolSize              int           `json:"poolSize"`              // redis 连接池大小，默认 20
-	TLSConfig             *tls.Config   `json:"tlsConfig"`             // tls 配置
-	Retries               int           `json:"retries"`               // 发送消息失败后允许重试的次数，默认 2147483647
-	RetryBackoff          time.Duration `json:"retryBackoff"`          // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-	ExpiredTime           time.Duration `json:"expiredTime"`           // 消息过期时间，默认 90天
-	DelExpiredMsgInterval time.Duration `json:"delExpiredMsgInterval"` // 删除过期消息的时间间隔，默认 1天
-	WaitTimeout           time.Duration `json:"waitTimeout"`           // 指定等待消息的最大时间，默认最大 2500ms
-	OffsetReset           string        `json:"offsetReset"`           // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	// BatchSize             int                 `json:"batchSize"`             // 批量消费的条数，默认 200
-	// BatchInterval         time.Duration       `json:"batchInterval"`         // 批量消费的间隔时间，默认 5s
-	Env            string              `json:"env"`            // 消息队列服务环境，默认 local
-	ConsumerEnv    string              `json:"consumerEnv"`    // 消费者服务环境，默认和消息队列服务环境一致
-	GlobalProducer string              `json:"globalProducer"` // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	MQConfig       map[string]MQConfig `json:"mqConfig"`       // 消息队列配置，key 为消息队列名称
-	ExcludeMQList  []string            `json:"excludeMQList"`  // 指定哪些消息队列不发送消息
+	Addr                  string              `json:"addr"`                  // redis 地址
+	Username              string              `json:"username"`              // redis 用户名
+	Password              string              `json:"password"`              // redis 密码
+	DB                    int                 `json:"db"`                    // redis 数据库
+	PoolSize              int                 `json:"poolSize"`              // redis 连接池大小，默认 20
+	TLSConfig             *tls.Config         `json:"tlsConfig"`             // tls 配置
+	Retries               int                 `json:"retries"`               // 发送消息失败后允许重试的次数，默认 2147483647
+	RetryBackoff          time.Duration       `json:"retryBackoff"`          // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	ExpiredTime           time.Duration       `json:"expiredTime"`           // 消息过期时间，默认 90天
+	DelExpiredMsgInterval time.Duration       `json:"delExpiredMsgInterval"` // 删除过期消息的时间间隔，默认 1天
+	WaitTimeout           time.Duration       `json:"waitTimeout"`           // 指定等待消息的最大时间，默认最大 2500ms
+	OffsetReset           string              `json:"offsetReset"`           // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+	Env                   string              `json:"env"`                   // 消息队列服务环境，默认 local
+	ConsumerEnv           string              `json:"consumerEnv"`           // 消费者服务环境，默认和消息队列服务环境一致
+	GlobalProducer        string              `json:"globalProducer"`        // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	MQConfig              map[string]MQConfig `json:"mqConfig"`              // 消息队列配置，key 为消息队列名称
+	ExcludeMQList         []string            `json:"excludeMQList"`         // 指定哪些消息队列不发送消息
 }
 
 // RedisMQConfigOption Redis 消息队列配置选项
@@ -200,14 +198,6 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	if client.config.OffsetReset == "" {
 		client.config.OffsetReset = "0-0"
 	}
-	// 批量消费的条数，默认 200
-	if client.config.BatchSize <= 0 {
-		client.config.BatchSize = 200
-	}
-	// 批量消费的间隔时间，默认 5s
-	if client.config.BatchInterval <= time.Duration(0) {
-		client.config.BatchInterval = time.Second * 5
-	}
 	// 消息队列服务环境，默认 local
 	if client.config.Env == "" {
 		client.config.Env = "local"
@@ -284,14 +274,6 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 	// 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
 	if client.config.OffsetReset == "" {
 		client.config.OffsetReset = "0-0"
-	}
-	// 批量消费的条数，默认 200
-	if client.config.BatchSize <= 0 {
-		client.config.BatchSize = 200
-	}
-	// 批量消费的间隔时间，默认 5s
-	if client.config.BatchInterval <= time.Duration(0) {
-		client.config.BatchInterval = time.Second * 5
 	}
 	// 消息队列服务环境，默认 local
 	if client.config.Env == "" {
@@ -450,14 +432,14 @@ func (mq *RedisMQClient) SendMessage(ctx context.Context, queue string, producer
 
 // Subscribe 订阅数据
 func (mq *RedisMQClient) Subscribe(ctx context.Context, queue string, fn func(message *MQMessage) error, group ...string) (err error) {
-	return mq.handelSubscribe(ctx, queue, 1, func(messages []*MQMessage) error {
+	return mq.handelSubscribe(ctx, queue, false, func(messages []*MQMessage) error {
 		return fn(messages[0])
 	}, group...)
 }
 
 // BatchSubscribe 批量订阅数据
 func (mq *RedisMQClient) BatchSubscribe(ctx context.Context, queue string, fn func(messages []*MQMessage) error, group ...string) (err error) {
-	return mq.handelSubscribe(ctx, queue, mq.config.BatchSize, fn, group...)
+	return mq.handelSubscribe(ctx, queue, true, fn, group...)
 }
 
 // GetExpiredMessages 获取过期消息，每个分区每次最多返回 100 条
@@ -838,7 +820,7 @@ func (mq *RedisMQClient) sendDelayMessage(ctx context.Context, queue string, pro
 }
 
 // handelSubscribe 处理订阅数据
-func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, count int, fn func(messages []*MQMessage) error, group ...string) (err error) {
+func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, isBatch bool, fn func(messages []*MQMessage) error, group ...string) (err error) {
 	// 获取消费者配置
 	var (
 		isStart  bool
@@ -856,7 +838,15 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 		}
 	}
 	// 订阅数据
-	var block = mq.config.WaitTimeout.Milliseconds()
+	var (
+		block           = mq.config.WaitTimeout.Milliseconds()
+		readWaitTimeout = time.Millisecond * 100
+		count           = 1
+	)
+	if isBatch {
+		readWaitTimeout = mqConfig.BatchInterval
+		count = mqConfig.BatchSize
+	}
 	for i := int32(0); i < int32(mqConfig.PartitionNum); i++ {
 		go func(partition int32) {
 			var (
@@ -884,7 +874,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 					value, e := mq.rc.Do(ctx, "XREADGROUP", "GROUP", partitionGroupName, partitionConsumerName, "COUNT", count, "BLOCK", block, "STREAMS", partitionQueueName, ">")
 					if e != nil {
 						mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, error: %+v", partitionConsumerName, partitionQueueName, e)
-						time.Sleep(time.Millisecond * 100)
+						time.Sleep(readWaitTimeout)
 					} else if value != nil {
 						// 处理结果数据
 						valueMap := gtkconv.ToStringMap(value)
@@ -1027,25 +1017,38 @@ func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, mqConfig
 	if config, ok := mq.config.MQConfig[queue]; ok {
 		isStart = (config.Mode == ModeBoth || config.Mode == ModeConsumer)
 		mqConfig = &MQConfig{}
+		// 消息队列分区数量，默认 12 个分区
 		if config.PartitionNum > 0 {
 			mqConfig.PartitionNum = config.PartitionNum
 		} else {
 			// 默认分区数
 			mqConfig.PartitionNum = defaultPartitionNum
 		}
-		// 消费者组
+		// 指定消费者组名称列表
 		mqConfig.Groups = config.Groups
-		// 重试间隔时间
+		// 当消费失败时重试的间隔时间，默认 10s
 		if config.RetryDelay <= time.Duration(0) {
 			mqConfig.RetryDelay = time.Second * 10
 		} else {
 			mqConfig.RetryDelay = config.RetryDelay
 		}
-		// 重试最大次数
+		// 当消费失败时重试的最大次数，默认 0，无限重试
 		if config.RetryMaxCount <= 0 {
 			mqConfig.RetryMaxCount = 0
 		} else {
 			mqConfig.RetryMaxCount = config.RetryMaxCount
+		}
+		// 批量消费的条数，默认 200
+		if config.BatchSize <= 0 {
+			mqConfig.BatchSize = 200
+		} else {
+			mqConfig.BatchSize = config.BatchSize
+		}
+		// 批量消费的间隔时间，默认 5s
+		if config.BatchInterval <= time.Duration(0) {
+			mqConfig.BatchInterval = time.Second * 5
+		} else {
+			mqConfig.BatchInterval = config.BatchInterval
 		}
 		return
 	}

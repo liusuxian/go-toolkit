@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-22 08:53:17
+ * @LastEditTime: 2025-05-22 10:28:39
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -37,6 +37,10 @@ type MQConfig struct {
 	RetryDelay time.Duration `json:"retryDelay,omitempty"`
 	// 当消费失败时重试的最大次数，默认 0，无限重试
 	RetryMaxCount int `json:"retryMaxCount,omitempty"`
+	// 批量消费的条数，默认 200
+	BatchSize int `json:"batchSize,omitempty"`
+	// 批量消费的间隔时间，默认 5s
+	BatchInterval time.Duration `json:"batchInterval,omitempty"`
 	// 是否开启延迟队列
 	IsDelayQueue bool `json:"isDelayQueue,omitempty"`
 	// 延迟队列检查间隔，默认 10s

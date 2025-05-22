@@ -10,11 +10,7 @@ kafka:
   lingerMs: 100 # 发送延迟时间，默认 100ms
   queueBufferingMaxKbytes: 1048576 # Producer 攒批发送中，默认 1048576kb
   waitTimeout: "5s" # 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
-  retryDelay: "10s" # 当消费失败时重试的间隔时间，默认 10s
-  retryMaxCount: 0 # 当消费失败时重试的最大次数，默认 0，无限重试
   offsetReset: "earliest" # 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-  batchConsumeSize: 200 # 批量消费的条数，默认 200
-  batchConsumeInterval: "5s" # 批量消费的间隔时间，默认 5s
   isClose: true # 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
   env: "test" # topic 服务环境，默认 local
   # consumerEnv: "gray" # 消费者服务环境，默认和 topic 服务环境一致

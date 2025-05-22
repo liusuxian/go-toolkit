@@ -10,11 +10,7 @@ redis_mq:
   expiredTime: "5m" # 消息过期时间，默认 90天
   delExpiredMsgInterval: "1m" # 删除过期消息的时间间隔，默认 1天
   waitTimeout: "2500ms" # 指定等待消息的最大时间，默认最大 2500ms
-  retryDelay: "1s" # 当消费失败时重试的间隔时间，默认 10s
-  retryMaxCount: 0 # 当消费失败时重试的最大次数，默认 0，无限重试
   offsetReset: "0-0" # 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-  batchSize: 200 # 批量消费的条数，默认 200
-  batchInterval: "1s" # 批量消费的间隔时间，默认 5s
   env: "test" # 消息队列服务环境，默认 local
   consumerEnv: "gray" # 消费者服务环境，默认和消息队列服务环境一致
   # globalProducer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
