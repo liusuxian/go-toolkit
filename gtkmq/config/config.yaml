@@ -33,6 +33,6 @@ redis_mq:
       partitionNum: 12 # 消息队列分区数量，默认 12 个分区
       mode: 1 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
       isDelayQueue: true # 是否开启延迟队列
+      delayQueueCheckInterval: "1s" # 延迟队列检查间隔，默认 10s
+      delayQueueBatchSize: 100 # 延迟队列批处理大小，默认 100
   excludeMQList: ["queue_100", "queue_200"] # 指定哪些消息队列不发送消息
-  delayQueueCheckInterval: "1s" # 延迟队列检查间隔，默认 10s
-  delayQueueBatchSize: 100 # 延迟队列批处理大小，默认 100

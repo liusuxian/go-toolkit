@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-18 23:24:53
+ * @LastEditTime: 2025-05-22 09:38:58
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -28,29 +28,25 @@ import (
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Addr                    string              `json:"addr"`                    // redis 地址
-	Username                string              `json:"username"`                // redis 用户名
-	Password                string              `json:"password"`                // redis 密码
-	DB                      int                 `json:"db"`                      // redis 数据库
-	PoolSize                int                 `json:"poolSize"`                // redis 连接池大小，默认 20
-	TLSConfig               *tls.Config         `json:"tlsConfig"`               // tls 配置
-	Retries                 int                 `json:"retries"`                 // 发送消息失败后允许重试的次数，默认 2147483647
-	RetryBackoff            time.Duration       `json:"retryBackoff"`            // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-	ExpiredTime             time.Duration       `json:"expiredTime"`             // 消息过期时间，默认 90天
-	DelExpiredMsgInterval   time.Duration       `json:"delExpiredMsgInterval"`   // 删除过期消息的时间间隔，默认 1天
-	WaitTimeout             time.Duration       `json:"waitTimeout"`             // 指定等待消息的最大时间，默认最大 2500ms
-	RetryDelay              time.Duration       `json:"retryDelay"`              // 当消费失败时重试的间隔时间，默认 10s
-	RetryMaxCount           int                 `json:"retryMaxCount"`           // 当消费失败时重试的最大次数，默认 0，无限重试
-	OffsetReset             string              `json:"offsetReset"`             // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	BatchSize               int                 `json:"batchSize"`               // 批量消费的条数，默认 200
-	BatchInterval           time.Duration       `json:"batchInterval"`           // 批量消费的间隔时间，默认 5s
-	Env                     string              `json:"env"`                     // 消息队列服务环境，默认 local
-	ConsumerEnv             string              `json:"consumerEnv"`             // 消费者服务环境，默认和消息队列服务环境一致
-	GlobalProducer          string              `json:"globalProducer"`          // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	MQConfig                map[string]MQConfig `json:"mqConfig"`                // 消息队列配置，key 为消息队列名称
-	ExcludeMQList           []string            `json:"excludeMQList"`           // 指定哪些消息队列不发送消息
-	DelayQueueCheckInterval time.Duration       `json:"delayQueueCheckInterval"` // 延迟队列检查间隔，默认 10s
-	DelayQueueBatchSize     int                 `json:"delayQueueBatchSize"`     // 延迟队列批处理大小，默认 100
+	Addr                  string        `json:"addr"`                  // redis 地址
+	Username              string        `json:"username"`              // redis 用户名
+	Password              string        `json:"password"`              // redis 密码
+	DB                    int           `json:"db"`                    // redis 数据库
+	PoolSize              int           `json:"poolSize"`              // redis 连接池大小，默认 20
+	TLSConfig             *tls.Config   `json:"tlsConfig"`             // tls 配置
+	Retries               int           `json:"retries"`               // 发送消息失败后允许重试的次数，默认 2147483647
+	RetryBackoff          time.Duration `json:"retryBackoff"`          // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	ExpiredTime           time.Duration `json:"expiredTime"`           // 消息过期时间，默认 90天
+	DelExpiredMsgInterval time.Duration `json:"delExpiredMsgInterval"` // 删除过期消息的时间间隔，默认 1天
+	WaitTimeout           time.Duration `json:"waitTimeout"`           // 指定等待消息的最大时间，默认最大 2500ms
+	OffsetReset           string        `json:"offsetReset"`           // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+	// BatchSize             int                 `json:"batchSize"`             // 批量消费的条数，默认 200
+	// BatchInterval         time.Duration       `json:"batchInterval"`         // 批量消费的间隔时间，默认 5s
+	Env            string              `json:"env"`            // 消息队列服务环境，默认 local
+	ConsumerEnv    string              `json:"consumerEnv"`    // 消费者服务环境，默认和消息队列服务环境一致
+	GlobalProducer string              `json:"globalProducer"` // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	MQConfig       map[string]MQConfig `json:"mqConfig"`       // 消息队列配置，key 为消息队列名称
+	ExcludeMQList  []string            `json:"excludeMQList"`  // 指定哪些消息队列不发送消息
 }
 
 // RedisMQConfigOption Redis 消息队列配置选项
@@ -151,11 +147,11 @@ const (
 
 // delayMessage 延迟消息
 type delayMessage struct {
-	UUID      string `json:"uuid"`          // 消息唯一标识
-	Queue     string `json:"queue"`         // 队列名称
-	Key       string `json:"key,omitempty"` // 键
-	Data      any    `json:"data"`          // 数据
-	Timestamp int64  `json:"timestamp"`     // 发送消息的时间戳
+	UUID      string    `json:"uuid"`          // 消息唯一标识
+	Queue     string    `json:"queue"`         // 队列名称
+	Key       string    `json:"key,omitempty"` // 键
+	Data      any       `json:"data"`          // 数据
+	Timestamp time.Time `json:"timestamp"`     // 发送消息的时间戳
 }
 
 // NewRedisMQClientWithOption 创建 Redis 消息队列客户端
@@ -200,10 +196,6 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	if client.config.WaitTimeout <= time.Duration(0) || client.config.WaitTimeout > time.Millisecond*2500 {
 		client.config.WaitTimeout = time.Millisecond * 2500
 	}
-	// 当消费失败时重试的间隔时间，默认 10s
-	if client.config.RetryDelay <= time.Duration(0) {
-		client.config.RetryDelay = time.Second * 10
-	}
 	// 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
 	if client.config.OffsetReset == "" {
 		client.config.OffsetReset = "0-0"
@@ -223,14 +215,6 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	// 消费者服务环境，默认和消息队列服务环境一致
 	if client.config.ConsumerEnv == "" {
 		client.config.ConsumerEnv = client.config.Env
-	}
-	// 延迟队列检查间隔，默认 10s
-	if client.config.DelayQueueCheckInterval <= time.Duration(0) {
-		client.config.DelayQueueCheckInterval = time.Second * 10
-	}
-	// 延迟队列批处理大小，默认 100
-	if client.config.DelayQueueBatchSize <= 0 {
-		client.config.DelayQueueBatchSize = 100
 	}
 	// redis 客户端
 	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
@@ -297,10 +281,6 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 	if client.config.WaitTimeout <= time.Duration(0) || client.config.WaitTimeout > time.Millisecond*2500 {
 		client.config.WaitTimeout = time.Millisecond * 2500
 	}
-	// 当消费失败时重试的间隔时间，默认 10s
-	if client.config.RetryDelay <= time.Duration(0) {
-		client.config.RetryDelay = time.Second * 10
-	}
 	// 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
 	if client.config.OffsetReset == "" {
 		client.config.OffsetReset = "0-0"
@@ -320,14 +300,6 @@ func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client
 	// 消费者服务环境，默认和消息队列服务环境一致
 	if client.config.ConsumerEnv == "" {
 		client.config.ConsumerEnv = client.config.Env
-	}
-	// 延迟队列检查间隔，默认 10s
-	if client.config.DelayQueueCheckInterval <= time.Duration(0) {
-		client.config.DelayQueueCheckInterval = time.Second * 10
-	}
-	// 延迟队列批处理大小，默认 100
-	if client.config.DelayQueueBatchSize <= 0 {
-		client.config.DelayQueueBatchSize = 100
 	}
 	// redis 客户端
 	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
@@ -366,10 +338,10 @@ func (mq *RedisMQClient) PrintClientConfig(ctx context.Context) {
 func (mq *RedisMQClient) NewProducer(ctx context.Context, queue string) (err error) {
 	// 获取生产者配置
 	var (
-		isStart      bool
-		partitionNum uint32
+		isStart  bool
+		mqConfig *MQConfig
 	)
-	if isStart, partitionNum, err = mq.getProducerConfig(queue); err != nil {
+	if isStart, mqConfig, err = mq.getProducerConfig(queue); err != nil {
 		return
 	}
 	if !isStart {
@@ -385,16 +357,16 @@ func (mq *RedisMQClient) NewProducer(ctx context.Context, queue string) (err err
 	if globalProducerName != "" {
 		producerName = mq.getGlobalProducerName(globalProducerName)
 		if _, ok := mq.producerMap[producerName]; ok {
-			mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, partitionNum)
+			mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, mqConfig.PartitionNum)
 			return
 		}
 	} else {
 		if _, ok := mq.producerMap[producerName]; ok {
-			return fmt.Errorf("new producer: %s, queue: %s, partitionNum: %d already exists", producerName, fullQueueName, partitionNum)
+			return fmt.Errorf("new producer: %s, queue: %s, partitionNum: %d already exists", producerName, fullQueueName, mqConfig.PartitionNum)
 		}
 	}
 	mq.producerMap[producerName] = true
-	mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, partitionNum)
+	mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, mqConfig.PartitionNum)
 	return
 }
 
@@ -402,11 +374,10 @@ func (mq *RedisMQClient) NewProducer(ctx context.Context, queue string) (err err
 func (mq *RedisMQClient) NewConsumer(ctx context.Context, queue string) (err error) {
 	// 获取消费者配置
 	var (
-		isStart      bool
-		partitionNum uint32
-		groups       []string
+		isStart  bool
+		mqConfig *MQConfig
 	)
-	if isStart, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
+	if isStart, mqConfig, err = mq.getConsumerConfig(queue); err != nil {
 		return
 	}
 	if !isStart {
@@ -418,10 +389,10 @@ func (mq *RedisMQClient) NewConsumer(ctx context.Context, queue string) (err err
 		groupList        = []string{mq.getConsumerGroupName(queue)}
 		fullQueueName    = mq.getFullQueueName(queue)
 	)
-	if len(groups) > 0 {
-		consumerNameList = make([]string, 0, len(groups))
-		groupList = make([]string, 0, len(groups))
-		for _, g := range groups {
+	if len(mqConfig.Groups) > 0 {
+		consumerNameList = make([]string, 0, len(mqConfig.Groups))
+		groupList = make([]string, 0, len(mqConfig.Groups))
+		for _, g := range mqConfig.Groups {
 			consumerNameList = append(consumerNameList, mq.getConsumerName(g))
 			groupList = append(groupList, mq.getConsumerGroupName(g))
 		}
@@ -433,41 +404,48 @@ func (mq *RedisMQClient) NewConsumer(ctx context.Context, queue string) (err err
 			group        = groupList[i]
 		)
 		if _, ok := mq.consumerMap[consumerName]; ok {
-			return fmt.Errorf("new consumer: %s, queue: %s, group: %s, partitionNum: %d already exists", consumerName, fullQueueName, group, partitionNum)
+			return fmt.Errorf("new consumer: %s, queue: %s, group: %s, partitionNum: %d already exists", consumerName, fullQueueName, group, mqConfig.PartitionNum)
 		}
-		if _, err = mq.rc.EvalSha(ctx, "XGROUP_CREATE", []string{fullQueueName, group}, partitionNum, mq.config.OffsetReset); err != nil {
+		if _, err = mq.rc.EvalSha(ctx, "XGROUP_CREATE", []string{fullQueueName, group}, mqConfig.PartitionNum, mq.config.OffsetReset); err != nil {
 			return
 		}
 		mq.consumerMap[consumerName] = true
-		mq.logger.Infof(ctx, "new consumer: %s, queue: %s, group: %s, partitionNum: %d success", consumerName, fullQueueName, group, partitionNum)
+		mq.logger.Infof(ctx, "new consumer: %s, queue: %s, group: %s, partitionNum: %d success", consumerName, fullQueueName, group, mqConfig.PartitionNum)
 	}
 	return
 }
 
 // SendMessage 发送消息
 func (mq *RedisMQClient) SendMessage(ctx context.Context, queue string, producerMessage *ProducerMessage) (err error) {
-	// 处理发送消息的时间戳
-	if producerMessage.Timestamp.IsZero() {
-		producerMessage.Timestamp = time.Now()
+	// 获取生产者配置
+	var (
+		isStart  bool
+		mqConfig *MQConfig
+	)
+	if isStart, mqConfig, err = mq.getProducerConfig(queue); err != nil {
+		return
 	}
-	// 检查延迟时间是否大于0
-	if producerMessage.DelayTime <= time.Duration(0) {
-		// 序列化消息
-		var dataMap map[string]any
-		if dataMap, err = gtkconv.ToStringMapE(producerMessage.Data); err != nil {
-			return
-		}
-		// 处理数据
-		var dataBytes []byte
-		if dataBytes, err = json.Marshal(dataMap); err != nil {
-			return
-		}
-		producerMessage.dataBytes = dataBytes
-		// 发送消息
-		return mq.sendMessage(ctx, queue, producerMessage)
+	if !isStart {
+		return
 	}
-	// 发送延迟消息
-	return mq.sendDelayMessage(ctx, queue, producerMessage)
+	if mqConfig.IsDelayQueue && !producerMessage.DelayTime.IsZero() {
+		// 发送延迟消息
+		return mq.sendDelayMessage(ctx, queue, producerMessage)
+	}
+
+	// 序列化消息
+	var dataMap map[string]any
+	if dataMap, err = gtkconv.ToStringMapE(producerMessage.Data); err != nil {
+		return
+	}
+	// 处理数据
+	var dataBytes []byte
+	if dataBytes, err = json.Marshal(dataMap); err != nil {
+		return
+	}
+	producerMessage.dataBytes = dataBytes
+	// 发送消息
+	return mq.sendMessage(ctx, queue, mqConfig, producerMessage)
 }
 
 // Subscribe 订阅数据
@@ -558,21 +536,18 @@ func (mq *RedisMQClient) ResetConsumerOffset(ctx context.Context, queue string, 
 		return
 	}
 	// 获取消费者配置
-	var (
-		partitionNum uint32
-		groups       []string
-	)
-	if _, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
+	var mqConfig *MQConfig
+	if _, mqConfig, err = mq.getConsumerConfig(queue); err != nil {
 		return
 	}
-	if len(groups) > 0 && len(group) > 0 {
-		if !slices.Contains(groups, group[0]) {
-			return fmt.Errorf("group: %s not found in groups: %s", group[0], groups)
+	if len(mqConfig.Groups) > 0 && len(group) > 0 {
+		if !slices.Contains(mqConfig.Groups, group[0]) {
+			return fmt.Errorf("group: %s not found in groups: %s", group[0], mqConfig.Groups)
 		}
 	}
 	// 组装命令参数
-	cmdArgsList := make([][]any, 0, partitionNum)
-	for i := uint32(0); i < partitionNum; i++ {
+	cmdArgsList := make([][]any, 0, mqConfig.PartitionNum)
+	for i := uint32(0); i < mqConfig.PartitionNum; i++ {
 		var (
 			partition          = int32(i)
 			partitionGroupName = mq.getPartitionGroupName(queue, partition)
@@ -603,13 +578,13 @@ func (mq *RedisMQClient) ResetConsumerOffset(ctx context.Context, queue string, 
 //	offset: <ID> 重置为指定位置
 func (mq *RedisMQClient) ResetConsumerOffsetByPartition(ctx context.Context, queue string, partition int32, offset string, group ...string) (err error) {
 	// 获取消费者配置
-	var groups []string
-	if _, _, groups, err = mq.getConsumerConfig(queue); err != nil {
+	var mqConfig *MQConfig
+	if _, mqConfig, err = mq.getConsumerConfig(queue); err != nil {
 		return
 	}
-	if len(groups) > 0 && len(group) > 0 {
-		if !slices.Contains(groups, group[0]) {
-			return fmt.Errorf("group: %s not found in groups: %s", group[0], groups)
+	if len(mqConfig.Groups) > 0 && len(group) > 0 {
+		if !slices.Contains(mqConfig.Groups, group[0]) {
+			return fmt.Errorf("group: %s not found in groups: %s", group[0], mqConfig.Groups)
 		}
 	}
 	partitionGroupName := mq.getPartitionGroupName(queue, partition)
@@ -623,21 +598,18 @@ func (mq *RedisMQClient) ResetConsumerOffsetByPartition(ctx context.Context, que
 // DelGroup 删除消费者组（请谨慎使用）
 func (mq *RedisMQClient) DelGroup(ctx context.Context, queue string, group ...string) (err error) {
 	// 获取消费者配置
-	var (
-		partitionNum uint32
-		groups       []string
-	)
-	if _, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
+	var mqConfig *MQConfig
+	if _, mqConfig, err = mq.getConsumerConfig(queue); err != nil {
 		return
 	}
-	if len(groups) > 0 && len(group) > 0 {
-		if !slices.Contains(groups, group[0]) {
-			return fmt.Errorf("group: %s not found in groups: %s", group[0], groups)
+	if len(mqConfig.Groups) > 0 && len(group) > 0 {
+		if !slices.Contains(mqConfig.Groups, group[0]) {
+			return fmt.Errorf("group: %s not found in groups: %s", group[0], mqConfig.Groups)
 		}
 	}
 	// 组装命令参数
-	cmdArgsList := make([][]any, 0, partitionNum)
-	for i := uint32(0); i < partitionNum; i++ {
+	cmdArgsList := make([][]any, 0, mqConfig.PartitionNum)
+	for i := uint32(0); i < mqConfig.PartitionNum; i++ {
 		var (
 			partition          = int32(i)
 			partitionGroupName = mq.getPartitionGroupName(queue, partition)
@@ -715,15 +687,27 @@ func (mq *RedisMQClient) startAllDelayQueueProcessor(ctx context.Context) {
 	for queue, mqConfig := range mq.config.MQConfig {
 		if mqConfig.Mode == ModeBoth || mqConfig.Mode == ModeProducer {
 			if mqConfig.IsDelayQueue {
-				go mq.startDelayQueueProcessor(ctx, queue)
+				var (
+					interval  = mqConfig.DelayQueueCheckInterval
+					batchSize = mqConfig.DelayQueueBatchSize
+				)
+				// 延迟队列检查间隔，默认 10s
+				if interval <= time.Duration(0) {
+					interval = time.Second * 10
+				}
+				// 延迟队列批处理大小，默认 100
+				if batchSize <= 0 {
+					batchSize = 100
+				}
+				go mq.startDelayQueueProcessor(ctx, queue, interval, batchSize)
 			}
 		}
 	}
 }
 
 // startDelayQueueProcessor 启动延迟队列处理器
-func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue string) {
-	ticker := time.NewTicker(mq.config.DelayQueueCheckInterval)
+func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue string, interval time.Duration, batchSize int) {
+	ticker := time.NewTicker(interval)
 	for {
 		select {
 		case <-ticker.C:
@@ -731,8 +715,8 @@ func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue str
 			var (
 				keys = []string{fmt.Sprintf(delayQueueKey, mq.config.Env, queue)}
 				args = []any{
-					time.Now().Unix(),
-					mq.config.DelayQueueBatchSize,
+					time.Now().UnixMilli(),
+					batchSize,
 				}
 				value any
 				err   error
@@ -757,9 +741,8 @@ func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue str
 			// 发送到实际队列
 			for _, message := range messageList {
 				mq.SendMessage(ctx, message.Queue, &ProducerMessage{
-					Key:       message.Key,
-					Data:      message.Data,
-					Timestamp: time.UnixMilli(message.Timestamp),
+					Key:  message.Key,
+					Data: message.Data,
 				})
 			}
 		case <-mq.quitChan:
@@ -770,18 +753,7 @@ func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue str
 }
 
 // sendMessage 发送消息
-func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producerMessage *ProducerMessage) (err error) {
-	// 获取生产者配置
-	var (
-		isStart      bool
-		partitionNum uint32
-	)
-	if isStart, partitionNum, err = mq.getProducerConfig(queue); err != nil {
-		return
-	}
-	if !isStart {
-		return
-	}
+func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, mqConfig *MQConfig, producerMessage *ProducerMessage) (err error) {
 	// 检测哪些消息队列不发送消息
 	if slices.Contains(mq.config.ExcludeMQList, queue) {
 		return
@@ -793,7 +765,7 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 	} else {
 		hash := fnv.New32a()
 		hash.Write([]byte(producerMessage.Key))
-		partition = int32(hash.Sum32() % partitionNum)
+		partition = int32(hash.Sum32() % mqConfig.PartitionNum)
 	}
 	// 判断是否配置了全局生产者名称
 	var (
@@ -804,17 +776,17 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 		producerName = mq.getGlobalProducerName(globalProducerName)
 	}
 	// 发送消息
+	var now time.Time
 	if err = gtkhttp.Retry(ctx, func(ctx context.Context) (e error) {
-		keys := []string{
-			mq.getFullQueueName(queue),
-		}
+		keys := []string{mq.getFullQueueName(queue)}
+		now = time.Now()
 		args := []any{
 			partition,
-			partitionNum,
+			mqConfig.PartitionNum,
 			producerMessage.Key,
 			producerMessage.dataBytes,
-			producerMessage.Timestamp.UnixMilli(),
-			time.Now().Add(mq.config.ExpiredTime).Unix(),
+			now.UnixMilli(),
+			now.Add(mq.config.ExpiredTime).Unix(),
 		}
 		// 执行 lua 脚本
 		var value any
@@ -824,25 +796,15 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, producer
 		partition = gtkconv.ToInt32(value)
 		return
 	}, mq.config.Retries, mq.config.RetryBackoff, false); err != nil {
-		mq.logger.Errorf(ctx, "producer: %s send message, queue: %s, partition: %d, data: %s error: %+v", producerName, queue, partition, gtkjson.MustString(producerMessage), err)
+		mq.logger.Errorf(ctx, "producer: %s, send message, queue: %s, partition: %d, data: %s, timestamp: %v, error: %+v", producerName, queue, partition, gtkjson.MustString(producerMessage), now, err)
 		return
 	}
-	mq.logger.Debugf(ctx, "producer: %s send message, queue: %s, partition: %d, data: %s success", producerName, queue, partition, gtkjson.MustString(producerMessage))
+	mq.logger.Debugf(ctx, "producer: %s, send message, queue: %s, partition: %d, data: %s, timestamp: %v, success", producerName, queue, partition, gtkjson.MustString(producerMessage), now)
 	return
 }
 
 // sendDelayMessage 发送延迟消息
 func (mq *RedisMQClient) sendDelayMessage(ctx context.Context, queue string, producerMessage *ProducerMessage) (err error) {
-	// 计算执行时间
-	executeAt := time.Now().Add(producerMessage.DelayTime).Unix()
-	// 获取生产者配置
-	var isStart bool
-	if isStart, _, err = mq.getProducerConfig(queue); err != nil {
-		return
-	}
-	if !isStart {
-		return
-	}
 	// 检测哪些消息队列不发送消息
 	if slices.Contains(mq.config.ExcludeMQList, queue) {
 		return
@@ -857,15 +819,15 @@ func (mq *RedisMQClient) sendDelayMessage(ctx context.Context, queue string, pro
 	}
 	// 构造延迟消息
 	delayMsg := &delayMessage{
-		UUID:      uuid.New().String(),
-		Queue:     queue,
-		Key:       producerMessage.Key,
-		Data:      producerMessage.Data,
-		Timestamp: producerMessage.Timestamp.UnixMilli(),
+		UUID:  uuid.New().String(),
+		Queue: queue,
+		Key:   producerMessage.Key,
+		Data:  producerMessage.Data,
 	}
 	// 将消息添加到延迟队列
 	if err = gtkhttp.Retry(ctx, func(ctx context.Context) (e error) {
-		_, e = mq.rc.Do(ctx, "ZADD", fmt.Sprintf(delayQueueKey, mq.config.Env, queue), executeAt, delayMsg)
+		delayMsg.Timestamp = time.Now()
+		_, e = mq.rc.Do(ctx, "ZADD", fmt.Sprintf(delayQueueKey, mq.config.Env, queue), producerMessage.DelayTime.UnixMilli(), delayMsg)
 		return
 	}, mq.config.Retries, mq.config.RetryBackoff, false); err != nil {
 		mq.logger.Errorf(ctx, "producer: %s send delay message, data: %s error: %+v", producerName, gtkjson.MustString(delayMsg), err)
@@ -879,24 +841,23 @@ func (mq *RedisMQClient) sendDelayMessage(ctx context.Context, queue string, pro
 func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, count int, fn func(messages []*MQMessage) error, group ...string) (err error) {
 	// 获取消费者配置
 	var (
-		isStart      bool
-		partitionNum uint32
-		groups       []string
+		isStart  bool
+		mqConfig *MQConfig
 	)
-	if isStart, partitionNum, groups, err = mq.getConsumerConfig(queue); err != nil {
+	if isStart, mqConfig, err = mq.getConsumerConfig(queue); err != nil {
 		return
 	}
 	if !isStart {
 		return
 	}
-	if len(groups) > 0 && len(group) > 0 {
-		if !slices.Contains(groups, group[0]) {
-			return fmt.Errorf("group: %s not found in groups: %s", group[0], groups)
+	if len(mqConfig.Groups) > 0 && len(group) > 0 {
+		if !slices.Contains(mqConfig.Groups, group[0]) {
+			return fmt.Errorf("group: %s not found in groups: %s", group[0], mqConfig.Groups)
 		}
 	}
 	// 订阅数据
 	var block = mq.config.WaitTimeout.Milliseconds()
-	for i := int32(0); i < int32(partitionNum); i++ {
+	for i := int32(0); i < int32(mqConfig.PartitionNum); i++ {
 		go func(partition int32) {
 			var (
 				partitionGroupName    = mq.getPartitionGroupName(queue, partition)
@@ -954,7 +915,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 							}
 						}
 						if len(mqMessageList) > 0 {
-							mq.handelData(ctx, partitionConsumerName, partitionGroupName, mqMessageList, fn)
+							mq.handelData(ctx, mqConfig, partitionConsumerName, partitionGroupName, mqMessageList, fn)
 						}
 					}
 				}
@@ -965,7 +926,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, coun
 }
 
 // handelData 处理数据
-func (mq *RedisMQClient) handelData(ctx context.Context, partitionConsumerName, partitionGroupName string, messages []*MQMessage, fn func(messages []*MQMessage) error) {
+func (mq *RedisMQClient) handelData(ctx context.Context, mqConfig *MQConfig, partitionConsumerName, partitionGroupName string, messages []*MQMessage, fn func(messages []*MQMessage) error) {
 	// 判断是否有数据
 	length := len(messages)
 	if length == 0 {
@@ -979,20 +940,23 @@ func (mq *RedisMQClient) handelData(ctx context.Context, partitionConsumerName, 
 		offset             = lastMessage.MQPartition.Offset
 		key                = string(lastMessage.Key)
 		content            = string(lastMessage.Value)
+		timestamp          = lastMessage.Timestamp
 	)
 	// 执行处理函数
 	if err := fn(messages); err != nil {
-		mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, error: %+v", partitionConsumerName, partitionQueueName, partition, offset, key, content, err)
+		mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
+			partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
 		// 重试处理函数
 		var (
-			retryMaxCount = mq.config.RetryMaxCount
+			retryMaxCount = mqConfig.RetryMaxCount
 			count         = 0
 		)
 		for retryMaxCount == 0 || (retryMaxCount > 0 && count < retryMaxCount) {
 			count++
-			time.Sleep(mq.config.RetryDelay)
+			time.Sleep(mqConfig.RetryDelay)
 			if err := fn(messages); err != nil {
-				mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, error: %+v", partitionConsumerName, partitionQueueName, partition, offset, key, content, err)
+				mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
+					partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
 				continue
 			}
 			break
@@ -1040,15 +1004,18 @@ func (mq *RedisMQClient) delExpiredMessages(ctx context.Context, messages map[in
 }
 
 // getProducerConfig 获取生产者配置
-func (mq *RedisMQClient) getProducerConfig(queue string) (isStart bool, partitionNum uint32, err error) {
+func (mq *RedisMQClient) getProducerConfig(queue string) (isStart bool, mqConfig *MQConfig, err error) {
 	if config, ok := mq.config.MQConfig[queue]; ok {
 		isStart = (config.Mode == ModeBoth || config.Mode == ModeProducer)
+		mqConfig = &MQConfig{}
 		if config.PartitionNum > 0 {
-			partitionNum = config.PartitionNum
+			mqConfig.PartitionNum = config.PartitionNum
 		} else {
 			// 默认分区数
-			partitionNum = defaultPartitionNum
+			mqConfig.PartitionNum = defaultPartitionNum
 		}
+		// 是否开启延迟队列
+		mqConfig.IsDelayQueue = config.IsDelayQueue
 		return
 	}
 	err = fmt.Errorf("queue `%s` Not Found", queue)
@@ -1056,16 +1023,30 @@ func (mq *RedisMQClient) getProducerConfig(queue string) (isStart bool, partitio
 }
 
 // getConsumerConfig 获取消费者配置
-func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, partitionNum uint32, groups []string, err error) {
+func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, mqConfig *MQConfig, err error) {
 	if config, ok := mq.config.MQConfig[queue]; ok {
 		isStart = (config.Mode == ModeBoth || config.Mode == ModeConsumer)
+		mqConfig = &MQConfig{}
 		if config.PartitionNum > 0 {
-			partitionNum = config.PartitionNum
+			mqConfig.PartitionNum = config.PartitionNum
 		} else {
 			// 默认分区数
-			partitionNum = defaultPartitionNum
+			mqConfig.PartitionNum = defaultPartitionNum
 		}
-		groups = config.Groups
+		// 消费者组
+		mqConfig.Groups = config.Groups
+		// 重试间隔时间
+		if config.RetryDelay <= time.Duration(0) {
+			mqConfig.RetryDelay = time.Second * 10
+		} else {
+			mqConfig.RetryDelay = config.RetryDelay
+		}
+		// 重试最大次数
+		if config.RetryMaxCount <= 0 {
+			mqConfig.RetryMaxCount = 0
+		} else {
+			mqConfig.RetryMaxCount = config.RetryMaxCount
+		}
 		return
 	}
 	err = fmt.Errorf("queue `%s` Not Found", queue)

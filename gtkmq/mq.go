@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-18 22:06:48
+ * @LastEditTime: 2025-05-22 08:53:17
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -27,23 +27,30 @@ const (
 // MQConfig 消息队列配置
 type MQConfig struct {
 	// 消息队列分区数量，默认 12 个分区
-	PartitionNum uint32 `json:"partitionNum"`
+	PartitionNum uint32 `json:"partitionNum,omitempty"`
 	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
 	Mode ProducerConsumerStartMode `json:"mode"`
 	// 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀
 	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
-	Groups []string `json:"groups"`
+	Groups []string `json:"groups,omitempty"`
+	// 当消费失败时重试的间隔时间，默认 10s
+	RetryDelay time.Duration `json:"retryDelay,omitempty"`
+	// 当消费失败时重试的最大次数，默认 0，无限重试
+	RetryMaxCount int `json:"retryMaxCount,omitempty"`
 	// 是否开启延迟队列
-	IsDelayQueue bool `json:"isDelayQueue"`
+	IsDelayQueue bool `json:"isDelayQueue,omitempty"`
+	// 延迟队列检查间隔，默认 10s
+	DelayQueueCheckInterval time.Duration `json:"delayQueueCheckInterval,omitempty"`
+	// 延迟队列批处理大小，默认 100
+	DelayQueueBatchSize int `json:"delayQueueBatchSize,omitempty"`
 }
 
 // ProducerMessage 生产者消息
 type ProducerMessage struct {
-	Key       string        `json:"key,omitempty"`        // 键
-	Data      any           `json:"data"`                 // 数据
-	Timestamp time.Time     `json:"timestamp"`            // 发送消息的时间戳
-	DelayTime time.Duration `json:"delay_time,omitempty"` // 延迟投递时间
-	dataBytes []byte        // 数据字节数组
+	Key       string    `json:"key,omitempty"` // 键
+	Data      any       `json:"data"`          // 数据
+	DelayTime time.Time `json:"delay_time"`    // 延迟投递的截止时间点
+	dataBytes []byte    // 数据字节数组
 }
 
 // MQPartition 消息队列分区
