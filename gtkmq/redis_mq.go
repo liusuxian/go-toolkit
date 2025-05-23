@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-22 10:31:13
+ * @LastEditTime: 2025-05-23 18:00:22
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,7 +11,6 @@ package gtkmq
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -28,12 +27,6 @@ import (
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Addr                  string              `json:"addr"`                  // redis 地址
-	Username              string              `json:"username"`              // redis 用户名
-	Password              string              `json:"password"`              // redis 密码
-	DB                    int                 `json:"db"`                    // redis 数据库
-	PoolSize              int                 `json:"poolSize"`              // redis 连接池大小，默认 20
-	TLSConfig             *tls.Config         `json:"tlsConfig"`             // tls 配置
 	Retries               int                 `json:"retries"`               // 发送消息失败后允许重试的次数，默认 2147483647
 	RetryBackoff          time.Duration       `json:"retryBackoff"`          // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
 	ExpiredTime           time.Duration       `json:"expiredTime"`           // 消息过期时间，默认 90天
@@ -46,9 +39,6 @@ type RedisMQConfig struct {
 	MQConfig              map[string]MQConfig `json:"mqConfig"`              // 消息队列配置，key 为消息队列名称
 	ExcludeMQList         []string            `json:"excludeMQList"`         // 指定哪些消息队列不发送消息
 }
-
-// RedisMQConfigOption Redis 消息队列配置选项
-type RedisMQConfigOption func(c *RedisMQConfig)
 
 // RedisMQClient Redis 消息队列客户端
 type RedisMQClient struct {
@@ -152,27 +142,32 @@ type delayMessage struct {
 	Timestamp time.Time `json:"timestamp"`     // 发送消息的时间戳
 }
 
-// NewRedisMQClientWithOption 创建 Redis 消息队列客户端
-func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption) (client *RedisMQClient, err error) {
+// NewRedisMQClient 创建 Redis 消息队列客户端
+func NewRedisMQClient(ctx context.Context, redisConfig *gtkredis.ClientConfig, mqConfig *RedisMQConfig) (client *RedisMQClient, err error) {
+	if mqConfig == nil {
+		err = fmt.Errorf("redis mq config is nil")
+		return
+	}
+	// 创建 redis 客户端
+	var rcClient *gtkredis.RedisClient
+	if rcClient, err = gtkredis.NewClient(ctx, redisConfig); err != nil {
+		return
+	}
+	// 加载内置 lua 脚本
+	for k, v := range internalScriptMap {
+		if err = rcClient.ScriptLoad(ctx, k, v); err != nil {
+			rcClient.Close()
+			return
+		}
+	}
+	// 创建 RedisMQClient 实例
 	client = &RedisMQClient{
-		config: &RedisMQConfig{
-			MQConfig:      make(map[string]MQConfig),
-			ExcludeMQList: make([]string, 0),
-		},
+		rc:          rcClient,
+		config:      mqConfig,
 		producerMap: make(map[string]bool),
 		consumerMap: make(map[string]bool),
+		logger:      newDefaultLogger(),
 		quitChan:    make(chan bool),
-	}
-	for _, opt := range opts {
-		opt(client.config)
-	}
-	// redis 地址
-	if client.config.Addr == "" {
-		client.config.Addr = "127.0.0.1:6379"
-	}
-	// redis 连接池大小，默认 20
-	if client.config.PoolSize <= 0 {
-		client.config.PoolSize = 20
 	}
 	// 发送消息失败后允许重试的次数，默认 2147483647
 	if client.config.Retries <= 0 {
@@ -206,99 +201,6 @@ func NewRedisMQClientWithOption(ctx context.Context, opts ...RedisMQConfigOption
 	if client.config.ConsumerEnv == "" {
 		client.config.ConsumerEnv = client.config.Env
 	}
-	// redis 客户端
-	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = client.config.Addr
-		cc.Password = client.config.Password
-		cc.DB = client.config.DB
-		cc.PoolSize = client.config.PoolSize
-		cc.TLSConfig = client.config.TLSConfig
-	})
-	for k, v := range internalScriptMap {
-		if err = client.rc.ScriptLoad(ctx, k, v); err != nil {
-			client.rc.Close()
-			return
-		}
-	}
-	// 默认日志对象
-	client.logger = newDefaultLogger()
-	// 启动所有队列删除过期消息处理器
-	client.startAllQueueDelExpiredMsgProcessor(ctx)
-	// 启动所有延迟队列处理器
-	client.startAllDelayQueueProcessor(ctx)
-	return
-}
-
-// NewRedisMQClientWithConfig 创建 Redis 消息队列客户端
-func NewRedisMQClientWithConfig(ctx context.Context, cfg *RedisMQConfig) (client *RedisMQClient, err error) {
-	if cfg == nil {
-		cfg = &RedisMQConfig{
-			MQConfig:      make(map[string]MQConfig),
-			ExcludeMQList: make([]string, 0),
-		}
-	}
-	client = &RedisMQClient{
-		config:      cfg,
-		producerMap: make(map[string]bool),
-		consumerMap: make(map[string]bool),
-		quitChan:    make(chan bool),
-	}
-	// redis 地址
-	if client.config.Addr == "" {
-		client.config.Addr = "127.0.0.1:6379"
-	}
-	// redis 连接池大小，默认 20
-	if client.config.PoolSize <= 0 {
-		client.config.PoolSize = 20
-	}
-	// 发送消息失败后允许重试的次数，默认 2147483647
-	if client.config.Retries <= 0 {
-		client.config.Retries = math.MaxInt32
-	}
-	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-	if client.config.RetryBackoff <= time.Duration(0) {
-		client.config.RetryBackoff = time.Millisecond * 100
-	}
-	// 消息过期时间，默认 90天
-	if client.config.ExpiredTime <= time.Duration(0) {
-		client.config.ExpiredTime = time.Hour * 24 * 90
-	}
-	// 删除过期消息的时间间隔，默认 1天
-	if client.config.DelExpiredMsgInterval <= time.Duration(0) {
-		client.config.DelExpiredMsgInterval = time.Hour * 24 * 1
-	}
-	// 指定等待消息的最大时间，默认最大 2500ms
-	if client.config.WaitTimeout <= time.Duration(0) || client.config.WaitTimeout > time.Millisecond*2500 {
-		client.config.WaitTimeout = time.Millisecond * 2500
-	}
-	// 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	if client.config.OffsetReset == "" {
-		client.config.OffsetReset = "0-0"
-	}
-	// 消息队列服务环境，默认 local
-	if client.config.Env == "" {
-		client.config.Env = "local"
-	}
-	// 消费者服务环境，默认和消息队列服务环境一致
-	if client.config.ConsumerEnv == "" {
-		client.config.ConsumerEnv = client.config.Env
-	}
-	// redis 客户端
-	client.rc = gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = client.config.Addr
-		cc.Password = client.config.Password
-		cc.DB = client.config.DB
-		cc.PoolSize = client.config.PoolSize
-		cc.TLSConfig = client.config.TLSConfig
-	})
-	for k, v := range internalScriptMap {
-		if err = client.rc.ScriptLoad(ctx, k, v); err != nil {
-			client.rc.Close()
-			return
-		}
-	}
-	// 默认日志对象
-	client.logger = newDefaultLogger()
 	// 启动所有队列删除过期消息处理器
 	client.startAllQueueDelExpiredMsgProcessor(ctx)
 	// 启动所有延迟队列处理器

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-17 02:29:56
+ * @LastEditTime: 2025-05-23 18:22:45
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -65,11 +65,15 @@ func main() {
 		PublicKeyID:     gtkenv.Get("publicKeyID"),
 	}
 	// 创建 RedisCache
-	cache := gtkcache.NewRedisCacheWithOption(ctx, gtkredis.ClientConfigOption(func(cc *gtkredis.ClientConfig) {
-		cc.Addr = "127.0.0.1:6379"
-		cc.Password = "redis!@#$%"
-		cc.DB = 0
-	}))
+	var cache *gtkcache.RedisCache
+	if cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Password: "redis!@#$%",
+		DB:       0,
+	}); err != nil {
+		fmt.Printf("NewRedisCache Error: %+v\n", err)
+		os.Exit(1)
+	}
 	// 创建支付服务
 	if paymentService, err = gtkpay.NewPaymentService(gtkpay.WithCache(cache), gtkpay.WithOssManager(aliyunOSS)); err != nil {
 		fmt.Printf("NewPaymentService Error: %+v\n", err)

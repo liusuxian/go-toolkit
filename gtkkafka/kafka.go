@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-22 11:24:05
+ * @LastEditTime: 2025-05-23 18:03:46
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -83,9 +83,6 @@ type Config struct {
 	ExcludeTopics              []string               `json:"excludeTopics"`              // 指定哪些 topic 不发送 Kafka 消息
 }
 
-// ConfigOption kafka 客户端配置选项
-type ConfigOption func(c *Config)
-
 // KafkaClient kafka 客户端
 type KafkaClient struct {
 	producerMap map[string]*kafka.Producer
@@ -98,86 +95,17 @@ const (
 	defaultPartitionNum uint32 = 12 // 默认分区数
 )
 
-// NewWithOption 创建 kafka 客户端
-func NewWithOption(opts ...ConfigOption) (client *KafkaClient, err error) {
-	client = &KafkaClient{
-		config: &Config{
-			TopicConfig:   make(map[string]TopicConfig),
-			ExcludeTopics: make([]string, 0),
-		},
-	}
-	for _, opt := range opts {
-		opt(client.config)
-	}
-	// SSL接入点的IP地址以及端口
-	if client.config.BootstrapServers == "" {
-		client.config.BootstrapServers = "127.0.0.1:9092"
-	}
-	// SASL用户认证协议
-	if client.config.SecurityProtocol == "" {
-		client.config.SecurityProtocol = "PLAINTEXT"
-	}
-	// 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
-	if client.config.StickyPartitioningLingerMs <= 0 {
-		client.config.StickyPartitioningLingerMs = 100
-	}
-	// 批量发送大小，默认 10485760 字节
-	if client.config.BatchSize <= 0 {
-		client.config.BatchSize = 10485760
-	}
-	// 最大消息大小，默认 16384 字节
-	if client.config.MessageMaxBytes <= 0 {
-		client.config.MessageMaxBytes = 16384
-	}
-	// 发送消息失败后允许重试的次数，默认 2147483647
-	if client.config.Retries <= 0 {
-		client.config.Retries = math.MaxInt32
-	}
-	// 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-	if client.config.RetryBackoffMs <= 0 {
-		client.config.RetryBackoffMs = 100
-	}
-	// 发送延迟时间，默认 100ms
-	if client.config.LingerMs <= 0 {
-		client.config.LingerMs = 100
-	}
-	// Producer 攒批发送中，默认 1048576kb
-	if client.config.QueueBufferingMaxKbytes <= 0 {
-		client.config.QueueBufferingMaxKbytes = 1048576
-	}
-	// 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
-	if client.config.WaitTimeout <= time.Duration(0) {
-		client.config.WaitTimeout = time.Duration(-1)
-	}
-	// 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-	if client.config.OffsetReset == "" {
-		client.config.OffsetReset = "earliest"
-	}
-	// topic 服务环境，默认 local
-	if client.config.Env == "" {
-		client.config.Env = "local"
-	}
-	// 消费者服务环境，默认和 topic 服务环境一致
-	if client.config.ConsumerEnv == "" {
-		client.config.ConsumerEnv = client.config.Env
-	}
-	// 默认日志对象
-	client.logger = newDefaultLogger()
-	client.producerMap = make(map[string]*kafka.Producer)
-	client.consumerMap = make(map[string][]*kafka.Consumer)
-	return
-}
-
-// NewWithConfig 创建 kafka 客户端
-func NewWithConfig(cfg *Config) (client *KafkaClient, err error) {
+// NewClient 创建 kafka 客户端
+func NewClient(cfg *Config) (client *KafkaClient, err error) {
 	if cfg == nil {
-		cfg = &Config{
-			TopicConfig:   make(map[string]TopicConfig),
-			ExcludeTopics: make([]string, 0),
-		}
+		err = fmt.Errorf("kafka client config is nil")
+		return
 	}
 	client = &KafkaClient{
-		config: cfg,
+		producerMap: make(map[string]*kafka.Producer),
+		consumerMap: make(map[string][]*kafka.Consumer),
+		config:      cfg,
+		logger:      newDefaultLogger(),
 	}
 	// SSL接入点的IP地址以及端口
 	if client.config.BootstrapServers == "" {
@@ -231,10 +159,6 @@ func NewWithConfig(cfg *Config) (client *KafkaClient, err error) {
 	if client.config.ConsumerEnv == "" {
 		client.config.ConsumerEnv = client.config.Env
 	}
-	// 默认日志对象
-	client.logger = newDefaultLogger()
-	client.producerMap = make(map[string]*kafka.Producer)
-	client.consumerMap = make(map[string][]*kafka.Consumer)
 	return
 }
 

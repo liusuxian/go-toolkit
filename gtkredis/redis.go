@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:28:16
+ * @LastEditTime: 2025-05-23 17:56:03
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,8 +11,8 @@ package gtkredis
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/internal/utils"
 	"github.com/redis/go-redis/v9"
@@ -21,10 +21,32 @@ import (
 )
 
 // ClientConfig redis 客户端配置
-type ClientConfig = redis.Options
-
-// ClientConfigOption redis 客户端配置选项
-type ClientConfigOption func(cc *ClientConfig)
+type ClientConfig struct {
+	Addr            string        // 地址:端口
+	ClientName      string        // 执行 CLIENT SETNAME 命令所用的客户端名称
+	Protocol        int           // 设置与 Redis Server 通信的 RESP 协议版本，默认 3，可选 2 或 3
+	Username        string        // 访问授权用户
+	Password        string        // 访问授权密码
+	DB              int           // 数据库索引，默认 0
+	MaxRetries      int           // 最大重试次数，默认 3，-1 表示禁用重试
+	MinRetryBackoff time.Duration // 每次重试之间的最小退避时间，默认 8ms，-1 表示禁用退避
+	MaxRetryBackoff time.Duration // 每次重试之间的最大退避时间，默认 512ms，-1 表示禁用退避
+	DialTimeout     time.Duration // 连接的超时时间，默认 5s
+	ReadTimeout     time.Duration // Read 操作超时时间，默认 3s，-1 表示无超时，-2 表示完全禁用 SetReadDeadline 调用
+	WriteTimeout    time.Duration // Write 操作超时时间，默认 3s，-1 表示无超时，-2 表示完全禁用 SetWriteDeadline 调用
+	PoolFIFO        bool          // 连接池类型，true 表示 FIFO（先进先出），false 表示 LIFO（后进先出），默认 false，FIFO 相比 LIFO 有略高的开销，但它有助于更快地关闭空闲连接，减少池大小
+	PoolSize        int           // 连接池大小，默认每个可用 CPU 10 个连接，如果池中没有足够的连接，将分配超出 PoolSize 的新连接，您可以通过 MaxActiveConns 进行限制
+	PoolTimeout     time.Duration // 如果所有连接都忙，客户端在返回错误前等待连接的时间，默认为 ReadTimeout + 1s
+	MinIdleConns    int           // 允许闲置的最小连接数，默认 0
+	MaxIdleConns    int           // 允许闲置的最大连接数，默认 0，0 表示不限制
+	MaxActiveConns  int           // 最大连接数量限制，默认 0，0 表示不限制
+	ConnMaxIdleTime time.Duration // 连接最大空闲时间，默认 30m，-1 表示禁用空闲超时检查
+	ConnMaxLifetime time.Duration // 连接最长存活时间，默认 0 表示不关闭空闲连接
+	TLSConfig       *tls.Config   // tls 配置
+	DisableIdentity bool          // 用于在连接时禁用 CLIENT SETINFO 命令，默认 false
+	IdentitySuffix  string        // 添加客户端名称后缀
+	UnstableResp3   bool          // 为 Redis Search 模块启用 RESP3 的不稳定模式，默认 false
+}
 
 // RedisClient redis 客户端结构
 type RedisClient struct {
@@ -37,19 +59,6 @@ type PipelineResult struct {
 	Val any
 	Err error
 }
-
-// RedisLock redis 分布式锁
-type RedisLock struct {
-	client     *RedisClient
-	key        string
-	uuid       string
-	cancelFunc context.CancelFunc
-}
-
-const (
-	defaultExpiration = 10 // 单位，秒
-	sleepDur          = 10 * time.Millisecond
-)
 
 // 内置 lua 脚本
 var internalScriptMap = map[string]string{
@@ -71,40 +80,44 @@ var internalScriptMap = map[string]string{
 		`,
 }
 
-// NewClientWithOption 创建 redis 客户端
-func NewClientWithOption(ctx context.Context, opts ...ClientConfigOption) (client *RedisClient) {
-	ro := &redis.Options{}
-	for _, opt := range opts {
-		opt(ro)
-	}
-	client = &RedisClient{
-		client:        redis.NewClient(ro),
-		luaEvalShaMap: make(map[string]string),
-	}
-	for k, v := range internalScriptMap {
-		if err := client.ScriptLoad(ctx, k, v); err != nil {
-			panic(err)
-		}
-	}
-	return
-}
-
-// NewClientWithConfig 创建 redis 客户端
-func NewClientWithConfig(ctx context.Context, cfg *ClientConfig) (client *RedisClient) {
+// NewClient 创建 redis 客户端
+func NewClient(ctx context.Context, cfg *ClientConfig) (client *RedisClient, err error) {
 	if cfg == nil {
-		cfg = &ClientConfig{
-			Addr:     "localhost:6379",
-			Password: "",
-			DB:       0,
-		}
+		err = fmt.Errorf("redis client config is nil")
+		return
 	}
 	client = &RedisClient{
-		client:        redis.NewClient(cfg),
+		client: redis.NewClient(&redis.Options{
+			Addr:            cfg.Addr,
+			ClientName:      cfg.ClientName,
+			Protocol:        cfg.Protocol,
+			Username:        cfg.Username,
+			Password:        cfg.Password,
+			DB:              cfg.DB,
+			MaxRetries:      cfg.MaxRetries,
+			MinRetryBackoff: cfg.MinRetryBackoff,
+			MaxRetryBackoff: cfg.MaxRetryBackoff,
+			DialTimeout:     cfg.DialTimeout,
+			ReadTimeout:     cfg.ReadTimeout,
+			WriteTimeout:    cfg.WriteTimeout,
+			PoolFIFO:        cfg.PoolFIFO,
+			PoolSize:        cfg.PoolSize,
+			PoolTimeout:     cfg.PoolTimeout,
+			MinIdleConns:    cfg.MinIdleConns,
+			MaxIdleConns:    cfg.MaxIdleConns,
+			MaxActiveConns:  cfg.MaxActiveConns,
+			ConnMaxIdleTime: cfg.ConnMaxIdleTime,
+			ConnMaxLifetime: cfg.ConnMaxLifetime,
+			TLSConfig:       cfg.TLSConfig,
+			DisableIdentity: cfg.DisableIdentity,
+			IdentitySuffix:  cfg.IdentitySuffix,
+			UnstableResp3:   cfg.UnstableResp3,
+		}),
 		luaEvalShaMap: make(map[string]string),
 	}
 	for k, v := range internalScriptMap {
-		if err := client.ScriptLoad(ctx, k, v); err != nil {
-			panic(err)
+		if err = client.ScriptLoad(ctx, k, v); err != nil {
+			return
 		}
 	}
 	return
@@ -277,74 +290,4 @@ func (rc *RedisClient) Polling(ctx context.Context, key string, max int) (index 
 // Close 关闭 redis
 func (rc *RedisClient) Close() (err error) {
 	return rc.client.Close()
-}
-
-// NewRedisLock 创建 redis 分布式锁
-func (rc *RedisClient) NewRedisLock(key string) (rl *RedisLock, err error) {
-	var id uuid.UUID
-	if id, err = uuid.NewV7(); err != nil {
-		return
-	}
-	rl = &RedisLock{
-		client: rc,
-		key:    key,
-		uuid:   id.String(),
-	}
-	return
-}
-
-// TryLock 尝试加锁
-func (rl *RedisLock) TryLock(ctx context.Context) (ok bool, err error) {
-	var value any
-	if value, err = rl.client.Do(ctx, "SET", rl.key, rl.uuid, "EX", defaultExpiration, "NX"); err != nil {
-		return
-	}
-	ok = gtkconv.ToBool(value)
-	if !ok {
-		return
-	}
-	c, cancel := context.WithCancel(ctx)
-	rl.cancelFunc = cancel
-	rl.refresh(c)
-	return
-}
-
-// SpinLock 自旋加锁
-func (rl *RedisLock) SpinLock(ctx context.Context, retryTimes int) (ok bool, err error) {
-	for i := 0; i < retryTimes; i++ {
-		if ok, err = rl.TryLock(ctx); err != nil {
-			return
-		}
-		if ok {
-			return
-		}
-		time.Sleep(sleepDur)
-	}
-	return
-}
-
-// Unlock
-func (rl *RedisLock) Unlock(ctx context.Context) (ok bool, err error) {
-	if ok, err = rl.client.Cad(ctx, rl.key, rl.uuid); err != nil {
-		return
-	}
-	if ok {
-		rl.cancelFunc()
-	}
-	return
-}
-
-// refresh 刷新
-func (rl *RedisLock) refresh(ctx context.Context) {
-	go func() {
-		ticker := time.NewTicker(defaultExpiration / 4)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				rl.client.Do(ctx, "EXPIRE", rl.key, defaultExpiration)
-			}
-		}
-	}()
 }

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-22 08:44:40
+ * @LastEditTime: 2025-05-23 18:06:53
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,6 +15,7 @@ import (
 	"github.com/liusuxian/go-toolkit/gtkconf"
 	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtkmq"
+	"github.com/liusuxian/go-toolkit/gtkredis"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -31,7 +32,13 @@ func TestRedisMQProducer(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -86,7 +93,13 @@ func TestRedisMQConsumerSubscribe(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -132,7 +145,13 @@ func TestRedisMQConsumerBatchSubscribe(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -178,7 +197,13 @@ func TestRedisMQResetConsumerOffset(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -197,7 +222,13 @@ func TestRedisMQResetConsumerOffsetByPartition(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -217,7 +248,13 @@ func TestRedisMQExpiredMessages(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -241,7 +278,13 @@ func TestRedisMQDelGroup(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -264,7 +307,13 @@ func TestRedisMQDelQueue(t *testing.T) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 
@@ -287,7 +336,13 @@ func BenchmarkSendMessage(b *testing.B) {
 	if err = gtkconf.StructKey("redis_mq", &config); err != nil {
 		b.Fatal("Get Logger Config Error: ", err)
 	}
-	client, err = gtkmq.NewRedisMQClientWithConfig(ctx, config)
+	client, err = gtkmq.NewRedisMQClient(ctx, &gtkredis.ClientConfig{
+		Addr:     "127.0.0.1:6379",
+		Username: "default",
+		Password: "redis!@#$%",
+		DB:       0,
+		PoolSize: 20,
+	}, config)
 	assert.NoError(err)
 	defer client.Close()
 

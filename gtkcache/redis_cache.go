@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-23 02:15:54
+ * @LastEditTime: 2025-05-23 17:33:51
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -277,25 +277,15 @@ var internalScriptMap = map[string]string{
 	`,
 }
 
-// NewRedisCacheWithOption 创建 RedisCache
-func NewRedisCacheWithOption(ctx context.Context, opts ...gtkredis.ClientConfigOption) (rc *RedisCache) {
+// NewRedisCache 创建 RedisCache
+func NewRedisCache(ctx context.Context, cfg *gtkredis.ClientConfig) (rc *RedisCache, err error) {
+	var client *gtkredis.RedisClient
+	if client, err = gtkredis.NewClient(ctx, cfg); err != nil {
+		return
+	}
 	rc = &RedisCache{
 		ctx:    ctx,
-		client: gtkredis.NewClientWithOption(ctx, opts...),
-	}
-	for k, v := range internalScriptMap {
-		if err := rc.client.ScriptLoad(ctx, k, v); err != nil {
-			panic(err)
-		}
-	}
-	return
-}
-
-// NewRedisCacheWithConfig 创建 RedisCache
-func NewRedisCacheWithConfig(ctx context.Context, cfg *gtkredis.ClientConfig) (rc *RedisCache) {
-	rc = &RedisCache{
-		ctx:    ctx,
-		client: gtkredis.NewClientWithConfig(ctx, cfg),
+		client: client,
 	}
 	for k, v := range internalScriptMap {
 		if err := rc.client.ScriptLoad(ctx, k, v); err != nil {

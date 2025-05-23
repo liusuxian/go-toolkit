@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-01-15 23:53:33
+ * @LastEditTime: 2025-05-23 17:32:08
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -28,18 +28,19 @@ type A struct {
 
 func TestRedis(t *testing.T) {
 	var (
-		ctx = context.Background()
-		r   = miniredis.RunT(t)
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
 	)
-	client := gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.Username = "default"
-		cc.Password = ""
-		cc.DB = 1
+	client, err := gtkredis.NewClient(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		Username: "default",
+		Password: "",
+		DB:       1,
 	})
+	assert.NoError(err)
 	defer client.Close()
 
-	assert := assert.New(t)
 	actualObj, err := client.Do(ctx, "FLUSHDB")
 	if assert.NoError(err) {
 		assert.Equal("OK", actualObj)
@@ -113,31 +114,13 @@ func TestRedis(t *testing.T) {
 		assert.Equal(true, gtkconv.ToBool(actualObj))
 	}
 
-	var rl *gtkredis.RedisLock
-	rl, err = client.NewRedisLock("test_redis_lock")
+	rl := client.NewRedisLock("test_redis_lock")
+	err = rl.TryLock(ctx)
 	if assert.NoError(err) {
-		assert.NotNil(rl)
-	}
-	var ok bool
-	ok, err = rl.TryLock(ctx)
-	if assert.NoError(err) {
-		assert.True(ok)
-	}
-	if ok {
 		rl.Unlock(ctx)
 	}
-	ok, err = rl.TryLock(ctx)
+	err = rl.TryLock(ctx)
 	if assert.NoError(err) {
-		assert.True(ok)
-	}
-	if ok {
-		rl.Unlock(ctx)
-	}
-	ok, err = rl.SpinLock(ctx, 10)
-	if assert.NoError(err) {
-		assert.True(ok)
-	}
-	if ok {
 		rl.Unlock(ctx)
 	}
 
@@ -153,22 +136,20 @@ func TestRedis(t *testing.T) {
 
 func TestRedisLuaScript(t *testing.T) {
 	var (
-		ctx = context.Background()
-		r   = miniredis.RunT(t)
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
 	)
-	client := gtkredis.NewClientWithConfig(ctx, &gtkredis.ClientConfig{
+	client, err := gtkredis.NewClient(ctx, &gtkredis.ClientConfig{
 		Addr:     r.Addr(),
 		Username: "default",
 		Password: "",
 		DB:       1,
 	})
+	assert.NoError(err)
 	defer client.Close()
 
-	var (
-		err    error
-		val    any
-		assert = assert.New(t)
-	)
+	var val any
 	err = client.ScriptLoadByPath(ctx, "lua_script/test_get.lua")
 	assert.NoError(err)
 	val, err = client.Do(ctx, "SADD", "test_get1", 100, 200, 300)
@@ -196,21 +177,20 @@ func TestRedisLuaScript(t *testing.T) {
 
 func TestRedisPolling(t *testing.T) {
 	var (
-		ctx = context.Background()
-		r   = miniredis.RunT(t)
-	)
-	client := gtkredis.NewClientWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.Password = ""
-		cc.DB = 1
-	})
-	defer client.Close()
-
-	var (
-		err    error
-		index  int
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
 		assert = assert.New(t)
 	)
+	client, err := gtkredis.NewClient(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		Username: "default",
+		Password: "",
+		DB:       1,
+	})
+	assert.NoError(err)
+	defer client.Close()
+
+	var index int
 	for i := 0; i < 5; i++ {
 		index, err = client.Polling(ctx, "test_key_1", 5)
 		assert.NoError(err)

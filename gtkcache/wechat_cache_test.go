@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-29 16:15:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-23 02:15:13
+ * @LastEditTime: 2025-05-23 17:41:17
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -21,19 +21,22 @@ import (
 
 func TestNewWechatCache(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.WechatCache
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.WechatCache
+		err    error
 	)
-	cache = gtkcache.NewWechatCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
+	cache, err = gtkcache.NewWechatCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
 	var (
-		assert  = assert.New(t)
 		val     any
-		err     error
 		isExist bool
 	)
 	val = cache.Get("test_key_1")

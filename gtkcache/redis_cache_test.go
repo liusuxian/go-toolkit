@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-04-23 02:17:26
+ * @LastEditTime: 2025-05-23 17:43:15
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -49,19 +49,22 @@ func (a *AAA) Set(ctx context.Context, keys []string, args []any, newVal any, ti
 
 func TestRedisCacheString(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.RedisCache
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
 	)
-	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
 	var (
-		assert  = assert.New(t)
 		val     any
-		err     error
 		isExist bool
 		ok      bool
 		timeout time.Duration
@@ -126,19 +129,22 @@ func TestRedisCacheString(t *testing.T) {
 
 func TestRedisCacheString2(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.RedisCache
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
 	)
-	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
 	var (
-		assert  = assert.New(t)
 		val     any
-		err     error
 		isExist bool
 		timeout time.Duration
 	)
@@ -157,18 +163,21 @@ func TestRedisCacheString2(t *testing.T) {
 
 func TestRedisCacheString3(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.RedisCache
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
 	)
-	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
 	var (
-		assert  = assert.New(t)
-		err     error
 		isExist bool
 		timeout time.Duration
 	)
@@ -186,19 +195,22 @@ func TestRedisCacheString3(t *testing.T) {
 
 func TestRedisCacheString4(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.RedisCache
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
 	)
-	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
 	var (
-		assert  = assert.New(t)
 		val     any
-		err     error
 		timeout time.Duration
 		data    map[string]any
 	)
@@ -249,19 +261,22 @@ func TestRedisCacheString4(t *testing.T) {
 
 func TestRedisCacheSet(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.RedisCache
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
 	)
-	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
 	var (
-		assert   = assert.New(t)
 		val      any
-		err      error
 		timeout  time.Duration
 		isMember bool
 		members  []any
@@ -344,19 +359,22 @@ func TestRedisCacheSet(t *testing.T) {
 
 func TestRedisCacheSortedSet(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		r     = miniredis.RunT(t)
-		cache *gtkcache.RedisCache
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
 	)
-	cache = gtkcache.NewRedisCacheWithOption(ctx, func(cc *gtkredis.ClientConfig) {
-		cc.Addr = r.Addr()
-		cc.DB = 1
-		cc.Password = ""
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
 	var (
-		assert   = assert.New(t)
 		val      any
-		err      error
 		timeout  time.Duration
 		total    int
 		remCount int

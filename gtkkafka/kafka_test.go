@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-19 22:39:14
+ * @LastEditTime: 2025-05-23 18:04:38
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -27,85 +27,7 @@ type TestRecordInfo struct {
 	CreatedAt string `json:"created_at" dc:"created_at"`
 }
 
-func TestNewWithOption(t *testing.T) {
-	var (
-		ctx         = context.Background()
-		assert      = assert.New(t)
-		kafkaClient *gtkkafka.KafkaClient
-		err         error
-	)
-	// 创建 kafka 客户端
-	kafkaClient, err = gtkkafka.NewWithOption(func(cc *gtkkafka.Config) {
-		// cc.Servers = "127.0.0.1:19092"
-		cc.IsClose = true
-		cc.Env = "test"
-		cc.ConsumerEnv = "gray"
-		cc.TopicConfig = map[string]gtkkafka.TopicConfig{
-			"topic_100": {
-				PartitionNum: 12,
-				Mode:         gtkkafka.ModeBoth,
-				Groups: []string{
-					"testname1",
-					"testname2",
-				},
-			},
-		}
-		cc.ExcludeTopics = []string{
-			"topic_100",
-		}
-	})
-	assert.NoError(err)
-	// 打印消息队列客户端配置
-	kafkaClient.PrintClientConfig(ctx)
-	// 创建生产者
-	if err = kafkaClient.NewProducer(ctx, "topic_100"); err != nil {
-		t.Fatal("NewProducer Error: ", err)
-	}
-	if err = kafkaClient.NewConsumer(ctx, "topic_100"); err != nil {
-		t.Fatal("NewConsumer Error: ", err)
-	}
-	if err = kafkaClient.SendMessage(ctx, "topic_100", &gtkkafka.ProducerMessage{
-		Data: TestRecordInfo{
-			Uid:  1111,
-			Sid:  2222,
-			Time: "2023-11-28 12:00:00",
-			Str:  "<iphone 12.12.12, 1234...>"},
-	}); err != nil {
-		t.Fatal("SendMessage Error: ", err)
-	}
-	if err = kafkaClient.SendMessage(ctx, "topic_100", &gtkkafka.ProducerMessage{
-		Key: "1",
-		Data: TestRecordInfo{
-			Uid:  1111,
-			Sid:  2222,
-			Time: "2023-11-28 12:00:00",
-			Str:  "<iphone 12.12.12, 1234...>"},
-	}); err != nil {
-		t.Fatal("SendMessage Error: ", err)
-	}
-	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
-		return nil
-	}, "testname1"); err != nil {
-		t.Fatal("Subscribe Error: ", err)
-	}
-	if err = kafkaClient.Subscribe(ctx, "topic_100", func(message *kafka.Message) error {
-		return nil
-	}, "testname2"); err != nil {
-		t.Fatal("Subscribe Error: ", err)
-	}
-	if err = kafkaClient.BatchSubscribe(ctx, "topic_100", func(messages []*kafka.Message) error {
-		return nil
-	}, "testname1"); err != nil {
-		t.Fatal("BatchSubscribe Error: ", err)
-	}
-	if err = kafkaClient.BatchSubscribe(ctx, "topic_100", func(messages []*kafka.Message) error {
-		return nil
-	}, "testname2"); err != nil {
-		t.Fatal("BatchSubscribe Error: ", err)
-	}
-}
-
-func TestNewWithConfig(t *testing.T) {
+func TestNewClient(t *testing.T) {
 	var (
 		ctx         = context.Background()
 		assert      = assert.New(t)
@@ -117,7 +39,7 @@ func TestNewWithConfig(t *testing.T) {
 		t.Fatal("Get Logger Config Error: ", err)
 	}
 	// 创建 kafka 客户端
-	kafkaClient, err = gtkkafka.NewWithConfig(config)
+	kafkaClient, err = gtkkafka.NewClient(config)
 	assert.NoError(err)
 	// 打印消息队列客户端配置
 	kafkaClient.PrintClientConfig(ctx)
