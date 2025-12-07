@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-15 15:38:30
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-15 17:24:27
+ * @LastEditTime: 2025-06-02 04:12:01
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // testResponse 实现 Response 接口
@@ -44,7 +45,7 @@ func TestNewHTTPClientWithConfig(t *testing.T) {
 	var (
 		config = HTTPClientConfig{
 			BaseURL:            "https://api.example.com",
-			HTTPClient:         &http.Client{},
+			HTTPClient:         NewDefaultHTTPDoer(5 * time.Second),
 			ResponseDecoder:    &DefaultResponseDecoder{},
 			EmptyMessagesLimit: defaultEmptyMessagesLimit,
 		}

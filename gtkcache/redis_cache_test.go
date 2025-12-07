@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 17:43:15
+ * @LastEditTime: 2025-06-02 03:34:15
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -33,17 +33,17 @@ func (a *AAA) Get(ctx context.Context, keys []string, args []any, timeout ...tim
 
 func (a *AAA) Set(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error) {
 	script := `
-		local result = redis.call('SETEX', KEYS[1], ARGV[3], ARGV[1])
+		local result = redis.call('PSETEX', KEYS[1], ARGV[3], ARGV[1])
 		if not result['ok'] then
 			return false
 		end
-		result = redis.call('SETEX', KEYS[2], ARGV[3], ARGV[2])
+		result = redis.call('PSETEX', KEYS[2], ARGV[3], ARGV[2])
 		if not result['ok'] then
 			return false
 		end
 		return redis.call('MGET', KEYS[1], KEYS[2])
 		`
-	val, err = a.cache.Client().Eval(ctx, script, keys, 1000, 2000, 120)
+	val, err = a.cache.Client().Eval(ctx, script, keys, 1000, 2000, 120000)
 	return
 }
 
@@ -77,7 +77,7 @@ func TestRedisCacheString(t *testing.T) {
 	assert.False(isExist)
 	timeout, err = cache.GetExpire(ctx, "test_key_1")
 	assert.NoError(err)
-	assert.Equal(float64(-2), timeout.Seconds())
+	assert.Equal(time.Duration(-1), timeout)
 
 	err = cache.Set(ctx, "test_key_2", nil, time.Second)
 	assert.NoError(err)
@@ -159,6 +159,42 @@ func TestRedisCacheString2(t *testing.T) {
 	timeout, err = cache.GetExpire(ctx, "test_key_1")
 	assert.NoError(err)
 	assert.Equal(time.Second*10, timeout)
+	val, isExist, err = cache.Update(ctx, "test_key_1", 200)
+	assert.NoError(err)
+	assert.True(isExist)
+	assert.Equal(100, gtkconv.ToInt(val))
+	timeout, err = cache.GetExpire(ctx, "test_key_1")
+	assert.NoError(err)
+	assert.Equal(time.Second*10, timeout)
+	val, isExist, err = cache.Update(ctx, "test_key_1", 300, time.Second*20)
+	assert.NoError(err)
+	assert.True(isExist)
+	assert.Equal(200, gtkconv.ToInt(val))
+	timeout, err = cache.GetExpire(ctx, "test_key_1")
+	assert.NoError(err)
+	assert.Equal(time.Second*20, timeout)
+	val, isExist, err = cache.Update(ctx, "test_key_2", 300, time.Second*20)
+	assert.NoError(err)
+	assert.False(isExist)
+	assert.Nil(val)
+	timeout, err = cache.GetExpire(ctx, "test_key_2")
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+	timeout, err = cache.UpdateExpire(ctx, "test_key_2", 0)
+	assert.Error(err)
+	assert.Equal(time.Duration(0), timeout)
+	timeout, err = cache.UpdateExpire(ctx, "test_key_2", time.Second*10)
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+	timeout, err = cache.UpdateExpire(ctx, "test_key_1", 0)
+	assert.Error(err)
+	assert.Equal(time.Duration(0), timeout)
+	timeout, err = cache.UpdateExpire(ctx, "test_key_1", time.Second*30)
+	assert.NoError(err)
+	assert.Equal(time.Second*20, timeout)
+	timeout, err = cache.UpdateExpire(ctx, "test_key_1", time.Second*40)
+	assert.NoError(err)
+	assert.Equal(time.Second*30, timeout)
 }
 
 func TestRedisCacheString3(t *testing.T) {
@@ -185,7 +221,7 @@ func TestRedisCacheString3(t *testing.T) {
 	assert.NoError(err)
 	timeout, err = cache.GetExpire(ctx, "test_key_1")
 	assert.NoError(err)
-	assert.Equal(float64(-1), timeout.Seconds())
+	assert.Equal(time.Duration(0), timeout)
 	err = cache.Delete(ctx, "test_key_1", "test_key_2")
 	assert.NoError(err)
 	isExist, err = cache.IsExist(ctx, "test_key_1")
@@ -294,7 +330,7 @@ func TestRedisCacheSet(t *testing.T) {
 	assert.Equal(3, val)
 	timeout, err = cache.GetExpire(ctx, "test_key_2")
 	assert.NoError(err)
-	assert.Equal(time.Second*-1, timeout)
+	assert.Equal(time.Duration(0), timeout)
 	val, err = cache.SAdd(ctx, "test_key_2", []any{100, "hello", 1.11}, time.Second*5)
 	assert.NoError(err)
 	assert.Equal(0, val)
@@ -318,7 +354,7 @@ func TestRedisCacheSet(t *testing.T) {
 	assert.Equal([]any{}, members)
 	timeout, err = cache.GetExpire(ctx, "test_key_3")
 	assert.NoError(err)
-	assert.Equal(time.Second*-2, timeout)
+	assert.Equal(time.Duration(-1), timeout)
 	members, err = cache.SMembers(ctx, "test_key_2", time.Second*30)
 	assert.NoError(err)
 	assert.Equal([]any{"1.11", "100", "200", "hello"}, members)
@@ -336,7 +372,7 @@ func TestRedisCacheSet(t *testing.T) {
 	assert.Equal(4, len(members))
 	timeout, err = cache.GetExpire(ctx, "test_key_2")
 	assert.NoError(err)
-	assert.Equal(time.Second*-2, timeout)
+	assert.Equal(time.Duration(-1), timeout)
 	val, err = cache.SAdd(ctx, "test_key_3", []any{100, "world", 1.11}, time.Second*5)
 	assert.NoError(err)
 	assert.Equal(3, val)

@@ -2,8 +2,8 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-06 20:19:40
- * @Description:
+ * @LastEditTime: 2025-06-02 03:52:02
+ * @Description: 缓存接口
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
@@ -14,10 +14,11 @@ import (
 	"time"
 )
 
+// Func 函数类型
 type Func func(ctx context.Context) (val any, err error)
 
-// CustomCache 自定义缓存接口
-type CustomCache interface {
+// ICustomCache 自定义缓存接口
+type ICustomCache interface {
 	// Get 获取缓存
 	Get(ctx context.Context, keys []string, args []any, timeout ...time.Duration) (val any, err error)
 	// Set 设置缓存
@@ -39,18 +40,18 @@ type ICache interface {
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	//   当`force = true`时，可防止缓存穿透
 	GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
-	// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在读写互斥锁中执行的
+	// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	//   当`force = true`时，可防止缓存穿透
 	GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	//   当`force = true`时，可防止缓存穿透
-	CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
-	// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在读写互斥锁中执行的
+	CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
+	// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	//   当`force = true`时，可防止缓存穿透
-	CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
+	CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// Set 设置缓存
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error)
@@ -64,15 +65,29 @@ type ICache interface {
 	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 	//   当`force = true`时，可防止缓存穿透
 	SetIfNotExistFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error)
-	// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在读写互斥锁中执行的
+	// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在写入互斥锁内执行，以确保并发安全
 	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 	//   当`force = true`时，可防止缓存穿透
 	SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error)
+	// Update 当`key`存在时，则使用`val`更新`key`的值，返回`key`的旧值
+	//   当`timeout > 0`且`key`更新成功时，更新`key`的过期时间
+	Update(ctx context.Context, key string, val any, timeout ...time.Duration) (oldVal any, isExist bool, err error)
+	// UpdateExpire 当`key`存在时，则更新`key`的过期时间，返回`key`的旧的过期时间值
+	//   当`key`不存在时，则返回-1
+	//   当`key`存在但没有设置过期时间时，则返回0
+	//   当`key`存在且设置了过期时间时，则返回过期时间
+	//   当`timeout > 0`且`key`存在时，更新`key`的过期时间
+	UpdateExpire(ctx context.Context, key string, timeout time.Duration) (oldTimeout time.Duration, err error)
 	// IsExist 缓存是否存在
 	IsExist(ctx context.Context, key string) (isExist bool, err error)
+	// Size 缓存中的key数量
+	Size(ctx context.Context) (size int, err error)
 	// Delete 删除缓存
 	Delete(ctx context.Context, keys ...string) (err error)
-	// GetExpire 获取缓存过期时间
+	// GetExpire 获取缓存`key`的过期时间
+	//   当`key`不存在时，则返回-1
+	//   当`key`存在但没有设置过期时间时，则返回0
+	//   当`key`存在且设置了过期时间时，则返回过期时间
 	GetExpire(ctx context.Context, key string) (timeout time.Duration, err error)
 	// Close 关闭缓存服务
 	Close(ctx context.Context) (err error)
@@ -148,4 +163,21 @@ type IRedisCache interface {
 	/* TODO Hash（哈希表）*/
 
 	/* TODO List（列表）*/
+}
+
+// IWechatCache 微信缓存接口（适配 github.com/silenceper/wechat/v2 库的缓存）
+type IWechatCache interface {
+	Get(key string) (val any)                                   // 获取缓存
+	Set(key string, val any, timeout time.Duration) (err error) // 设置缓存
+	IsExist(key string) (isExist bool)                          // 缓存是否存在
+	Delete(key string) (err error)                              // 删除缓存
+}
+
+// IContextWechatCache 上下文微信缓存接口（适配 github.com/silenceper/wechat/v2 库的缓存）
+type IContextWechatCache interface {
+	IWechatCache
+	GetContext(ctx context.Context, key string) (val any)                                   // 获取缓存
+	SetContext(ctx context.Context, key string, val any, timeout time.Duration) (err error) // 设置缓存
+	IsExistContext(ctx context.Context, key string) (isExist bool)                          // 缓存是否存在
+	DeleteContext(ctx context.Context, key string) (err error)                              // 删除缓存
 }

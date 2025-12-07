@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 18:00:22
+ * @LastEditTime: 2025-06-01 20:24:53
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -46,7 +46,7 @@ type RedisMQClient struct {
 	config      *RedisMQConfig        // Redis 消息队列配置
 	producerMap map[string]bool
 	consumerMap map[string]bool
-	logger      ILogger   // 日志接口
+	logger      Logger    // 日志接口
 	quitChan    chan bool // 退出信号
 }
 
@@ -166,7 +166,7 @@ func NewRedisMQClient(ctx context.Context, redisConfig *gtkredis.ClientConfig, m
 		config:      mqConfig,
 		producerMap: make(map[string]bool),
 		consumerMap: make(map[string]bool),
-		logger:      newDefaultLogger(),
+		logger:      NewDefaultLogger(LogLevelDebug),
 		quitChan:    make(chan bool),
 	}
 	// 发送消息失败后允许重试的次数，默认 2147483647
@@ -209,13 +209,13 @@ func NewRedisMQClient(ctx context.Context, redisConfig *gtkredis.ClientConfig, m
 }
 
 // SetLogger 设置日志对象
-func (mq *RedisMQClient) SetLogger(logger ILogger) {
+func (mq *RedisMQClient) SetLogger(logger Logger) {
 	mq.logger = logger
 }
 
 // PrintClientConfig 打印消息队列客户端配置
 func (mq *RedisMQClient) PrintClientConfig(ctx context.Context) {
-	mq.logger.Debugf(ctx, "client config: %s\n", gtkjson.MustString(mq.config))
+	mq.logger.Debug(ctx, "client config: %s\n", gtkjson.MustString(mq.config))
 }
 
 // NewProducer 创建生产者
@@ -241,7 +241,7 @@ func (mq *RedisMQClient) NewProducer(ctx context.Context, queue string) (err err
 	if globalProducerName != "" {
 		producerName = mq.getGlobalProducerName(globalProducerName)
 		if _, ok := mq.producerMap[producerName]; ok {
-			mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, mqConfig.PartitionNum)
+			mq.logger.Info(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, mqConfig.PartitionNum)
 			return
 		}
 	} else {
@@ -250,7 +250,7 @@ func (mq *RedisMQClient) NewProducer(ctx context.Context, queue string) (err err
 		}
 	}
 	mq.producerMap[producerName] = true
-	mq.logger.Infof(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, mqConfig.PartitionNum)
+	mq.logger.Info(ctx, "new producer: %s, queue: %s, partitionNum: %d success", producerName, fullQueueName, mqConfig.PartitionNum)
 	return
 }
 
@@ -294,7 +294,7 @@ func (mq *RedisMQClient) NewConsumer(ctx context.Context, queue string) (err err
 			return
 		}
 		mq.consumerMap[consumerName] = true
-		mq.logger.Infof(ctx, "new consumer: %s, queue: %s, group: %s, partitionNum: %d success", consumerName, fullQueueName, group, mqConfig.PartitionNum)
+		mq.logger.Info(ctx, "new consumer: %s, queue: %s, group: %s, partitionNum: %d success", consumerName, fullQueueName, group, mqConfig.PartitionNum)
 	}
 	return
 }
@@ -557,7 +557,7 @@ func (mq *RedisMQClient) startQueueDelExpiredMsgProcessor(ctx context.Context, q
 		select {
 		case <-ticker.C:
 			if _, err := mq.GetExpiredMessages(ctx, queue, true); err != nil {
-				mq.logger.Errorf(ctx, "delete expired messages, queue: %s error: %+v", queue, err)
+				mq.logger.Error(ctx, "delete expired messages, queue: %s error: %+v", queue, err)
 			}
 		case <-mq.quitChan:
 			ticker.Stop()
@@ -606,7 +606,7 @@ func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue str
 				err   error
 			)
 			if value, err = mq.rc.EvalSha(ctx, "GET_DELAY_MESSAGES", keys, args...); err != nil {
-				mq.logger.Errorf(ctx, "get delay messages, queue: %s error: %+v", queue, err)
+				mq.logger.Error(ctx, "get delay messages, queue: %s error: %+v", queue, err)
 				return
 			}
 			// 解析结果数据
@@ -617,7 +617,7 @@ func (mq *RedisMQClient) startDelayQueueProcessor(ctx context.Context, queue str
 			for _, v := range anyList {
 				message := &delayMessage{}
 				if err = gtkconv.ToStructE(v, &message); err != nil {
-					mq.logger.Errorf(ctx, "parse delay message, queue: %s error: %+v", queue, err)
+					mq.logger.Error(ctx, "parse delay message, queue: %s error: %+v", queue, err)
 					continue
 				}
 				messageList = append(messageList, message)
@@ -680,10 +680,10 @@ func (mq *RedisMQClient) sendMessage(ctx context.Context, queue string, mqConfig
 		partition = gtkconv.ToInt32(value)
 		return
 	}, mq.config.Retries, mq.config.RetryBackoff, false); err != nil {
-		mq.logger.Errorf(ctx, "producer: %s, send message, queue: %s, partition: %d, data: %s, timestamp: %v, error: %+v", producerName, queue, partition, gtkjson.MustString(producerMessage), now, err)
+		mq.logger.Error(ctx, "producer: %s, send message, queue: %s, partition: %d, data: %s, timestamp: %v, error: %+v", producerName, queue, partition, gtkjson.MustString(producerMessage), now, err)
 		return
 	}
-	mq.logger.Debugf(ctx, "producer: %s, send message, queue: %s, partition: %d, data: %s, timestamp: %v, success", producerName, queue, partition, gtkjson.MustString(producerMessage), now)
+	mq.logger.Debug(ctx, "producer: %s, send message, queue: %s, partition: %d, data: %s, timestamp: %v, success", producerName, queue, partition, gtkjson.MustString(producerMessage), now)
 	return
 }
 
@@ -714,10 +714,10 @@ func (mq *RedisMQClient) sendDelayMessage(ctx context.Context, queue string, pro
 		_, e = mq.rc.Do(ctx, "ZADD", fmt.Sprintf(delayQueueKey, mq.config.Env, queue), producerMessage.DelayTime.UnixMilli(), delayMsg)
 		return
 	}, mq.config.Retries, mq.config.RetryBackoff, false); err != nil {
-		mq.logger.Errorf(ctx, "producer: %s send delay message, data: %s error: %+v", producerName, gtkjson.MustString(delayMsg), err)
+		mq.logger.Error(ctx, "producer: %s send delay message, data: %s error: %+v", producerName, gtkjson.MustString(delayMsg), err)
 		return
 	}
-	mq.logger.Debugf(ctx, "producer: %s send delay message, data: %s success", producerName, gtkjson.MustString(delayMsg))
+	mq.logger.Debug(ctx, "producer: %s send delay message, data: %s success", producerName, gtkjson.MustString(delayMsg))
 	return
 }
 
@@ -763,7 +763,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 			// 添加对 panic 的处理
 			defer func() {
 				if r := recover(); r != nil {
-					mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, panic: %+v", partitionConsumerName, partitionQueueName, r)
+					mq.logger.Error(ctx, "partition-consumer: %s, partition-queue: %s, panic: %+v", partitionConsumerName, partitionQueueName, r)
 				}
 			}()
 
@@ -775,7 +775,7 @@ func (mq *RedisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 					// 读取数据
 					value, e := mq.rc.Do(ctx, "XREADGROUP", "GROUP", partitionGroupName, partitionConsumerName, "COUNT", count, "BLOCK", block, "STREAMS", partitionQueueName, ">")
 					if e != nil {
-						mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, error: %+v", partitionConsumerName, partitionQueueName, e)
+						mq.logger.Error(ctx, "partition-consumer: %s, partition-queue: %s, error: %+v", partitionConsumerName, partitionQueueName, e)
 						time.Sleep(readWaitTimeout)
 					} else if value != nil {
 						// 处理结果数据
@@ -836,7 +836,7 @@ func (mq *RedisMQClient) handelData(ctx context.Context, mqConfig *MQConfig, par
 	)
 	// 执行处理函数
 	if err := fn(messages); err != nil {
-		mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
+		mq.logger.Error(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
 			partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
 		// 重试处理函数
 		var (
@@ -847,7 +847,7 @@ func (mq *RedisMQClient) handelData(ctx context.Context, mqConfig *MQConfig, par
 			count++
 			time.Sleep(mqConfig.RetryDelay)
 			if err := fn(messages); err != nil {
-				mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
+				mq.logger.Error(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
 					partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
 				continue
 			}

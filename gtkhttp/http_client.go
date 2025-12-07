@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-15 14:19:30
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 18:50:56
+ * @LastEditTime: 2025-06-02 04:11:52
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -25,7 +26,40 @@ const (
 
 // HTTPDoer HTTP 请求执行器接口
 type HTTPDoer interface {
+	SetTimeout(timeout time.Duration)                      // 设置请求超时时间，零值表示无超时限制
 	Do(req *http.Request) (resp *http.Response, err error) // 发送请求
+}
+
+// DefaultHTTPDoer 默认 HTTP 请求执行器
+type DefaultHTTPDoer struct {
+	client *http.Client // 底层 HTTP 客户端
+}
+
+// NewDefaultHTTPDoer 新建默认 HTTP 请求执行器
+//
+//	如果 timeout 为 0，则表示无超时限制
+func NewDefaultHTTPDoer(timeout time.Duration) (doer *DefaultHTTPDoer) {
+	if timeout <= 0 {
+		timeout = 0
+	}
+	return &DefaultHTTPDoer{
+		client: &http.Client{
+			Timeout: timeout,
+		},
+	}
+}
+
+// SetTimeout 设置请求超时时间，零值表示无超时限制
+func (doer *DefaultHTTPDoer) SetTimeout(timeout time.Duration) {
+	if timeout <= 0 {
+		timeout = 0
+	}
+	doer.client.Timeout = timeout
+}
+
+// Do 发送请求
+func (doer *DefaultHTTPDoer) Do(req *http.Request) (resp *http.Response, err error) {
+	return doer.client.Do(req)
 }
 
 // ResponseDecoder 响应数据解码器接口
@@ -76,6 +110,16 @@ type HTTPClient struct {
 	createFormBuilder func(body io.Writer) FormBuilder // 表单构建器
 }
 
+// HTTPClientOption 客户端选项
+type HTTPClientOption func(c *HTTPClient)
+
+// WithTimeout 设置请求超时时间
+func WithTimeout(timeout time.Duration) (opt HTTPClientOption) {
+	return func(c *HTTPClient) {
+		c.config.HTTPClient.SetTimeout(timeout)
+	}
+}
+
 // Response 响应
 type Response interface {
 	SetHeader(http.Header)
@@ -101,20 +145,20 @@ type RawResponse struct {
 }
 
 // NewHTTPClient 新建 HTTP 客户端
-func NewHTTPClient(baseURL string) (c *HTTPClient) {
+func NewHTTPClient(baseURL string, opts ...RequestBuilderOption) (c *HTTPClient) {
 	return NewHTTPClientWithConfig(HTTPClientConfig{
 		BaseURL:            baseURL,
-		HTTPClient:         &http.Client{},
+		HTTPClient:         NewDefaultHTTPDoer(5 * time.Second),
 		ResponseDecoder:    &DefaultResponseDecoder{},
 		EmptyMessagesLimit: defaultEmptyMessagesLimit,
-	})
+	}, opts...)
 }
 
 // NewHTTPClientWithConfig 通过客户端配置新建 HTTP 客户端
-func NewHTTPClientWithConfig(config HTTPClientConfig) (c *HTTPClient) {
+func NewHTTPClientWithConfig(config HTTPClientConfig, opts ...RequestBuilderOption) (c *HTTPClient) {
 	return &HTTPClient{
 		config:         config,
-		requestBuilder: NewRequestBuilder(),
+		requestBuilder: NewRequestBuilder(opts...),
 		createFormBuilder: func(body io.Writer) FormBuilder {
 			return NewFormBuilder(body)
 		},

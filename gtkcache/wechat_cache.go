@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-29 16:15:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 17:39:23
+ * @LastEditTime: 2025-06-02 04:00:59
  * @Description: 适配 github.com/silenceper/wechat/v2 库的缓存
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -61,10 +61,10 @@ func (wc *WechatCache) Set(key string, val any, timeout time.Duration) (err erro
 
 // SetContext 设置缓存
 func (wc *WechatCache) SetContext(ctx context.Context, key string, val any, timeout time.Duration) (err error) {
-	if int64(timeout.Seconds()) <= 0 {
+	if timeout.Milliseconds() <= 0 {
 		_, err = wc.client.Do(ctx, "SET", key, val)
 	} else {
-		_, err = wc.client.Do(ctx, "SETEX", key, int64(timeout.Seconds()), val)
+		_, err = wc.client.Do(ctx, "PSETEX", key, timeout.Milliseconds(), val)
 	}
 	return
 }
@@ -74,7 +74,7 @@ func (wc *WechatCache) IsExist(key string) (isExist bool) {
 	return wc.IsExistContext(wc.ctx, key)
 }
 
-// IsExistContext 判断key是否存在
+// IsExistContext 缓存是否存在
 func (wc *WechatCache) IsExistContext(ctx context.Context, key string) (isExist bool) {
 	var (
 		val any
@@ -87,7 +87,7 @@ func (wc *WechatCache) IsExistContext(ctx context.Context, key string) (isExist 
 	return
 }
 
-// Delete 删除
+// Delete 删除缓存
 func (wc *WechatCache) Delete(key string) (err error) {
 	return wc.DeleteContext(wc.ctx, key)
 }

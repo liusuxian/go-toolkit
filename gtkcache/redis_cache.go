@@ -2,8 +2,8 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 17:33:51
- * @Description:
+ * @LastEditTime: 2025-06-02 03:51:04
+ * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
@@ -11,6 +11,7 @@ package gtkcache
 
 import (
 	"context"
+	"errors"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkredis"
 	"github.com/liusuxian/go-toolkit/internal/utils"
@@ -27,7 +28,7 @@ type RedisCache struct {
 var internalScriptMap = map[string]string{
 	"SETGET": `
 	if tonumber(ARGV[2], 10) > 0 then
-		redis.call('SETEX', KEYS[1], ARGV[2], ARGV[1])
+		redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
 	else
 		redis.call('SET', KEYS[1], ARGV[1])
 	end
@@ -39,7 +40,7 @@ var internalScriptMap = map[string]string{
 	if not val then
 		return nil
 	end
-	redis.call('EXPIRE', KEYS[1], ARGV[1])
+	redis.call('PEXPIRE', KEYS[1], ARGV[1])
 	return val
 	`,
 
@@ -54,7 +55,7 @@ var internalScriptMap = map[string]string{
 	end
 	if allKeysExist then
     for i = 1, #KEYS do
-			redis.call('EXPIRE', KEYS[i], ARGV[1])
+			redis.call('PEXPIRE', KEYS[i], ARGV[1])
     end
 	end
 	return vals
@@ -64,28 +65,58 @@ var internalScriptMap = map[string]string{
 	local val = redis.call('GET', KEYS[1])
 	if not val then
 		if tonumber(ARGV[2], 10) > 0 then
-			redis.call('SETEX', KEYS[1], ARGV[2], ARGV[1])
+			redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
 		else
 			redis.call('SET', KEYS[1], ARGV[1])
 		end
 		return redis.call('GET', KEYS[1])
 	end
 	if tonumber(ARGV[2], 10) > 0 then
-		redis.call('EXPIRE', KEYS[1], ARGV[2])
+		redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	end
 	return val
 	`,
 
 	"MSET_EX": `
 	for i = 1, #KEYS do
-		redis.call('SETEX', KEYS[i], ARGV[#ARGV], ARGV[i])
+		redis.call('PSETEX', KEYS[i], ARGV[#ARGV], ARGV[i])
 	end
 	return 'OK'
 	`,
 
+	"UPDATE_VALUE_EX": `
+	local pttl = redis.call('PTTL', KEYS[1])
+	if pttl == -2 then
+		return nil
+	end
+	local oldVal = redis.call('GET', KEYS[1])
+	if tonumber(ARGV[2], 10) > 0 then
+		redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
+	else
+		if pttl == -1 then
+			redis.call('SET', KEYS[1], ARGV[1])
+		else
+			redis.call('PSETEX', KEYS[1], pttl, ARGV[1])
+		end
+	end
+	return oldVal
+	`,
+
+	"UPDATE_EX": `
+	local pttl = redis.call('PTTL', KEYS[1])
+	if pttl == -2 then
+		return -1
+	end
+	redis.call('PEXPIRE', KEYS[1], ARGV[1])
+	if pttl == -1 then
+		return 0
+	end
+	return pttl
+	`,
+
 	"SADD_EX": `
 	local count = redis.call('SADD', KEYS[1], unpack(ARGV, 1, #ARGV - 1))
-	redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])
+	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return count
 	`,
 
@@ -94,7 +125,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return 0
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[2])
+	redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	return redis.call('SISMEMBER', KEYS[1], ARGV[1])
 	`,
 
@@ -103,7 +134,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return nil
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[1])
+	redis.call('PEXPIRE', KEYS[1], ARGV[1])
 	return redis.call('SMEMBERS', KEYS[1])
 	`,
 
@@ -113,7 +144,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return members
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[2])
+	redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	return members
 	`,
 
@@ -128,7 +159,7 @@ var internalScriptMap = map[string]string{
 	end
 	if allKeysExist then
     for i = 1, #KEYS do
-			redis.call('EXPIRE', KEYS[i], ARGV[1])
+			redis.call('PEXPIRE', KEYS[i], ARGV[1])
     end
 	end
 	return redis.call('SUNION', unpack(KEYS))
@@ -139,7 +170,7 @@ var internalScriptMap = map[string]string{
 	if count == 0 then
     return count
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[1])
+	redis.call('PEXPIRE', KEYS[1], ARGV[1])
 	return count
 	`,
 
@@ -149,13 +180,13 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return count
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])
+	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return count
 	`,
 
 	"ZADD_EX": `
 	local count = redis.call('ZADD', KEYS[1], unpack(ARGV, 1, #ARGV - 1))
-	redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])
+	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return count
 	`,
 
@@ -164,7 +195,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return nil
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])
+	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return redis.call(ARGV[1], KEYS[1], unpack(ARGV, 2, #ARGV - 1))
 	`,
 
@@ -174,7 +205,7 @@ var internalScriptMap = map[string]string{
 		return cjson.encode({total=total})
 	end
 	if tonumber(ARGV[5], 10) > 0 then
-		redis.call('EXPIRE', KEYS[1], ARGV[5])
+		redis.call('PEXPIRE', KEYS[1], ARGV[5])
 	end
 	local start = (ARGV[2] - 1) * ARGV[3]
 	local stop = (ARGV[2] * ARGV[3]) - 1
@@ -192,7 +223,7 @@ var internalScriptMap = map[string]string{
 	if count == 0 then
     return count
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[1])
+	redis.call('PEXPIRE', KEYS[1], ARGV[1])
 	return count
 	`,
 
@@ -201,13 +232,13 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return 0
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[3])
+	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return redis.call('ZCOUNT', KEYS[1], ARGV[1], ARGV[2])
 	`,
 
 	"ZINCRBY_EX": `
 	local score = redis.call('ZINCRBY', KEYS[1], ARGV[1], ARGV[2])
-	redis.call('EXPIRE', KEYS[1], ARGV[3])
+	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return score
 	`,
 
@@ -216,7 +247,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return nil
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])
+	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return redis.call(ARGV[1], KEYS[1], unpack(ARGV, 2, #ARGV - 1))
 	`,
 
@@ -225,7 +256,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return -1
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[3])
+	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	local rank = redis.call(ARGV[1], KEYS[1], ARGV[2])
 	if not rank then
     return -1
@@ -239,7 +270,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return count
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])
+	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return count
 	`,
 
@@ -249,7 +280,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return count
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[3])
+	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return count
 	`,
 
@@ -259,7 +290,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return count
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[3])
+	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return count
 	`,
 
@@ -268,7 +299,7 @@ var internalScriptMap = map[string]string{
 	if isExist == 0 then
     return -1
   end
-	redis.call('EXPIRE', KEYS[1], ARGV[2])
+	redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	local score = redis.call('ZSCORE', KEYS[1], ARGV[1])
 	if not score then
     return -1
@@ -304,10 +335,10 @@ func (rc *RedisCache) Client() (client *gtkredis.RedisClient) {
 //
 //	当`timeout > 0`时，设置`key`的过期时间
 func (rc *RedisCache) setget(ctx context.Context, key string, val any, timeout ...time.Duration) (newVal any, err error) {
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		newVal, err = rc.client.EvalSha(ctx, "SETGET", []string{key}, val, 0)
 	} else {
-		newVal, err = rc.client.EvalSha(ctx, "SETGET", []string{key}, val, int64(timeout[0].Seconds()))
+		newVal, err = rc.client.EvalSha(ctx, "SETGET", []string{key}, val, timeout[0].Milliseconds())
 	}
 	return
 }
@@ -316,10 +347,10 @@ func (rc *RedisCache) setget(ctx context.Context, key string, val any, timeout .
 //
 //	当`timeout > 0`且缓存命中时，设置/重置`key`的过期时间
 func (rc *RedisCache) Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error) {
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		val, err = rc.client.Do(ctx, "GET", key)
 	} else {
-		val, err = rc.client.EvalSha(ctx, "GET_EX", []string{key}, int64(timeout[0].Seconds()))
+		val, err = rc.client.EvalSha(ctx, "GET_EX", []string{key}, timeout[0].Milliseconds())
 	}
 	return
 }
@@ -332,14 +363,14 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time
 		return
 	}
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args := make([]any, 0, len(keys))
 		for _, v := range keys {
 			args = append(args, v)
 		}
 		result, err = rc.client.Do(ctx, "MGET", args...)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "MGET_EX", keys, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "MGET_EX", keys, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -356,10 +387,10 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 func (rc *RedisCache) GetOrSet(ctx context.Context, key string, newVal any, timeout ...time.Duration) (val any, err error) {
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		val, err = rc.client.EvalSha(ctx, "GETORSET", []string{key}, newVal, 0)
 	} else {
-		val, err = rc.client.EvalSha(ctx, "GETORSET", []string{key}, newVal, int64(timeout[0].Seconds()))
+		val, err = rc.client.EvalSha(ctx, "GETORSET", []string{key}, newVal, timeout[0].Milliseconds())
 	}
 	return
 }
@@ -387,7 +418,7 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 	return
 }
 
-// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在读写互斥锁中执行的
+// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透
@@ -399,7 +430,7 @@ func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, 
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透
-func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	// 获取缓存
 	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
 		return
@@ -419,11 +450,11 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, arg
 	return
 }
 
-// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在读写互斥锁中执行的
+// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透
-func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc CustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	return rc.CustomGetOrSetFunc(ctx, keys, args, cc, f, force, timeout...)
 }
 
@@ -431,10 +462,10 @@ func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string,
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 func (rc *RedisCache) Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) {
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		_, err = rc.client.Do(ctx, "SET", key, val)
 	} else {
-		_, err = rc.client.Do(ctx, "SETEX", key, int64(timeout[0].Seconds()), val)
+		_, err = rc.client.Do(ctx, "PSETEX", key, timeout[0].Milliseconds(), val)
 	}
 	return
 }
@@ -446,7 +477,7 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 	if len(data) == 0 {
 		return
 	}
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args := make([]any, 0, len(data)*2)
 		for k, v := range data {
 			args = append(args, k, v)
@@ -459,7 +490,7 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 			keys = append(keys, k)
 			args = append(args, v)
 		}
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 		_, err = rc.client.EvalSha(ctx, "MSET_EX", keys, args...)
 	}
 	return
@@ -470,10 +501,10 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 //	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 func (rc *RedisCache) SetIfNotExist(ctx context.Context, key string, val any, timeout ...time.Duration) (ok bool, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "SETNX", key, val)
 	} else {
-		result, err = rc.client.Do(ctx, "SET", key, val, "EX", int64(timeout[0].Seconds()), "NX")
+		result, err = rc.client.Do(ctx, "SET", key, val, "PX", timeout[0].Milliseconds(), "NX")
 	}
 	ok = gtkconv.ToBool(result)
 	return
@@ -495,12 +526,55 @@ func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func,
 	return rc.SetIfNotExist(ctx, key, val, timeout...)
 }
 
-// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在读写互斥锁中执行的
+// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在写入互斥锁内执行，以确保并发安全
 //
 //	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透
 func (rc *RedisCache) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
 	return rc.SetIfNotExistFunc(ctx, key, f, force, timeout...)
+}
+
+// Update 当`key`存在时，则使用`val`更新`key`的值，返回`key`的旧值
+//
+//	当`timeout > 0`且`key`更新成功时，更新`key`的过期时间
+func (rc *RedisCache) Update(ctx context.Context, key string, val any, timeout ...time.Duration) (oldVal any, isExist bool, err error) {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
+		oldVal, err = rc.client.EvalSha(ctx, "UPDATE_VALUE_EX", []string{key}, val, 0)
+	} else {
+		oldVal, err = rc.client.EvalSha(ctx, "UPDATE_VALUE_EX", []string{key}, val, timeout[0].Milliseconds())
+	}
+	if err != nil {
+		return
+	}
+	if utils.IsNil(oldVal) {
+		return
+	}
+	isExist = true
+	return
+}
+
+// UpdateExpire 当`key`存在时，则更新`key`的过期时间，返回`key`的旧的过期时间值
+//
+//	当`key`不存在时，则返回-1
+//	当`key`存在但没有设置过期时间时，则返回0
+//	当`key`存在且设置了过期时间时，则返回过期时间
+//	当`timeout > 0`且`key`存在时，更新`key`的过期时间
+func (rc *RedisCache) UpdateExpire(ctx context.Context, key string, timeout time.Duration) (oldTimeout time.Duration, err error) {
+	if timeout.Milliseconds() <= 0 {
+		err = errors.New("timeout must be greater than 0")
+		return
+	}
+
+	var value any
+	if value, err = rc.client.EvalSha(ctx, "UPDATE_EX", []string{key}, timeout.Milliseconds()); err != nil {
+		return
+	}
+
+	pttl := gtkconv.ToInt64(value)
+	if pttl <= 0 {
+		return time.Duration(pttl), nil
+	}
+	return time.Duration(pttl) * time.Millisecond, nil
 }
 
 // IsExist 缓存是否存在
@@ -510,6 +584,16 @@ func (rc *RedisCache) IsExist(ctx context.Context, key string) (isExist bool, er
 		return
 	}
 	isExist = gtkconv.ToBool(val)
+	return
+}
+
+// Size 缓存中的key数量
+func (rc *RedisCache) Size(ctx context.Context) (size int, err error) {
+	var val any
+	if val, err = rc.client.Do(ctx, "DBSIZE"); err != nil {
+		return
+	}
+	size = gtkconv.ToInt(val)
 	return
 }
 
@@ -526,14 +610,26 @@ func (rc *RedisCache) Delete(ctx context.Context, keys ...string) (err error) {
 	return
 }
 
-// GetExpire 获取缓存过期时间
+// GetExpire 获取缓存`key`的过期时间
+//
+//	当`key`不存在时，则返回-1
+//	当`key`存在但没有设置过期时间时，则返回0
+//	当`key`存在且设置了过期时间时，则返回过期时间
 func (rc *RedisCache) GetExpire(ctx context.Context, key string) (timeout time.Duration, err error) {
 	var val any
-	if val, err = rc.client.Do(ctx, "TTL", key); err != nil {
+	if val, err = rc.client.Do(ctx, "PTTL", key); err != nil {
 		return
 	}
-	timeout = time.Second * time.Duration(gtkconv.ToInt64(val))
-	return
+
+	pttl := gtkconv.ToInt64(val)
+	switch pttl {
+	case -2: // key不存在
+		return -1, nil
+	case -1: // key存在但没有设置剩余生存时间
+		return 0, nil
+	default:
+		return time.Duration(pttl) * time.Millisecond, nil
+	}
 }
 
 // Close 关闭缓存服务
@@ -553,13 +649,13 @@ func (rc *RedisCache) SAdd(ctx context.Context, key string, members []any, timeo
 		args   = make([]any, 0, len(members)+1)
 		result any
 	)
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args = append(args, key)
 		args = append(args, members...)
 		result, err = rc.client.Do(ctx, "SADD", args...)
 	} else {
 		args = append(args, members...)
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 		result, err = rc.client.EvalSha(ctx, "SADD_EX", []string{key}, args...)
 	}
 	if err != nil {
@@ -574,10 +670,10 @@ func (rc *RedisCache) SAdd(ctx context.Context, key string, members []any, timeo
 //	当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SIsMember(ctx context.Context, key string, member any, timeout ...time.Duration) (isMember bool, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "SISMEMBER", key, member)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "SISMEMBER_EX", []string{key}, member, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "SISMEMBER_EX", []string{key}, member, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -591,10 +687,10 @@ func (rc *RedisCache) SIsMember(ctx context.Context, key string, member any, tim
 //	当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SMembers(ctx context.Context, key string, timeout ...time.Duration) (members []any, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "SMEMBERS", key)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "SMEMBERS_EX", []string{key}, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "SMEMBERS_EX", []string{key}, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -608,10 +704,10 @@ func (rc *RedisCache) SMembers(ctx context.Context, key string, timeout ...time.
 //	当`timeout > 0`且更新后的`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SPop(ctx context.Context, key string, count int, timeout ...time.Duration) (members []any, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "SPOP", key, count)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "SPOP_EX", []string{key}, count, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "SPOP_EX", []string{key}, count, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -628,14 +724,14 @@ func (rc *RedisCache) SUnion(ctx context.Context, keys []string, timeout ...time
 		return
 	}
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args := make([]any, 0, len(keys))
 		for _, v := range keys {
 			args = append(args, v)
 		}
 		result, err = rc.client.Do(ctx, "SUNION", args...)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "SUNION_EX", keys, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "SUNION_EX", keys, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -649,10 +745,10 @@ func (rc *RedisCache) SUnion(ctx context.Context, keys []string, timeout ...time
 //	当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SCard(ctx context.Context, key string, timeout ...time.Duration) (count int, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "SCARD", key)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "SCARD_EX", []string{key}, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "SCARD_EX", []string{key}, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -672,13 +768,13 @@ func (rc *RedisCache) SRem(ctx context.Context, key string, members []any, timeo
 		args   = make([]any, 0, len(members)+1)
 		result any
 	)
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args = append(args, key)
 		args = append(args, members...)
 		result, err = rc.client.Do(ctx, "SREM", args...)
 	} else {
 		args = append(args, members...)
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 		result, err = rc.client.EvalSha(ctx, "SREM_EX", []string{key}, args...)
 	}
 	if err != nil {
@@ -699,7 +795,7 @@ func (rc *RedisCache) SSAdd(ctx context.Context, key string, data map[any]float6
 		args   = make([]any, 0, len(data)*2+1)
 		result any
 	)
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args = append(args, key)
 		for k, v := range data {
 			args = append(args, v, k)
@@ -709,7 +805,7 @@ func (rc *RedisCache) SSAdd(ctx context.Context, key string, data map[any]float6
 		for k, v := range data {
 			args = append(args, v, k)
 		}
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 		result, err = rc.client.EvalSha(ctx, "ZADD_EX", []string{key}, args...)
 	}
 	if err != nil {
@@ -727,7 +823,7 @@ func (rc *RedisCache) SSRange(ctx context.Context, key string, start, stop int, 
 		args   = make([]any, 0, 5)
 		result any
 	)
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args = append(args, key, start, stop)
 		if withScores {
 			args = append(args, "WITHSCORES")
@@ -750,7 +846,7 @@ func (rc *RedisCache) SSRange(ctx context.Context, key string, start, stop int, 
 		if withScores {
 			args = append(args, "WITHSCORES")
 		}
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 		result, err = rc.client.EvalSha(ctx, "RANGE_EX", []string{key}, args...)
 	}
 	if err != nil {
@@ -791,10 +887,10 @@ func (rc *RedisCache) SSPage(ctx context.Context, key string, page, pageSize int
 	} else {
 		args = append(args, "")
 	}
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args = append(args, 0)
 	} else {
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 	}
 	if result, err = rc.client.EvalSha(ctx, "PAGE_EX", []string{key}, args...); err != nil {
 		return
@@ -821,10 +917,10 @@ func (rc *RedisCache) SSPage(ctx context.Context, key string, page, pageSize int
 //	当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SSCard(ctx context.Context, key string, timeout ...time.Duration) (count int, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "ZCARD", key)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "ZCARD_EX", []string{key}, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "ZCARD_EX", []string{key}, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -839,10 +935,10 @@ func (rc *RedisCache) SSCard(ctx context.Context, key string, timeout ...time.Du
 //	当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SSCount(ctx context.Context, key, min, max string, timeout ...time.Duration) (count int, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "ZCOUNT", key, min, max)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "ZCOUNT_EX", []string{key}, min, max, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "ZCOUNT_EX", []string{key}, min, max, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -856,10 +952,10 @@ func (rc *RedisCache) SSCount(ctx context.Context, key, min, max string, timeout
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 func (rc *RedisCache) SSIncrby(ctx context.Context, key string, increment float64, member any, timeout ...time.Duration) (score float64, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "ZINCRBY", key, increment, member)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "ZINCRBY_EX", []string{key}, increment, member, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "ZINCRBY_EX", []string{key}, increment, member, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -877,7 +973,7 @@ func (rc *RedisCache) SSRangeByScore(ctx context.Context, key, min, max string, 
 		args   = make([]any, 0, 8)
 		result any
 	)
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args = append(args, key, min, max)
 		if withScores {
 			args = append(args, "WITHSCORES")
@@ -906,7 +1002,7 @@ func (rc *RedisCache) SSRangeByScore(ctx context.Context, key, min, max string, 
 		if len(limit) >= 2 {
 			args = append(args, "LIMIT", limit[0], limit[1])
 		}
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 		result, err = rc.client.EvalSha(ctx, "RANGEBYSCORE_EX", []string{key}, args...)
 	}
 	if err != nil {
@@ -932,7 +1028,7 @@ func (rc *RedisCache) SSRangeByScore(ctx context.Context, key, min, max string, 
 //	当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SSRank(ctx context.Context, key string, member any, isDescOrder bool, timeout ...time.Duration) (rank int, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		if isDescOrder {
 			// score 值递减
 			result, err = rc.client.Do(ctx, "ZREVRANK", key, member)
@@ -943,10 +1039,10 @@ func (rc *RedisCache) SSRank(ctx context.Context, key string, member any, isDesc
 	} else {
 		if isDescOrder {
 			// score 值递减
-			result, err = rc.client.EvalSha(ctx, "RANK_EX", []string{key}, "ZREVRANK", member, int64(timeout[0].Seconds()))
+			result, err = rc.client.EvalSha(ctx, "RANK_EX", []string{key}, "ZREVRANK", member, timeout[0].Milliseconds())
 		} else {
 			// score 值递增
-			result, err = rc.client.EvalSha(ctx, "RANK_EX", []string{key}, "ZRANK", member, int64(timeout[0].Seconds()))
+			result, err = rc.client.EvalSha(ctx, "RANK_EX", []string{key}, "ZRANK", member, timeout[0].Milliseconds())
 		}
 	}
 	if err != nil {
@@ -967,13 +1063,13 @@ func (rc *RedisCache) SSRem(ctx context.Context, key string, members []any, time
 		args   = make([]any, 0, len(members)+1)
 		result any
 	)
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args = append(args, key)
 		args = append(args, members...)
 		result, err = rc.client.Do(ctx, "ZREM", args...)
 	} else {
 		args = append(args, members...)
-		args = append(args, int64(timeout[0].Seconds()))
+		args = append(args, timeout[0].Milliseconds())
 		result, err = rc.client.EvalSha(ctx, "ZREM_EX", []string{key}, args...)
 	}
 	if err != nil {
@@ -988,10 +1084,10 @@ func (rc *RedisCache) SSRem(ctx context.Context, key string, members []any, time
 //	当`timeout > 0`且更新后的`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SSRemRangeByRank(ctx context.Context, key string, start, stop int, timeout ...time.Duration) (remCount int, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "ZREMRANGEBYRANK", key, start, stop)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "ZREMRANGEBYRANK_EX", []string{key}, start, stop, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "ZREMRANGEBYRANK_EX", []string{key}, start, stop, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -1006,10 +1102,10 @@ func (rc *RedisCache) SSRemRangeByRank(ctx context.Context, key string, start, s
 //	当`timeout > 0`且更新后的`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SSRemRangeByScore(ctx context.Context, key, min, max string, timeout ...time.Duration) (remCount int, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "ZREMRANGEBYSCORE", key, min, max)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "ZREMRANGEBYSCORE_EX", []string{key}, min, max, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "ZREMRANGEBYSCORE_EX", []string{key}, min, max, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
@@ -1023,10 +1119,10 @@ func (rc *RedisCache) SSRemRangeByScore(ctx context.Context, key, min, max strin
 //	当`timeout > 0`且`key`存在时，设置/重置`key`的过期时间
 func (rc *RedisCache) SSScore(ctx context.Context, key string, member any, timeout ...time.Duration) (score float64, err error) {
 	var result any
-	if len(timeout) == 0 || int64(timeout[0].Seconds()) <= 0 {
+	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		result, err = rc.client.Do(ctx, "ZSCORE", key, member)
 	} else {
-		result, err = rc.client.EvalSha(ctx, "ZSCORE_EX", []string{key}, member, int64(timeout[0].Seconds()))
+		result, err = rc.client.EvalSha(ctx, "ZSCORE_EX", []string{key}, member, timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return
