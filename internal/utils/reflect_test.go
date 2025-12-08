@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-13 13:14:03
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 13:14:48
+ * @LastEditTime: 2025-12-08 15:02:16
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -68,8 +68,8 @@ type TestNil struct {
 
 func TestIsNil(t *testing.T) {
 	assert := assert.New(t)
-	var a interface{} = nil
-	var b interface{}
+	var a any = nil
+	var b any
 	var c *int = nil
 	var d int = 10
 	var e string = "hello"

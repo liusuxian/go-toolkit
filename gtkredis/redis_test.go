@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 17:32:08
+ * @LastEditTime: 2025-12-08 15:42:31
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -191,17 +191,17 @@ func TestRedisPolling(t *testing.T) {
 	defer client.Close()
 
 	var index int
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		index, err = client.Polling(ctx, "test_key_1", 5)
 		assert.NoError(err)
 		assert.Equal(i, index)
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		index, err = client.Polling(ctx, "test_key_1", 5)
 		assert.NoError(err)
 		assert.Equal(i, index)
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		index, err = client.Polling(ctx, "test_key_1", 5)
 		assert.NoError(err)
 		assert.Equal(i, index)

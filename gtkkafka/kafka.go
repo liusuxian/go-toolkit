@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-06-01 20:34:29
+ * @LastEditTime: 2025-12-08 18:14:40
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -224,10 +224,9 @@ func (kc *KafkaClient) NewProducer(ctx context.Context, topic string) (err error
 		"acks":                                  "1",                                  // 回复
 	}
 	if err = kafkaSetKey(kafkaCnf, map[string]string{
-		"api.version.request": "true",
-		"bootstrap.servers":   kc.config.BootstrapServers,
-		"security.protocol":   kc.config.SecurityProtocol,
-		"sasl.mechanism":      kc.config.SaslMechanism,
+		"bootstrap.servers": kc.config.BootstrapServers,
+		"security.protocol": kc.config.SecurityProtocol,
+		"sasl.mechanism":    kc.config.SaslMechanism,
 	}); err != nil {
 		return
 	}
@@ -317,11 +316,10 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 			"enable.auto.commit":        false,                 // 关闭自动提交
 		}
 		if err = kafkaSetKey(kafkaCnf, map[string]string{
-			"api.version.request": "true",
-			"bootstrap.servers":   kc.config.BootstrapServers,
-			"security.protocol":   kc.config.SecurityProtocol,
-			"sasl.mechanism":      kc.config.SaslMechanism,
-			"group.id":            group,
+			"bootstrap.servers": kc.config.BootstrapServers,
+			"security.protocol": kc.config.SecurityProtocol,
+			"sasl.mechanism":    kc.config.SaslMechanism,
+			"group.id":          group,
 		}); err != nil {
 			return
 		}

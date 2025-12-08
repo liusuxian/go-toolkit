@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 18:06:53
+ * @LastEditTime: 2025-12-08 18:53:07
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -54,7 +54,7 @@ func TestRedisMQProducer(t *testing.T) {
 	err = client.SendMessage(ctx, "queue_200", &gtkmq.ProducerMessage{Data: map[string]any{"a": "hello world"}})
 	assert.NoError(err)
 
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		err = client.SendMessage(ctx, "queue", &gtkmq.ProducerMessage{
 			Data: map[string]any{
 				"a": i,
@@ -353,8 +353,7 @@ func BenchmarkSendMessage(b *testing.B) {
 		Data: map[string]any{"data": "test data"},
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err = client.SendMessage(ctx, "queue", message); err != nil {
 			b.Error("发送消息失败:", err)
 			return
