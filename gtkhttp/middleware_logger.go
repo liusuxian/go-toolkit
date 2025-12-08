@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-30 15:14:39
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 01:17:38
+ * @LastEditTime: 2025-12-09 01:44:01
  * @Description: 日志中间件
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -121,7 +121,7 @@ type LoggingMiddleware struct {
 // NewLoggingMiddleware 创建日志中间件
 func NewLoggingMiddleware(config LoggingMiddlewareConfig) (lm *LoggingMiddleware) {
 	if config.Logger == nil {
-		config.Logger = NewDefaultLogger(LogLevelDebug)
+		config.Logger = NewDefaultLogger(LogLevelInfo)
 	}
 
 	return &LoggingMiddleware{
@@ -183,7 +183,7 @@ func (m *LoggingMiddleware) logRequestStart(ctx context.Context, request any, re
 		if reqData := m.sanitizeData(request); reqData != nil {
 			startTemp.Request = reqData
 		}
-		m.config.Logger.Debugf(ctx, "request started: %s", toMustString(startTemp))
+		m.config.Logger.Infof(ctx, "request started: %s", toMustString(startTemp))
 	}
 }
 
@@ -232,7 +232,7 @@ func (m *LoggingMiddleware) logRequestEnd(ctx context.Context, processingStartTi
 					endTemp.Response = &respData
 				}
 			}
-			m.config.Logger.Debugf(ctx, "request completed: %s", toMustString(endTemp))
+			m.config.Logger.Infof(ctx, "request completed: %s", toMustString(endTemp))
 		}
 	}
 }
@@ -298,7 +298,7 @@ func (m *LoggingMiddleware) sanitizeValue(value any, depth int) (newValue any) {
 // DefaultLoggingConfig 默认日志配置
 func DefaultLoggingConfig() (config LoggingMiddlewareConfig) {
 	return LoggingMiddlewareConfig{
-		Logger:          NewDefaultLogger(LogLevelDebug),
+		Logger:          NewDefaultLogger(LogLevelInfo),
 		LogRequest:      true,
 		LogResponse:     false, // 默认不记录响应以减少日志量
 		LogError:        true,
