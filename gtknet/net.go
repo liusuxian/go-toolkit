@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-26 15:33:37
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:20:30
+ * @LastEditTime: 2025-12-08 23:40:06
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,22 +10,25 @@
 package gtknet
 
 import (
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
 	"strings"
 )
 
+var (
+	errNoPrivateAddress = errors.New("no private ip address") // 没有私有IP地址
+)
+
 // IsPrivateIPv4 判断是否是私有 IPv4 地址
 func IsPrivateIPv4(ip net.IP) (ok bool) {
-	return ip != nil && (ip[0] == 10 || (ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31) || (ip[0] == 192 && ip[1] == 168))
+	return ip != nil && (ip[0] == 10 || ip[0] == 172 && (ip[1] >= 16 && ip[1] < 32) || ip[0] == 192 && ip[1] == 168 || ip[0] == 169 && ip[1] == 254)
 }
 
 // PrivateIPv4 获取私有 IPv4 地址
 func PrivateIPv4() (ip net.IP, err error) {
 	var as []net.Addr
-	as, err = net.InterfaceAddrs()
-	if err != nil {
+	if as, err = net.InterfaceAddrs(); err != nil {
 		return
 	}
 
@@ -41,7 +44,7 @@ func PrivateIPv4() (ip net.IP, err error) {
 		}
 	}
 
-	err = fmt.Errorf("no private ip address")
+	err = errNoPrivateAddress
 	return
 }
 

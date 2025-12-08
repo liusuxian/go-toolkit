@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-20 21:04:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-31 20:33:00
+ * @LastEditTime: 2025-12-09 01:29:02
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,7 +13,7 @@ import (
 	"context"
 	"github.com/joho/godotenv"
 	"github.com/liusuxian/go-toolkit/gtkenv"
-	"github.com/liusuxian/go-toolkit/gtkrobot"
+	"github.com/liusuxian/go-toolkit/gtksdk/feishu/gtkrobot"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

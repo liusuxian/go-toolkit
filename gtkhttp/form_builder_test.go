@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-07 19:24:23
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-10 14:15:42
+ * @LastEditTime: 2025-12-08 22:57:17
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,7 +12,7 @@ package gtkhttp_test
 import (
 	"bytes"
 	"errors"
-	utils "github.com/liusuxian/go-toolkit/gtkhttp"
+	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkhttp/test/checks"
 	"os"
 	"testing"
@@ -37,7 +37,7 @@ func TestFormBuilderWithFailingWriter(t *testing.T) {
 	}
 	defer file.Close()
 
-	builder := utils.NewFormBuilder(&failingWriter{})
+	builder := gtkhttp.NewFormBuilder(&failingWriter{})
 	err = builder.CreateFormFile("file", file)
 	checks.ErrorIs(t, err, errMockFailingWriterError, "formbuilder should return error if writer fails")
 }
@@ -52,7 +52,7 @@ func TestFormBuilderWithClosedFile(t *testing.T) {
 	}
 	file.Close()
 
-	builder := utils.NewFormBuilder(&bytes.Buffer{})
+	builder := gtkhttp.NewFormBuilder(&bytes.Buffer{})
 	err = builder.CreateFormFile("file", file)
 	checks.HasError(t, err, "formbuilder should return error if file is closed")
 	checks.ErrorIs(t, err, os.ErrClosed, "formbuilder should return error if file is closed")

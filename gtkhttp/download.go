@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-23 19:46:05
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 16:15:20
+ * @LastEditTime: 2025-12-08 23:05:24
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -68,7 +68,7 @@ func ExtractFileNameFromURL(rawURL string) (fileName string) {
 		// 如果 URL 无法解析，返回空字符串
 		return
 	}
-	// 获取路径的最后一部分作为图片名称
+	// 获取路径的最后一部分作为文件名称
 	fileName = path.Base(parsedURL.Path)
 	// 如果结果中包含特殊字符，进行解码
 	var decodedName string

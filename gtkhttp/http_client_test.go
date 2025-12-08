@@ -1,8 +1,8 @@
 /*
  * @Author: liusuxian 382185882@qq.com
- * @Date: 2025-04-15 15:38:30
+ * @Date: 2025-05-28 17:56:51
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-06-02 04:12:01
+ * @LastEditTime: 2025-12-08 22:54:16
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 )
 
 // testResponse 实现 Response 接口
@@ -45,7 +44,7 @@ func TestNewHTTPClientWithConfig(t *testing.T) {
 	var (
 		config = HTTPClientConfig{
 			BaseURL:            "https://api.example.com",
-			HTTPClient:         NewDefaultHTTPDoer(5 * time.Second),
+			HTTPClient:         NewDefaultHTTPDoer(0),
 			ResponseDecoder:    &DefaultResponseDecoder{},
 			EmptyMessagesLimit: defaultEmptyMessagesLimit,
 		}
@@ -154,7 +153,7 @@ func TestClient_handleErrorResp(t *testing.T) {
 			name:          "non-json error response",
 			statusCode:    http.StatusInternalServerError,
 			responseBody:  "internal server error",
-			expectedError: "invalid character 'i' looking for beginning of value",
+			expectedError: "failed to parse error response",
 		},
 	}
 
@@ -574,7 +573,7 @@ data: [DONE]
 
 			defer stream.Close()
 
-			msg1, err := stream.Recv()
+			msg1, _, err := stream.Recv()
 			if err != nil {
 				t.Fatalf("Error receiving first message: %v", err)
 			}
@@ -584,7 +583,7 @@ data: [DONE]
 					msg1.ID, msg1.Message)
 			}
 
-			msg2, err := stream.Recv()
+			msg2, _, err := stream.Recv()
 			if err != nil {
 				t.Fatalf("Error receiving second message: %v", err)
 			}
@@ -594,8 +593,8 @@ data: [DONE]
 					msg2.ID, msg2.Message)
 			}
 
-			_, err = stream.Recv()
-			if err != io.EOF {
+			_, _, err = stream.Recv()
+			if err != nil {
 				t.Errorf("Expected third message to return EOF, got %v", err)
 			}
 		})

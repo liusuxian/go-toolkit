@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-11-27 20:32:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 13:30:37
+ * @LastEditTime: 2025-12-08 21:40:46
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -25,7 +25,7 @@ func TestOriginValueAndKind(t *testing.T) {
 
 	var s2 = "s"
 	out2 := gtkreflect.OriginValueAndKind(&s2)
-	assert.Equal(out2.InputKind, reflect.Ptr)
+	assert.Equal(out2.InputKind, reflect.Pointer)
 	assert.Equal(out2.OriginKind, reflect.String)
 
 	var s3 []int
@@ -35,7 +35,7 @@ func TestOriginValueAndKind(t *testing.T) {
 
 	var s4 []int
 	out4 := gtkreflect.OriginValueAndKind(&s4)
-	assert.Equal(out4.InputKind, reflect.Ptr)
+	assert.Equal(out4.InputKind, reflect.Pointer)
 	assert.Equal(out4.OriginKind, reflect.Slice)
 
 	out5 := gtkreflect.OriginValueAndKind(nil)
@@ -52,7 +52,7 @@ func TestOriginTypeAndKind(t *testing.T) {
 
 	var s2 = "s"
 	out2 := gtkreflect.OriginTypeAndKind(&s2)
-	assert.Equal(out2.InputKind, reflect.Ptr)
+	assert.Equal(out2.InputKind, reflect.Pointer)
 	assert.Equal(out2.OriginKind, reflect.String)
 
 	var s3 []int
@@ -62,7 +62,7 @@ func TestOriginTypeAndKind(t *testing.T) {
 
 	var s4 []int
 	out4 := gtkreflect.OriginTypeAndKind(&s4)
-	assert.Equal(out4.InputKind, reflect.Ptr)
+	assert.Equal(out4.InputKind, reflect.Pointer)
 	assert.Equal(out4.OriginKind, reflect.Slice)
 
 	out5 := gtkreflect.OriginTypeAndKind(nil)
@@ -76,8 +76,8 @@ type TestNil struct {
 
 func TestIsNil(t *testing.T) {
 	assert := assert.New(t)
-	var a interface{} = nil
-	var b interface{}
+	var a any = nil
+	var b any
 	var c *int = nil
 	var d int = 10
 	var e string = "hello"

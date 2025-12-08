@@ -1,8 +1,8 @@
 /*
  * @Author: liusuxian 382185882@qq.com
- * @Date: 2025-04-15 14:19:30
+ * @Date: 2025-05-28 17:56:51
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-06-02 04:11:52
+ * @LastEditTime: 2025-12-08 22:49:10
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -21,7 +21,10 @@ import (
 )
 
 const (
-	defaultEmptyMessagesLimit uint = 300 // 默认空消息限制
+	defaultHTTPClientTimeout           time.Duration = 5 * time.Second        // 默认HTTP客户端请求超时时间
+	defaultStreamReturnIntervalTimeout time.Duration = 10 * time.Second       // 默认流式传输返回的间隔超时时间
+	defaultEmptyMessagesLimit          uint          = 300                    // 默认空消息限制
+	requestIdHeaderKey                 string        = "X-Toolkit-Request-Id" // 请求ID头键
 )
 
 // HTTPDoer HTTP 请求执行器接口
@@ -49,7 +52,7 @@ func NewDefaultHTTPDoer(timeout time.Duration) (doer *DefaultHTTPDoer) {
 	}
 }
 
-// SetTimeout 设置请求超时时间，零值表示无超时限制
+// SetTimeout 设置请求超时时间，零值表示无超时限制（非并发安全）
 func (doer *DefaultHTTPDoer) SetTimeout(timeout time.Duration) {
 	if timeout <= 0 {
 		timeout = 0
@@ -97,10 +100,11 @@ func decodeString(body io.Reader, output *string) (err error) {
 
 // HTTPClientConfig 客户端配置
 type HTTPClientConfig struct {
-	BaseURL            string          // API 的基础 URL 地址
-	HTTPClient         HTTPDoer        // HTTP 客户端实现，用于发送请求
-	ResponseDecoder    ResponseDecoder // 响应数据解码器
-	EmptyMessagesLimit uint            // 空消息限制
+	BaseURL                     string          // API 的基础 URL 地址
+	HTTPClient                  HTTPDoer        // HTTP 客户端实现，用于发送请求
+	ResponseDecoder             ResponseDecoder // 响应数据解码器
+	EmptyMessagesLimit          uint            // 空消息限制
+	StreamReturnIntervalTimeout time.Duration   // 流式传输返回的间隔超时时间，用于防止流式传输返回的间隔时间过长
 }
 
 // HTTPClient 客户端
@@ -113,10 +117,17 @@ type HTTPClient struct {
 // HTTPClientOption 客户端选项
 type HTTPClientOption func(c *HTTPClient)
 
-// WithTimeout 设置请求超时时间
+// WithTimeout 设置请求超时时间（非并发安全）
 func WithTimeout(timeout time.Duration) (opt HTTPClientOption) {
 	return func(c *HTTPClient) {
 		c.config.HTTPClient.SetTimeout(timeout)
+	}
+}
+
+// WithStreamReturnIntervalTimeout 设置流式传输返回的间隔超时时间（非并发安全）
+func WithStreamReturnIntervalTimeout(timeout time.Duration) (opt HTTPClientOption) {
+	return func(c *HTTPClient) {
+		c.config.StreamReturnIntervalTimeout = timeout
 	}
 }
 
@@ -138,6 +149,11 @@ func (h *HttpHeader) Header() (header http.Header) {
 	return http.Header(*h)
 }
 
+// RequestID 获取请求ID
+func (h *HttpHeader) RequestID() (requestID string) {
+	return h.Header().Get(requestIdHeaderKey)
+}
+
 // RawResponse 原始响应
 type RawResponse struct {
 	io.ReadCloser
@@ -147,10 +163,11 @@ type RawResponse struct {
 // NewHTTPClient 新建 HTTP 客户端
 func NewHTTPClient(baseURL string, opts ...RequestBuilderOption) (c *HTTPClient) {
 	return NewHTTPClientWithConfig(HTTPClientConfig{
-		BaseURL:            baseURL,
-		HTTPClient:         NewDefaultHTTPDoer(5 * time.Second),
-		ResponseDecoder:    &DefaultResponseDecoder{},
-		EmptyMessagesLimit: defaultEmptyMessagesLimit,
+		BaseURL:                     baseURL,
+		HTTPClient:                  NewDefaultHTTPDoer(defaultHTTPClientTimeout),
+		ResponseDecoder:             &DefaultResponseDecoder{},
+		EmptyMessagesLimit:          defaultEmptyMessagesLimit,
+		StreamReturnIntervalTimeout: defaultStreamReturnIntervalTimeout,
 	}, opts...)
 }
 
@@ -206,6 +223,11 @@ func WithKeyValue(key, value string) (reqOpt RequestOption) {
 	}
 }
 
+// GetFormBuilder 获取表单构建器
+func (c *HTTPClient) GetFormBuilder(body io.Writer) (builder FormBuilder) {
+	return c.createFormBuilder(body)
+}
+
 // NewRequest 新建请求
 func (c *HTTPClient) NewRequest(ctx context.Context, method, url string, setters ...RequestOption) (req *http.Request, err error) {
 	reqOpts := &RequestOptions{
@@ -241,6 +263,7 @@ func (c *HTTPClient) SendRequest(req *http.Request, v Response) (err error) {
 	defer resp.Body.Close()
 
 	if v != nil {
+		c.setRequestID(req, resp)
 		v.SetHeader(resp.Header)
 	}
 
@@ -263,6 +286,7 @@ func (c *HTTPClient) SendRequestRaw(req *http.Request) (response RawResponse, er
 		return
 	}
 
+	c.setRequestID(req, resp)
 	response.SetHeader(resp.Header)
 	response.ReadCloser = resp.Body
 	return
@@ -294,13 +318,16 @@ func SendRequestStream[T Streamable](client *HTTPClient, req *http.Request) (str
 		return
 	}
 
+	client.setRequestID(req, resp)
 	stream = &StreamReader[T]{
-		emptyMessagesLimit: client.config.EmptyMessagesLimit,
-		reader:             bufio.NewReader(resp.Body),
-		response:           resp,
-		errAccumulator:     NewErrorAccumulator(),
-		unmarshaler:        &JSONUnmarshaler{},
-		HttpHeader:         HttpHeader(resp.Header),
+		emptyMessagesLimit:          client.config.EmptyMessagesLimit,
+		reader:                      bufio.NewReader(resp.Body),
+		response:                    resp,
+		streamReturnIntervalTimeout: client.config.StreamReturnIntervalTimeout,
+		errAccumulator:              NewErrorAccumulator(),
+		responseDecoder:             client.config.ResponseDecoder,
+		startTime:                   time.Now(),
+		HttpHeader:                  HttpHeader(resp.Header),
 	}
 	return
 }
@@ -317,6 +344,14 @@ func (c *HTTPClient) FullURL(suffix string) (url string) {
 	return
 }
 
+// setRequestID 设置请求ID
+func (c *HTTPClient) setRequestID(request *http.Request, response *http.Response) {
+	requestInfo := GetRequestInfo(request.Context())
+	if requestInfo.RequestID != "" && requestInfo.RequestID != "unknown" {
+		response.Header.Set(requestIdHeaderKey, requestInfo.RequestID)
+	}
+}
+
 // handleErrorResp 处理错误响应
 func (c *HTTPClient) handleErrorResp(resp *http.Response) (err error) {
 	// 读取响应体
@@ -324,31 +359,25 @@ func (c *HTTPClient) handleErrorResp(resp *http.Response) (err error) {
 	if body, err = io.ReadAll(resp.Body); err != nil {
 		return fmt.Errorf("error, reading response body: %w", err)
 	}
-	// 尝试将响应体解析为 JSON
-	var errResp map[string]any
-	if err = json.Unmarshal(body, &errResp); err != nil {
-		// 如果解析失败，返回包含原始响应体的错误
-		return &RequestError{
-			HTTPStatus:     resp.Status,
-			HTTPStatusCode: resp.StatusCode,
-			Err:            err,
-			Body:           body,
-		}
+	// 尝试解析为 ErrorResponse
+	var errRes ErrorResponse
+	if err = json.Unmarshal(body, &errRes); err == nil && errRes.Error != nil {
+		errRes.Error.HTTPStatus = resp.Status
+		errRes.Error.HTTPStatusCode = resp.StatusCode
+		return errRes.Error
 	}
-	// 处理 errResp 为空的情况
-	if len(errResp) == 0 {
-		return &RequestError{
-			HTTPStatus:     resp.Status,
-			HTTPStatusCode: resp.StatusCode,
-			Err:            fmt.Errorf("empty error response"),
-			Body:           body,
-		}
+	// 尝试解析为 APIError
+	var apiErr *APIError
+	if err = json.Unmarshal(body, &apiErr); err == nil && apiErr != nil {
+		apiErr.HTTPStatus = resp.Status
+		apiErr.HTTPStatusCode = resp.StatusCode
+		return apiErr
 	}
-	// 成功解析 JSON 后，返回包含错误信息的 RequestError
+	// 如果都解析失败，返回包含解析错误的 RequestError
 	return &RequestError{
 		HTTPStatus:     resp.Status,
 		HTTPStatusCode: resp.StatusCode,
-		Err:            fmt.Errorf("%v", errResp),
+		Err:            fmt.Errorf("failed to parse error response"),
 		Body:           body,
 	}
 }

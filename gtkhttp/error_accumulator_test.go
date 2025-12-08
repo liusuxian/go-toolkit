@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-07 18:57:40
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 18:48:48
+ * @LastEditTime: 2025-12-08 23:00:36
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,13 +12,13 @@ package gtkhttp_test
 import (
 	"bytes"
 	"errors"
-	utils "github.com/liusuxian/go-toolkit/gtkhttp"
+	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"github.com/liusuxian/go-toolkit/gtkhttp/test"
 	"testing"
 )
 
 func TestErrorAccumulatorBytes(t *testing.T) {
-	accumulator := &utils.DefaultErrorAccumulator{
+	accumulator := &gtkhttp.DefaultErrorAccumulator{
 		Buffer: &bytes.Buffer{},
 	}
 
@@ -36,7 +36,7 @@ func TestErrorAccumulatorBytes(t *testing.T) {
 }
 
 func TestErrorByteWriteErrors(t *testing.T) {
-	accumulator := &utils.DefaultErrorAccumulator{
+	accumulator := &gtkhttp.DefaultErrorAccumulator{
 		Buffer: &test.FailingErrorBuffer{},
 	}
 

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-07 19:36:52
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-04-23 18:51:15
+ * @LastEditTime: 2025-12-08 22:07:22
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,7 +13,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	utils "github.com/liusuxian/go-toolkit/gtkhttp"
+	"github.com/liusuxian/go-toolkit/gtkhttp"
 	"net/http"
 	"reflect"
 	"testing"
@@ -28,7 +28,7 @@ func (fm *failingMarshaller) Marshal(_ any) ([]byte, error) {
 }
 
 func TestRequestBuilderReturnsMarshallerErrors(t *testing.T) {
-	builder := utils.NewRequestBuilder(utils.WithMarshaller(&failingMarshaller{}))
+	builder := gtkhttp.NewRequestBuilder(gtkhttp.WithMarshaller(&failingMarshaller{}))
 	if _, err := builder.Build(context.Background(), "", "", struct{}{}, nil); !errors.Is(err, errTestMarshallerFailed) {
 		t.Fatalf("did not return error when marshaller failed: %v", err)
 	}
@@ -40,8 +40,8 @@ func TestRequestBuilderReturnsRequest(t *testing.T) {
 		method      = http.MethodPost
 		url         = "/foo"
 		request     = map[string]string{"foo": "bar"}
-		builder     = utils.NewRequestBuilder()
-		reqBytes, _ = (&utils.JSONMarshaller{}).Marshal(request)
+		builder     = gtkhttp.NewRequestBuilder()
+		reqBytes, _ = (&gtkhttp.JSONMarshaller{}).Marshal(request)
 		want, _     = http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(reqBytes))
 	)
 
@@ -59,7 +59,7 @@ func TestRequestBuilderReturnsRequestWhenRequestOfArgsIsNil(t *testing.T) {
 		method  = http.MethodGet
 		url     = "/foo"
 		want, _ = http.NewRequestWithContext(ctx, method, url, nil)
-		builder = utils.NewRequestBuilder()
+		builder = gtkhttp.NewRequestBuilder()
 	)
 	got, _ := builder.Build(ctx, method, url, nil, nil)
 	if !reflect.DeepEqual(got, want) {
