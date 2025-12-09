@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-30 15:14:39
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 16:19:36
+ * @LastEditTime: 2025-12-09 18:42:19
  * @Description: 日志中间件
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -41,8 +41,6 @@ type LoggingMiddleware struct {
 func NewLoggingMiddleware(config LoggingMiddlewareConfig) (lm *LoggingMiddleware) {
 	if config.Logger == nil {
 		config.Logger = gtklog.NewDefaultLogger(gtklog.InfoLevel)
-		config.LogRequest = true
-		config.LogError = true
 	}
 
 	return &LoggingMiddleware{
