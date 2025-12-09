@@ -6,18 +6,14 @@ require (
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/confluentinc/confluent-kafka-go/v2 v2.12.0
-	github.com/disintegration/imaging v1.6.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-redsync/redsync/v4 v4.14.1
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
-	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/redis/go-redis/v9 v9.17.2
-	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
-	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.21.0
 	github.com/spf13/viper/remote v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -60,7 +56,6 @@ require (
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/lestrrat-go/strftime v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect

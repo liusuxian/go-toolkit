@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-12 15:26:25
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-17 00:45:48
+ * @LastEditTime: 2025-12-10 00:18:15
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,7 +13,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
-	"github.com/liusuxian/go-toolkit/gtksdk/aliyun/gtkoss"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/auth/verifiers"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/cipher/decryptors"
@@ -29,9 +28,17 @@ import (
 	"time"
 )
 
-// OssManager	OSS文件管理
-type OssManager interface {
-	GetObject(ctx context.Context, objectKey string, opts ...gtkoss.Option) (b []byte, err error) // 获取文件
+// CertType 证书类型
+type CertType string
+
+const (
+	CertTypePrivate CertType = "private" // 私钥证书
+	CertTypePublic  CertType = "public"  // 公钥证书
+)
+
+// CertFileManager 证书文件管理
+type CertFileManager interface {
+	GetCertFileContent(ctx context.Context, certType CertType) (b []byte, err error) // 获取证书文件内容
 }
 
 // Cache 缓存
@@ -50,10 +57,10 @@ func WithCache(cache Cache) (opt Option) {
 	}
 }
 
-// WithOssManager 设置OSS文件管理
-func WithOssManager(oss OssManager) (opt Option) {
+// WithCertFileManager 设置证书文件管理
+func WithCertFileManager(certManager CertFileManager) (opt Option) {
 	return func(s *PaymentService) {
-		s.oss = oss
+		s.certManager = certManager
 	}
 }
 
@@ -66,9 +73,9 @@ func WithCertCacheTTL(ttl time.Duration) (opt Option) {
 
 // PaymentService 支付服务
 type PaymentService struct {
-	cache        Cache         // 缓存
-	oss          OssManager    // OSS文件管理
-	certCacheTTL time.Duration // 商户证书文件缓存时间
+	cache        Cache           // 缓存
+	certManager  CertFileManager // 证书文件管理
+	certCacheTTL time.Duration   // 证书文件缓存时间
 }
 
 // NewPaymentService 创建支付服务
@@ -77,13 +84,9 @@ func NewPaymentService(opts ...Option) (s *PaymentService, err error) {
 	for _, opt := range opts {
 		opt(s)
 	}
-	// 检查缓存
-	if s.cache == nil {
-		return nil, fmt.Errorf("cache is nil")
-	}
-	// 检查OSS文件管理
-	if s.oss == nil {
-		return nil, fmt.Errorf("oss is nil")
+	// 检查证书文件管理
+	if s.certManager == nil {
+		return nil, fmt.Errorf("cert file manager is not set")
 	}
 	if s.certCacheTTL == 0 {
 		// 设置默认值
@@ -124,45 +127,37 @@ func (s *PaymentService) RefundNotifyUnsign(ctx context.Context, request *http.R
 
 // getNotifyHandler 获取通知处理器
 func (s *PaymentService) getNotifyHandler(ctx context.Context, mch *Merchant) (handler *notify.Handler, err error) {
-	if mch.PublicCacheKey != "" && mch.OssPublicFile != "" && mch.PublicKeyID != "" {
+	if mch.PublicKeyID != "" {
 		// 加载公钥文件
 		var publicKey *rsa.PublicKey
-		if publicKey, err = s.loadPublicKey(ctx, mch.PublicCacheKey, mch.OssPublicFile); err != nil {
+		if publicKey, err = s.loadPublicKey(ctx, mch.PublicCacheKey); err != nil {
 			return
 		}
 		handler = notify.NewNotifyHandler(mch.APIKey, verifiers.NewSHA256WithRSAPubkeyVerifier(mch.PublicKeyID, *publicKey))
 		return
 	}
-
-	if mch.PrivateCacheKey != "" && mch.OssPrivateFile != "" {
-		// 加载私钥文件
-		var privateKey *rsa.PrivateKey
-		if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey, mch.OssPrivateFile); err != nil {
-			return
-		}
-		// 使用 `RegisterDownloaderWithPrivateKey` 注册下载器
-		if err = downloader.MgrInstance().RegisterDownloaderWithPrivateKey(ctx, privateKey, mch.CertNo, mch.Mchid, mch.APIKey); err != nil {
-			return
-		}
-		// 获取商户号对应的微信支付平台证书访问器
-		certificateVisitor := downloader.MgrInstance().GetCertificateVisitor(mch.Mchid)
-		// 使用证书访问器初始化 `notify.Handler`
-		handler = notify.NewNotifyHandler(mch.APIKey, verifiers.NewSHA256WithRSAVerifier(certificateVisitor))
+	// 加载私钥文件
+	var privateKey *rsa.PrivateKey
+	if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey); err != nil {
 		return
 	}
-
-	err = fmt.Errorf("mch `%v` is not valid", mch.Mchid)
+	// 使用 `RegisterDownloaderWithPrivateKey` 注册下载器
+	if err = downloader.MgrInstance().RegisterDownloaderWithPrivateKey(ctx, privateKey, mch.CertNo, mch.Mchid, mch.APIKey); err != nil {
+		return
+	}
+	// 获取商户号对应的微信支付平台证书访问器
+	certificateVisitor := downloader.MgrInstance().GetCertificateVisitor(mch.Mchid)
+	// 使用证书访问器初始化 `notify.Handler`
+	handler = notify.NewNotifyHandler(mch.APIKey, verifiers.NewSHA256WithRSAVerifier(certificateVisitor))
 	return
 }
 
 // getClient 获取微信支付客户端
 func (s *PaymentService) getClient(ctx context.Context, mch *Merchant) (client *core.Client, err error) {
-	if mch.PublicCacheKey != "" && mch.OssPublicFile != "" && mch.PublicKeyID != "" {
+	if mch.PublicKeyID != "" {
 		client, err = s.newClientWithPublicKey(ctx, mch)
-	} else if mch.PrivateCacheKey != "" && mch.OssPrivateFile != "" {
-		client, err = s.newClientWithPrivateKey(ctx, mch)
 	} else {
-		err = fmt.Errorf("mch `%v` is not valid", mch.Mchid)
+		client, err = s.newClientWithPrivateKey(ctx, mch)
 	}
 	return
 }
@@ -171,7 +166,7 @@ func (s *PaymentService) getClient(ctx context.Context, mch *Merchant) (client *
 func (s *PaymentService) newClientWithPrivateKey(ctx context.Context, mch *Merchant) (client *core.Client, err error) {
 	// 加载私钥文件
 	var privateKey *rsa.PrivateKey
-	if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey, mch.OssPrivateFile); err != nil {
+	if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey); err != nil {
 		return
 	}
 	// 创建微信支付客户端
@@ -190,12 +185,12 @@ func (s *PaymentService) newClientWithPrivateKey(ctx context.Context, mch *Merch
 func (s *PaymentService) newClientWithPublicKey(ctx context.Context, mch *Merchant) (client *core.Client, err error) {
 	// 加载私钥文件
 	var privateKey *rsa.PrivateKey
-	if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey, mch.OssPrivateFile); err != nil {
+	if privateKey, err = s.loadPrivateKey(ctx, mch.PrivateCacheKey); err != nil {
 		return
 	}
 	// 加载公钥文件
 	var publicKey *rsa.PublicKey
-	if publicKey, err = s.loadPublicKey(ctx, mch.PublicCacheKey, mch.OssPublicFile); err != nil {
+	if publicKey, err = s.loadPublicKey(ctx, mch.PublicCacheKey); err != nil {
 		return
 	}
 	// 创建微信支付客户端
@@ -211,39 +206,43 @@ func (s *PaymentService) newClientWithPublicKey(ctx context.Context, mch *Mercha
 }
 
 // getCertFileContent 获取证书文件内容
-func (s *PaymentService) getCertFileContent(ctx context.Context, certCacheKey, ossCertFile string) (b []byte, err error) {
+func (s *PaymentService) getCertFileContent(ctx context.Context, certCacheKey string, certType CertType) (b []byte, err error) {
 	// 获取缓存
 	var val any
-	if val, err = s.cache.Get(ctx, certCacheKey); err != nil {
-		return
+	if s.cache != nil && certCacheKey != "" {
+		if val, err = s.cache.Get(ctx, certCacheKey); err != nil {
+			return
+		}
 	}
-	// 如果缓存中存在私钥文件，则直接返回
+	// 如果缓存中存在证书文件内容，则直接返回
 	var ok bool
 	if b, ok = val.([]byte); ok {
 		if len(b) > 0 {
 			return
 		}
 	}
-	// 获取私钥文件
-	if b, err = s.oss.GetObject(ctx, ossCertFile); err != nil {
+	// 获取证书文件内容
+	if b, err = s.certManager.GetCertFileContent(ctx, certType); err != nil {
 		return
 	}
 	if len(b) == 0 {
-		err = fmt.Errorf("oss file `%v` not found", ossCertFile)
+		err = fmt.Errorf("cert file content is empty")
 		return
 	}
 	// 设置缓存
-	if err = s.cache.Set(ctx, certCacheKey, b, s.certCacheTTL); err != nil {
-		return
+	if s.cache != nil && certCacheKey != "" {
+		if err = s.cache.Set(ctx, certCacheKey, b, s.certCacheTTL); err != nil {
+			return
+		}
 	}
 	return
 }
 
 // loadPrivateKey 加载私钥文件
-func (s *PaymentService) loadPrivateKey(ctx context.Context, certCacheKey, ossCertFile string) (privateKey *rsa.PrivateKey, err error) {
+func (s *PaymentService) loadPrivateKey(ctx context.Context, certCacheKey string) (privateKey *rsa.PrivateKey, err error) {
 	// 获取证书文件内容
 	var b []byte
-	if b, err = s.getCertFileContent(ctx, certCacheKey, ossCertFile); err != nil {
+	if b, err = s.getCertFileContent(ctx, certCacheKey, CertTypePrivate); err != nil {
 		return
 	}
 	// 通过私钥的文本内容加载私钥
@@ -251,10 +250,10 @@ func (s *PaymentService) loadPrivateKey(ctx context.Context, certCacheKey, ossCe
 }
 
 // loadPublicKey 加载公钥文件
-func (s *PaymentService) loadPublicKey(ctx context.Context, certCacheKey, ossCertFile string) (publicKey *rsa.PublicKey, err error) {
+func (s *PaymentService) loadPublicKey(ctx context.Context, certCacheKey string) (publicKey *rsa.PublicKey, err error) {
 	// 获取证书文件内容
 	var b []byte
-	if b, err = s.getCertFileContent(ctx, certCacheKey, ossCertFile); err != nil {
+	if b, err = s.getCertFileContent(ctx, certCacheKey, CertTypePublic); err != nil {
 		return
 	}
 	// 通过公钥的文本内容加载公钥

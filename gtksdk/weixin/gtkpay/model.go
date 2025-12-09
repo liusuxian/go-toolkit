@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-12 15:56:02
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-22 15:49:35
+ * @LastEditTime: 2025-12-09 23:58:25
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -19,9 +19,7 @@ type Merchant struct {
 	APIKey          string // API密钥
 	SpAppid         string // 服务商appid
 	SubMchid        string // 子商户商户号
-	OssPrivateFile  string // 存储在oss的商户证书私钥文件路径
 	PrivateCacheKey string // 商户证书私钥文件缓存key
-	OssPublicFile   string // 存储在oss的商户证书公钥文件路径
 	PublicCacheKey  string // 商户证书公钥文件缓存key
 	PublicKeyID     string // 商户证书公钥ID
 }

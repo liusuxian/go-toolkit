@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 18:22:45
+ * @LastEditTime: 2025-12-10 00:22:13
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -27,6 +27,23 @@ import (
 	"strings"
 	"time"
 )
+
+// AliyunOSSCertFileManager 阿里云OSS证书文件管理
+type AliyunOSSCertFileManager struct {
+	oss         *gtkoss.AliyunOSS
+	privateFile string // 私钥文件路径
+	publicFile  string // 公钥文件路径
+}
+
+// GetCertFileContent 获取证书文件内容
+func (m *AliyunOSSCertFileManager) GetCertFileContent(ctx context.Context, certType gtkpay.CertType) (b []byte, err error) {
+	if certType == gtkpay.CertTypePrivate {
+		b, err = m.oss.GetObject(ctx, m.privateFile)
+	} else {
+		b, err = m.oss.GetObject(ctx, m.publicFile)
+	}
+	return
+}
 
 func main() {
 	var (
@@ -53,14 +70,17 @@ func main() {
 		fmt.Printf("NewAliyunOSS Error: %+v\n", err)
 		os.Exit(1)
 	}
+	certFileManager := &AliyunOSSCertFileManager{
+		oss:         aliyunOSS,
+		privateFile: gtkenv.Get("ossPrivateFile"),
+		publicFile:  gtkenv.Get("ossPublicFile"),
+	}
 	// 创建商户
 	mch = &gtkpay.Merchant{
 		Mchid:           gtkenv.Get("mchid"),
 		CertNo:          gtkenv.Get("certNo"),
 		APIKey:          gtkenv.Get("apiKey"),
-		OssPrivateFile:  gtkenv.Get("ossPrivateFile"),
 		PrivateCacheKey: gtkenv.Get("privateCacheKey"),
-		OssPublicFile:   gtkenv.Get("ossPublicFile"),
 		PublicCacheKey:  gtkenv.Get("publicCacheKey"),
 		PublicKeyID:     gtkenv.Get("publicKeyID"),
 	}
@@ -75,7 +95,7 @@ func main() {
 		os.Exit(1)
 	}
 	// 创建支付服务
-	if paymentService, err = gtkpay.NewPaymentService(gtkpay.WithCache(cache), gtkpay.WithOssManager(aliyunOSS)); err != nil {
+	if paymentService, err = gtkpay.NewPaymentService(gtkpay.WithCache(cache), gtkpay.WithCertFileManager(certFileManager)); err != nil {
 		fmt.Printf("NewPaymentService Error: %+v\n", err)
 		os.Exit(1)
 	}
