@@ -164,8 +164,8 @@ func NewClient(cfg *Config) (client *KafkaClient, err error) {
 }
 
 // SetLogger 设置日志对象
-func (mq *KafkaClient) SetLogger(logger gtklog.ILogger) {
-	mq.logger = logger
+func (kc *KafkaClient) SetLogger(logger gtklog.ILogger) {
+	kc.logger = logger
 }
 
 // PrintClientConfig 打印消息队列客户端配置
