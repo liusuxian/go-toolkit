@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-28 17:56:51
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 00:21:42
+ * @LastEditTime: 2025-12-09 14:48:30
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -212,80 +212,4 @@ func IsDeadlineExceededError(err error) (is bool) {
 func IsNetError(err error) (is bool) {
 	var netErr net.Error
 	return errors.As(err, &netErr)
-}
-
-// ClientError 客户端错误
-type ClientError struct {
-	RequestID string // 请求ID
-	Err       error  // 原始错误
-}
-
-// Error 错误信息
-func (e *ClientError) Error() (errStr string) {
-	return fmt.Sprintf("request_id: %s, error: %v", e.RequestID, e.Err)
-}
-
-// RequestID 获取请求ID
-func RequestID(err error) (requestId string) {
-	if err == nil {
-		return ""
-	}
-
-	var clientErr *ClientError
-	if errors.As(err, &clientErr) {
-		return clientErr.RequestID
-	}
-
-	return ""
-}
-
-// Unwrap 解包错误
-func Unwrap(err error) (originalError error) {
-	if err == nil {
-		return nil
-	}
-	// 解包 ClientError
-	var clientErr *ClientError
-	if errors.As(err, &clientErr) {
-		if clientErr.Err != nil {
-			return clientErr.Err
-		}
-		return err // 如果内部错误为 nil，返回 ClientError 本身
-	}
-	// 解包 RequestError
-	var requestError *RequestError
-	if errors.As(err, &requestError) {
-		if requestError.Err != nil {
-			return requestError.Err
-		}
-		return err // 如果内部错误为 nil，返回 RequestError 本身
-	}
-	// 其他类型的错误
-	unwrapped := errors.Unwrap(err)
-	if unwrapped == nil {
-		return err // 已经是最底层错误，返回原错误
-	}
-	return unwrapped
-}
-
-// Cause 错误根因
-func Cause(err error) (causeError error) {
-	return doCause(err)
-}
-
-// doCause 递归获取错误根因
-func doCause(err error) (causeError error) {
-	if err == nil {
-		return nil
-	}
-	// 解包错误
-	unwrapped := Unwrap(err)
-	if unwrapped == nil {
-		return err // 已经到达最底层错误，返回当前错误
-	}
-	// 防止无限递归：如果解包后的错误与原错误相同，直接返回
-	if unwrapped == err {
-		return err
-	}
-	return doCause(unwrapped)
 }

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-30 15:14:39
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 01:44:01
+ * @LastEditTime: 2025-12-09 16:19:36
  * @Description: 日志中间件
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,104 +13,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
-	"runtime"
+	"github.com/liusuxian/go-toolkit/gtklog"
 	"strings"
 	"time"
-)
-
-// LogLevel 日志级别
-type LogLevel int
-
-const (
-	LogLevelDebug LogLevel = iota
-	LogLevelInfo
-	LogLevelWarn
-	LogLevelError
 )
 
 const (
 	maxSanitizeDepth = 10 // 最大脱敏递归深度
 )
 
-// Logger 日志接口
-type Logger interface {
-	Debugf(ctx context.Context, format string, args ...any) // 调试日志
-	Infof(ctx context.Context, format string, args ...any)  // 信息日志
-	Warnf(ctx context.Context, format string, args ...any)  // 警告日志
-	Errorf(ctx context.Context, format string, args ...any) // 错误日志
-}
-
-// DefaultLogger 默认日志实现
-type DefaultLogger struct {
-	logger *log.Logger
-	level  LogLevel
-}
-
-// NewDefaultLogger 创建默认日志器
-func NewDefaultLogger(level LogLevel) (l *DefaultLogger) {
-	return &DefaultLogger{
-		logger: log.New(os.Stdout, "", log.LstdFlags),
-		level:  level,
-	}
-}
-
-// fileInfo 获取调用者的文件名和行号
-func fileInfo(skip int) (caller string) {
-	_, file, line, ok := runtime.Caller(skip)
-	if !ok {
-		caller = "<???>:1"
-		return
-	}
-	caller = fmt.Sprintf("%s:%d", file, line)
-	return
-}
-
-// Debugf 调试日志
-func (l *DefaultLogger) Debugf(ctx context.Context, format string, args ...any) {
-	if LogLevelDebug < l.level {
-		return
-	}
-	caller := fileInfo(2) // 跳过本函数和调用者
-	l.logger.Printf("[DEBUG] [%s] %s", caller, fmt.Sprintf(format, args...))
-}
-
-// Infof 信息日志
-func (l *DefaultLogger) Infof(ctx context.Context, format string, args ...any) {
-	if LogLevelInfo < l.level {
-		return
-	}
-	caller := fileInfo(2) // 跳过本函数和调用者
-	l.logger.Printf("[INFO] [%s] %s", caller, fmt.Sprintf(format, args...))
-}
-
-// Warnf 警告日志
-func (l *DefaultLogger) Warnf(ctx context.Context, format string, args ...any) {
-	if LogLevelWarn < l.level {
-		return
-	}
-	caller := fileInfo(2) // 跳过本函数和调用者
-	l.logger.Printf("[WARN] [%s] %s", caller, fmt.Sprintf(format, args...))
-}
-
-// Errorf 错误日志
-func (l *DefaultLogger) Errorf(ctx context.Context, format string, args ...any) {
-	if LogLevelError < l.level {
-		return
-	}
-	caller := fileInfo(2) // 跳过本函数和调用者
-	l.logger.Printf("[ERROR] [%s] %s", caller, fmt.Sprintf(format, args...))
-}
-
 // LoggingMiddlewareConfig 日志中间件配置
 type LoggingMiddlewareConfig struct {
-	Logger          Logger   // 日志器
-	LogRequest      bool     // 是否记录请求
-	LogResponse     bool     // 是否记录响应
-	LogError        bool     // 是否记录错误
-	SkipSuccessLog  bool     // 是否跳过成功请求的日志
-	SensitiveFields []string // 敏感字段，会被脱敏
+	Logger          gtklog.ILogger // 日志器
+	LogRequest      bool           // 是否记录请求
+	LogResponse     bool           // 是否记录响应
+	LogError        bool           // 是否记录错误
+	SkipSuccessLog  bool           // 是否跳过成功请求的日志
+	SensitiveFields []string       // 敏感字段，会被脱敏
 }
 
 // LoggingMiddleware 日志中间件
@@ -121,7 +40,9 @@ type LoggingMiddleware struct {
 // NewLoggingMiddleware 创建日志中间件
 func NewLoggingMiddleware(config LoggingMiddlewareConfig) (lm *LoggingMiddleware) {
 	if config.Logger == nil {
-		config.Logger = NewDefaultLogger(LogLevelInfo)
+		config.Logger = gtklog.NewDefaultLogger(gtklog.InfoLevel)
+		config.LogRequest = true
+		config.LogError = true
 	}
 
 	return &LoggingMiddleware{
@@ -292,17 +213,5 @@ func (m *LoggingMiddleware) sanitizeValue(value any, depth int) (newValue any) {
 		return result
 	default:
 		return v // 基本类型直接返回
-	}
-}
-
-// DefaultLoggingConfig 默认日志配置
-func DefaultLoggingConfig() (config LoggingMiddlewareConfig) {
-	return LoggingMiddlewareConfig{
-		Logger:          NewDefaultLogger(LogLevelInfo),
-		LogRequest:      true,
-		LogResponse:     false, // 默认不记录响应以减少日志量
-		LogError:        true,
-		SkipSuccessLog:  false,
-		SensitiveFields: []string{},
 	}
 }

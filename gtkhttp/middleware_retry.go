@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-06-04 11:56:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 22:34:52
+ * @LastEditTime: 2025-12-09 14:47:15
  * @Description: 重试中间件
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,50 +15,12 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
-	"net"
 	"slices"
 	"time"
 )
 
 // rng 随机数生成器
 var rng *rand.Rand
-
-// 可重试的HTTP状态码列表
-var retryableHTTPStatusCodes = []int{
-	// 4xx 客户端错误中可重试的状态码
-	407, // Proxy Authentication Required - 代理认证需要，可能是临时的
-	408, // Request Timeout - 请求超时，网络问题导致
-	409, // Conflict - 资源冲突，可能是并发导致的临时问题
-	421, // Misdirected Request - 请求被错误定向，可能是负载均衡问题
-	423, // Locked - 资源被锁定，可能是临时锁定
-	424, // Failed Dependency - 依赖操作失败，依赖可能临时不可用
-	425, // Too Early - 请求过早发送，服务器要求稍后重试
-	429, // Too Many Requests - 请求频率过高，需要限流重试
-	449, // Retry With - 微软扩展，明确要求客户端重试
-	// 5xx 服务器错误中可重试的状态码
-	500, // Internal Server Error - 服务器内部错误，可能是临时故障
-	502, // Bad Gateway - 网关错误，上游服务器问题
-	503, // Service Unavailable - 服务不可用，通常是临时维护或过载
-	504, // Gateway Timeout - 网关超时，上游服务器响应太慢
-	507, // Insufficient Storage - 存储空间不足，可能是临时问题
-	508, // Loop Detected - 检测到无限循环，可能是配置临时问题
-	509, // Bandwidth Limit Exceeded - 带宽限制超出，可以稍后重试
-	510, // Not Extended - 服务器需要扩展请求，可能是临时配置问题
-	511, // Network Authentication Required - 网络认证需要，可能是临时的
-	// Cloudflare 扩展状态码 (网络基础设施相关，通常是临时问题)
-	520, // Web Server Returned an Unknown Error - 源服务器返回未知错误
-	521, // Web Server Is Down - 源服务器宕机
-	522, // Connection Timed Out - 连接超时
-	523, // Origin Is Unreachable - 源服务器不可达
-	524, // A Timeout Occurred - 发生超时
-	525, // SSL Handshake Failed - SSL握手失败
-	526, // Invalid SSL Certificate - SSL证书无效
-	527, // Railgun Error - Railgun连接错误
-	// 其他CDN/代理服务商扩展状态码
-	530, // Site Frozen - 站点被冻结，可能是临时的
-	598, // Network Read Timeout Error - 网络读取超时 (非标准)
-	599, // Network Connect Timeout Error - 网络连接超时 (非标准)
-}
 
 // 包初始化时设置随机数种子
 func init() {
@@ -249,7 +211,7 @@ func DefaultRetryCondition(attempt int, err error) (ok bool) {
 		return false
 	}
 	// 网络错误通常可以重试
-	if isNetworkError(err) {
+	if IsNetError(err) {
 		return true
 	}
 	// HTTP状态码错误
@@ -257,13 +219,6 @@ func DefaultRetryCondition(attempt int, err error) (ok bool) {
 		return true
 	}
 	return false
-}
-
-// isNetworkError 判断是否为网络错误
-func isNetworkError(err error) (ok bool) {
-	// 检查 net.Error 接口
-	var netErr net.Error
-	return errors.As(err, &netErr)
 }
 
 // isRetryableHTTPError 判断是否为可重试的HTTP错误
@@ -281,18 +236,41 @@ func isRetryableHTTPError(err error) (ok bool) {
 	return false
 }
 
-// DefaultRetryConfig 默认重试配置
-func DefaultRetryConfig() (config RetryMiddlewareConfig) {
-	return RetryMiddlewareConfig{
-		MaxAttempts:   3,
-		Strategy:      RetryStrategyExponential,
-		BaseDelay:     1 * time.Second,
-		MaxDelay:      10 * time.Second,
-		Multiplier:    2.0,
-		JitterPercent: 0.1, // 默认±10%抖动
-		Condition:     DefaultRetryCondition,
-		OnRetry:       nil,
-	}
+// 可重试的HTTP状态码列表
+var retryableHTTPStatusCodes = []int{
+	// 4xx 客户端错误中可重试的状态码
+	407, // Proxy Authentication Required - 代理认证需要，可能是临时的
+	408, // Request Timeout - 请求超时，网络问题导致
+	409, // Conflict - 资源冲突，可能是并发导致的临时问题
+	421, // Misdirected Request - 请求被错误定向，可能是负载均衡问题
+	423, // Locked - 资源被锁定，可能是临时锁定
+	424, // Failed Dependency - 依赖操作失败，依赖可能临时不可用
+	425, // Too Early - 请求过早发送，服务器要求稍后重试
+	429, // Too Many Requests - 请求频率过高，需要限流重试
+	449, // Retry With - 微软扩展，明确要求客户端重试
+	// 5xx 服务器错误中可重试的状态码
+	500, // Internal Server Error - 服务器内部错误，可能是临时故障
+	502, // Bad Gateway - 网关错误，上游服务器问题
+	503, // Service Unavailable - 服务不可用，通常是临时维护或过载
+	504, // Gateway Timeout - 网关超时，上游服务器响应太慢
+	507, // Insufficient Storage - 存储空间不足，可能是临时问题
+	508, // Loop Detected - 检测到无限循环，可能是配置临时问题
+	509, // Bandwidth Limit Exceeded - 带宽限制超出，可以稍后重试
+	510, // Not Extended - 服务器需要扩展请求，可能是临时配置问题
+	511, // Network Authentication Required - 网络认证需要，可能是临时的
+	// Cloudflare 扩展状态码 (网络基础设施相关，通常是临时问题)
+	520, // Web Server Returned an Unknown Error - 源服务器返回未知错误
+	521, // Web Server Is Down - 源服务器宕机
+	522, // Connection Timed Out - 连接超时
+	523, // Origin Is Unreachable - 源服务器不可达
+	524, // A Timeout Occurred - 发生超时
+	525, // SSL Handshake Failed - SSL握手失败
+	526, // Invalid SSL Certificate - SSL证书无效
+	527, // Railgun Error - Railgun连接错误
+	// 其他CDN/代理服务商扩展状态码
+	530, // Site Frozen - 站点被冻结，可能是临时的
+	598, // Network Read Timeout Error - 网络读取超时 (非标准)
+	599, // Network Connect Timeout Error - 网络连接超时 (非标准)
 }
 
 // RetryConditions 预定义的重试条件
@@ -313,7 +291,7 @@ var RetryConditions = struct {
 		return err != nil
 	},
 	NetworkOnly: func(attempt int, err error) (ok bool) {
-		return err != nil && isNetworkError(err)
+		return err != nil && IsNetError(err)
 	},
 	HTTPOnly: func(attempt int, err error) (ok bool) {
 		return err != nil && isRetryableHTTPError(err)

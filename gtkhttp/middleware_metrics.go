@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-06-17 18:24:31
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 22:34:48
+ * @LastEditTime: 2025-12-09 14:31:41
  * @Description: 监控中间件
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -295,11 +295,4 @@ func (m *MetricsMiddleware) classifyError(err error) (errorType string) {
 	}
 	// 其他未知错误
 	return "unknown"
-}
-
-// DefaultMetricsConfig 默认监控配置
-func DefaultMetricsConfig() (config MetricsMiddlewareConfig) {
-	return MetricsMiddlewareConfig{
-		Collector: NewDefaultMetricsCollector(),
-	}
 }
