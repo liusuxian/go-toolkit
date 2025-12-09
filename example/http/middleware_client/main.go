@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-09 00:57:20
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 15:41:46
+ * @LastEditTime: 2025-12-09 18:43:47
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -81,7 +81,10 @@ func main() {
 		return
 	}
 	client := gtkhttp.NewMWClient(
-		gtkhttp.WithLogging(gtkhttp.LoggingMiddlewareConfig{}),
+		gtkhttp.WithLogging(gtkhttp.LoggingMiddlewareConfig{
+			LogRequest: true,
+			LogError:   true,
+		}),
 		gtkhttp.WithRetry(gtkhttp.RetryMiddlewareConfig{}),
 		gtkhttp.WithMetrics(gtkhttp.MetricsMiddlewareConfig{}),
 		gtkhttp.WithRequestIDGenerator(flake),
