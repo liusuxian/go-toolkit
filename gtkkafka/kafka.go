@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 17:19:31
+ * @LastEditTime: 2025-12-10 10:32:48
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkjson"
 	"github.com/liusuxian/go-toolkit/gtklog"
 	"hash/fnv"
@@ -350,13 +349,9 @@ func (kc *KafkaClient) NewConsumer(ctx context.Context, topic string) (err error
 
 // SendMessage 发送消息
 func (kc *KafkaClient) SendMessage(ctx context.Context, topic string, producerMessage *ProducerMessage) (err error) {
-	var dataMap map[string]any
-	if dataMap, err = gtkconv.ToStringMapE(producerMessage.Data); err != nil {
-		return
-	}
 	// 处理数据
 	var dataBytes []byte
-	if dataBytes, err = json.Marshal(dataMap); err != nil {
+	if dataBytes, err = json.Marshal(producerMessage.Data); err != nil {
 		return
 	}
 	producerMessage.dataBytes = dataBytes

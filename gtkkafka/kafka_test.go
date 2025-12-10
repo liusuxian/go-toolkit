@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-20 00:06:58
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 18:04:38
+ * @LastEditTime: 2025-12-10 10:33:45
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -24,7 +24,7 @@ type TestRecordInfo struct {
 	Sid       int64  `json:"sid" dc:"sid"`   // 剧id
 	Time      string `json:"time" dc:"time"` // 时间
 	Str       string `json:"str" dc:"str"`   // 字符串
-	CreatedAt string `json:"created_at" dc:"created_at"`
+	CreatedAt string `json:"created_at,omitempty" dc:"created_at"`
 }
 
 func TestNewClient(t *testing.T) {
