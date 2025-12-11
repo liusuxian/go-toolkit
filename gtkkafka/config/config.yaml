@@ -20,6 +20,13 @@ kafka:
       partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
       groups: ["testname1", "testname2"] # 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀。可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
+      retryConfig: # 重试配置
+        maxAttempts: 3 # 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+        strategy: "exponential" # 重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
+        baseDelay: "1s" # 基础延迟时间，默认 1s
+        maxDelay: "10s" # 最大延迟时间，默认 10s
+        multiplier: 2.0 # 重试间隔倍数（用于指数退避），默认 2.0
+        jitterPercent: 0.1 # 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
     topic_101: # topic 名称
       partitionNum: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者

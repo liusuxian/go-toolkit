@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 17:55:38
+ * @LastEditTime: 2025-12-11 14:10:42
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -842,26 +842,22 @@ func (mq *RedisMQClient) handelData(ctx context.Context, mqConfig *MQConfig, par
 		key                = string(lastMessage.Key)
 		content            = string(lastMessage.Value)
 		timestamp          = lastMessage.Timestamp
+		retryConfig        = mqConfig.RetryConfig
 	)
-	// 执行处理函数
-	if err := fn(messages); err != nil {
-		mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
+	// 重试条件
+	retryConfig.Condition = func(attempt int, err error) bool {
+		// 打印错误日志
+		mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, attempt: %d, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
+			partitionConsumerName, partitionQueueName, attempt, partition, offset, key, content, timestamp, err)
+		return true
+	}
+	// 创建重试实例，并且立即执行重试
+	if err := gtkretry.NewRetry(retryConfig).Do(ctx, func(ctx context.Context) error {
+		// 执行业务函数
+		return fn(messages)
+	}); err != nil {
+		mq.logger.Errorf(ctx, "handelData finished, partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
 			partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
-		// 重试处理函数
-		var (
-			retryMaxCount = mqConfig.RetryMaxCount
-			count         = 0
-		)
-		for retryMaxCount == 0 || (retryMaxCount > 0 && count < retryMaxCount) {
-			count++
-			time.Sleep(mqConfig.RetryDelay)
-			if err := fn(messages); err != nil {
-				mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
-					partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
-				continue
-			}
-			break
-		}
 	}
 	// 提交
 	var cmdArgs = make([]any, 0, length+2)
@@ -869,14 +865,17 @@ func (mq *RedisMQClient) handelData(ctx context.Context, mqConfig *MQConfig, par
 	for _, message := range messages {
 		cmdArgs = append(cmdArgs, message.MQPartition.Offset)
 	}
-	gtkretry.NewRetry(gtkretry.RetryConfig{
+	if err := gtkretry.NewRetry(gtkretry.RetryConfig{
 		MaxAttempts: mq.config.Retries,
 		Strategy:    gtkretry.RetryStrategyFixed,
 		BaseDelay:   mq.config.RetryBackoff,
 	}).Do(ctx, func(ctx context.Context) (err error) {
 		_, err = mq.rc.Do(ctx, "XACK", cmdArgs...)
 		return
-	})
+	}); err != nil {
+		mq.logger.Errorf(ctx, "handelData submit, partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
+			partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
+	}
 }
 
 // delExpiredMessages 删除过期消息
@@ -941,18 +940,6 @@ func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, mqConfig
 		}
 		// 指定消费者组名称列表
 		mqConfig.Groups = config.Groups
-		// 当消费失败时重试的间隔时间，默认 10s
-		if config.RetryDelay <= time.Duration(0) {
-			mqConfig.RetryDelay = time.Second * 10
-		} else {
-			mqConfig.RetryDelay = config.RetryDelay
-		}
-		// 当消费失败时重试的最大次数，默认 0，无限重试
-		if config.RetryMaxCount <= 0 {
-			mqConfig.RetryMaxCount = 0
-		} else {
-			mqConfig.RetryMaxCount = config.RetryMaxCount
-		}
 		// 批量消费的条数，默认 200
 		if config.BatchSize <= 0 {
 			mqConfig.BatchSize = 200
@@ -965,6 +952,8 @@ func (mq *RedisMQClient) getConsumerConfig(queue string) (isStart bool, mqConfig
 		} else {
 			mqConfig.BatchInterval = config.BatchInterval
 		}
+		// 当消费失败时的重试配置，默认不重试
+		mqConfig.RetryConfig = config.RetryConfig
 		return
 	}
 	err = fmt.Errorf("queue `%s` Not Found", queue)

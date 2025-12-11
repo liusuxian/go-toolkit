@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-09 00:57:20
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 18:43:47
+ * @LastEditTime: 2025-12-11 11:32:36
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -85,7 +85,20 @@ func main() {
 			LogRequest: true,
 			LogError:   true,
 		}),
-		gtkhttp.WithRetry(gtkhttp.RetryMiddlewareConfig{}),
+		gtkhttp.WithRetry(gtkhttp.RetryMiddlewareConfig{
+			MaxAttempts:   3,
+			Strategy:      gtkhttp.RetryStrategyExponential,
+			BaseDelay:     1 * time.Second,
+			MaxDelay:      10 * time.Second,
+			Multiplier:    2.0,
+			JitterPercent: 0.1,
+			Condition: func(attempt int, err error) (ok bool) {
+				return true
+			},
+			OnRetry: func(ctx context.Context, requestInfo *gtkhttp.RequestInfo) {
+				fmt.Printf("onRetry = %s\n", gtkjson.MustString(requestInfo))
+			},
+		}),
 		gtkhttp.WithMetrics(gtkhttp.MetricsMiddlewareConfig{}),
 		gtkhttp.WithRequestIDGenerator(flake),
 	)

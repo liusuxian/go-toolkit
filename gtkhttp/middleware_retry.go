@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-06-04 11:56:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 14:47:15
+ * @LastEditTime: 2025-12-11 13:39:48
  * @Description: 重试中间件
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -46,12 +46,12 @@ type RetryCallback func(ctx context.Context, requestInfo *RequestInfo)
 
 // RetryMiddlewareConfig 重试中间件配置
 type RetryMiddlewareConfig struct {
-	MaxAttempts   int            // 最大重试次数
-	Strategy      RetryStrategy  // 重试策略
-	BaseDelay     time.Duration  // 基础延迟时间
-	MaxDelay      time.Duration  // 最大延迟时间
-	Multiplier    float64        // 重试间隔倍数（用于指数退避）
-	JitterPercent float64        // 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%）
+	MaxAttempts   int            // 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+	Strategy      RetryStrategy  // 重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
+	BaseDelay     time.Duration  // 基础延迟时间，默认 1s
+	MaxDelay      time.Duration  // 最大延迟时间，默认 10s
+	Multiplier    float64        // 重试间隔倍数（用于指数退避），默认 2.0
+	JitterPercent float64        // 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
 	Condition     RetryCondition // 重试条件
 	OnRetry       RetryCallback  // 重试失败回调函数（同步执行会阻塞重试流程，建议仅用于轻量级操作如日志记录、监控上报等，耗时操作请在回调内使用goroutine异步处理）
 }
@@ -63,19 +63,20 @@ type RetryMiddleware struct {
 
 // NewRetryMiddleware 创建重试中间件
 func NewRetryMiddleware(config RetryMiddlewareConfig) (retry *RetryMiddleware) {
-	// 设置最大重试次数
-	if config.MaxAttempts <= 0 {
+	// 设置最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+	// 只有小于-1的值才会被设置为3
+	if config.MaxAttempts < -1 {
 		config.MaxAttempts = 3
 	}
-	// 设置重试策略
+	// 设置重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
 	if config.Strategy == "" {
 		config.Strategy = RetryStrategyExponential
 	}
-	// 设置基础延迟时间
+	// 设置基础延迟时间，默认 1s
 	if config.BaseDelay <= 0 {
 		config.BaseDelay = 1 * time.Second
 	}
-	// 设置最大延迟时间
+	// 设置最大延迟时间，默认 10s
 	if config.MaxDelay <= 0 {
 		config.MaxDelay = 10 * time.Second
 	}
@@ -83,11 +84,11 @@ func NewRetryMiddleware(config RetryMiddlewareConfig) (retry *RetryMiddleware) {
 	if config.MaxDelay < config.BaseDelay {
 		config.MaxDelay = config.BaseDelay * 10 // 设置为基础延迟的10倍
 	}
-	// 设置重试间隔倍数
+	// 设置重试间隔倍数（用于指数退避），默认 2.0
 	if config.Multiplier <= 0 {
 		config.Multiplier = 2.0
 	}
-	// 设置抖动百分比
+	// 设置抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
 	if config.JitterPercent <= 0 || config.JitterPercent > 1 {
 		config.JitterPercent = 0.1 // 默认±10%抖动
 	}
@@ -106,7 +107,8 @@ func (m *RetryMiddleware) Process(ctx context.Context, request any, next MWHandl
 	requestInfo := GetRequestInfo(ctx)
 	requestInfo.MaxAttempts = m.config.MaxAttempts
 
-	for attempt := 0; attempt <= m.config.MaxAttempts; attempt++ {
+	attempt := 0
+	for {
 		requestInfo.Attempt = attempt
 		// 执行请求
 		response, err = next(ctx, request)
@@ -119,10 +121,15 @@ func (m *RetryMiddleware) Process(ctx context.Context, request any, next MWHandl
 			// 深度拷贝 RequestInfo，避免回调函数修改原始数据
 			m.config.OnRetry(ctx, deepCopyRequestInfo(requestInfo))
 		}
-		// 如果是最后一次尝试，不需要等待
-		if attempt == m.config.MaxAttempts {
+		// MaxAttempts = 0: 只执行一次，不重试
+		if m.config.MaxAttempts == 0 {
 			break
 		}
+		// MaxAttempts > 0: 已达到最大重试次数
+		if m.config.MaxAttempts > 0 && attempt >= m.config.MaxAttempts {
+			break
+		}
+		// MaxAttempts = -1: 无限重试，继续执行
 		// 计算延迟时间
 		delay := m.calculateDelay(attempt + 1)
 		// 等待延迟时间
@@ -132,6 +139,7 @@ func (m *RetryMiddleware) Process(ctx context.Context, request any, next MWHandl
 		case <-time.After(delay):
 			// 继续下次重试
 		}
+		attempt++
 	}
 	// 返回最后一次的错误
 	return nil, fmt.Errorf("after %d attempts, last error: %w", requestInfo.Attempt, err)
@@ -207,9 +215,6 @@ func (m *RetryMiddleware) calculateExponentialDelay(attempt int) (delay time.Dur
 
 // DefaultRetryCondition 默认重试条件
 func DefaultRetryCondition(attempt int, err error) (ok bool) {
-	if err == nil {
-		return false
-	}
 	// 网络错误通常可以重试
 	if IsNetError(err) {
 		return true
@@ -288,12 +293,12 @@ var RetryConditions = struct {
 		return false
 	},
 	Always: func(attempt int, err error) (ok bool) {
-		return err != nil
+		return true
 	},
 	NetworkOnly: func(attempt int, err error) (ok bool) {
-		return err != nil && IsNetError(err)
+		return IsNetError(err)
 	},
 	HTTPOnly: func(attempt int, err error) (ok bool) {
-		return err != nil && isRetryableHTTPError(err)
+		return isRetryableHTTPError(err)
 	},
 }

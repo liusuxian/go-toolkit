@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-09 17:23:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-10 19:27:42
+ * @LastEditTime: 2025-12-11 13:38:27
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -34,13 +34,13 @@ const (
 
 // RetryConfig 重试配置
 type RetryConfig struct {
-	MaxAttempts   int            // 最大重试次数
-	Strategy      RetryStrategy  // 重试策略
-	BaseDelay     time.Duration  // 基础延迟时间
-	MaxDelay      time.Duration  // 最大延迟时间
-	Multiplier    float64        // 重试间隔倍数（用于指数退避）
-	JitterPercent float64        // 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%）
-	Condition     RetryCondition // 重试条件
+	MaxAttempts   int            `json:"maxAttempts"`   // 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+	Strategy      RetryStrategy  `json:"strategy"`      // 重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
+	BaseDelay     time.Duration  `json:"baseDelay"`     // 基础延迟时间，默认 1s
+	MaxDelay      time.Duration  `json:"maxDelay"`      // 最大延迟时间，默认 10s
+	Multiplier    float64        `json:"multiplier"`    // 重试间隔倍数（用于指数退避），默认 2.0
+	JitterPercent float64        `json:"jitterPercent"` // 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
+	Condition     RetryCondition `json:"-"`             // 重试条件，默认总是重试
 }
 
 // Retry 重试
@@ -58,20 +58,21 @@ func init() {
 }
 
 // NewRetry 创建重试实例
-func NewRetry(config RetryConfig) (retry *Retry) {
-	// 设置最大重试次数
-	if config.MaxAttempts <= 0 {
+func NewRetry(config RetryConfig) (r *Retry) {
+	// 设置最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+	// 只有小于-1的值才会被设置为3
+	if config.MaxAttempts < -1 {
 		config.MaxAttempts = 3
 	}
-	// 设置重试策略
+	// 设置重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
 	if config.Strategy == "" {
 		config.Strategy = RetryStrategyExponential
 	}
-	// 设置基础延迟时间
+	// 设置基础延迟时间，默认 1s
 	if config.BaseDelay <= 0 {
 		config.BaseDelay = 1 * time.Second
 	}
-	// 设置最大延迟时间
+	// 设置最大延迟时间，默认 10s
 	if config.MaxDelay <= 0 {
 		config.MaxDelay = 10 * time.Second
 	}
@@ -79,18 +80,18 @@ func NewRetry(config RetryConfig) (retry *Retry) {
 	if config.MaxDelay < config.BaseDelay {
 		config.MaxDelay = config.BaseDelay * 10 // 设置为基础延迟的10倍
 	}
-	// 设置重试间隔倍数
+	// 设置重试间隔倍数（用于指数退避），默认 2.0
 	if config.Multiplier <= 0 {
 		config.Multiplier = 2.0
 	}
-	// 设置抖动百分比
+	// 设置抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
 	if config.JitterPercent <= 0 || config.JitterPercent > 1 {
 		config.JitterPercent = 0.1 // 默认±10%抖动
 	}
-	// 设置重试条件
+	// 设置重试条件，默认总是重试
 	if config.Condition == nil {
 		config.Condition = func(attempt int, err error) (ok bool) {
-			return err != nil
+			return true
 		}
 	}
 	return &Retry{
@@ -100,17 +101,23 @@ func NewRetry(config RetryConfig) (retry *Retry) {
 
 // Do 执行重试
 func (r *Retry) Do(ctx context.Context, f RetryFunc) (err error) {
-	for attempt := 0; attempt <= r.config.MaxAttempts; attempt++ {
+	attempt := 0
+	for {
 		// 执行函数
 		err = f(ctx)
 		// 如果成功或者不需要重试，直接返回
 		if err == nil || !r.config.Condition(attempt, err) {
 			return
 		}
-		// 如果是最后一次尝试，不需要等待
-		if attempt == r.config.MaxAttempts {
+		// MaxAttempts = 0: 只执行一次，不重试
+		if r.config.MaxAttempts == 0 {
 			break
 		}
+		// MaxAttempts > 0: 已达到最大重试次数
+		if r.config.MaxAttempts > 0 && attempt >= r.config.MaxAttempts {
+			break
+		}
+		// MaxAttempts = -1: 无限重试，继续执行
 		// 计算延迟时间
 		delay := r.calculateDelay(attempt + 1)
 		// 等待延迟时间
@@ -120,6 +127,7 @@ func (r *Retry) Do(ctx context.Context, f RetryFunc) (err error) {
 		case <-time.After(delay):
 			// 继续下次重试
 		}
+		attempt++
 	}
 	return
 }

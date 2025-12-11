@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-22 10:28:39
+ * @LastEditTime: 2025-12-11 13:42:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,6 +11,7 @@ package gtkmq
 
 import (
 	"context"
+	"github.com/liusuxian/go-toolkit/gtkretry"
 	"time"
 )
 
@@ -33,14 +34,12 @@ type MQConfig struct {
 	// 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀
 	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
 	Groups []string `json:"groups,omitempty"`
-	// 当消费失败时重试的间隔时间，默认 10s
-	RetryDelay time.Duration `json:"retryDelay,omitempty"`
-	// 当消费失败时重试的最大次数，默认 0，无限重试
-	RetryMaxCount int `json:"retryMaxCount,omitempty"`
 	// 批量消费的条数，默认 200
 	BatchSize int `json:"batchSize,omitempty"`
 	// 批量消费的间隔时间，默认 5s
 	BatchInterval time.Duration `json:"batchInterval,omitempty"`
+	// 当消费失败时的重试配置，默认不重试
+	RetryConfig gtkretry.RetryConfig `json:"retryConfig"`
 	// 是否开启延迟队列
 	IsDelayQueue bool `json:"isDelayQueue,omitempty"`
 	// 延迟队列检查间隔，默认 10s
