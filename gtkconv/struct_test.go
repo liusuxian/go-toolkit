@@ -38,7 +38,7 @@ type DDD struct {
 type EEE struct {
 	IP    net.IP
 	IPNet net.IPNet
-	S     []any
+	S     []string
 }
 
 func TestToStructE(t *testing.T) {
@@ -105,15 +105,15 @@ func TestToStructE(t *testing.T) {
 	val9 := &EEE{}
 	err = gtkconv.ToStructE(map[string]any{
 		"IP":    "127.0.0.1",
-		"IPNet": map[string]string{"IP": "127.0.0.1", "Mask": "255,255,255,0"},
+		"IPNet": map[string]string{"IP": "127.0.0.1", "Mask": "255.255.255.0"},
 		"S":     "1,1.2,true,hello",
 	}, &val9) // map[string]any
 	errLog(t, err)
 	if assert.NoError(err) {
 		assert.Equal(&EEE{
 			IP:    net.IPv4(127, 0, 0, 1),
-			IPNet: net.IPNet{IP: net.IPv4(127, 0, 0, 1), Mask: net.IPv4Mask(255, 255, 255, 0)},
-			S:     []any{"1", "1.2", "true", "hello"},
+			IPNet: net.IPNet{IP: net.IPv4(127, 0, 0, 1), Mask: net.IPMask("255.255.255.0")},
+			S:     []string{"1", "1.2", "true", "hello"},
 		}, val9)
 	}
 }

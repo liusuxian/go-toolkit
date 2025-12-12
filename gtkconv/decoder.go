@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-10 18:51:03
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-06-20 19:57:05
+ * @LastEditTime: 2025-12-12 14:54:10
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -33,6 +33,8 @@ func defaultDecoderConfig(output any, opts ...DecoderConfigOption) (config *maps
 			mapstructure.RecursiveStructToMapHookFunc(),
 			mapstructure.StringToIPHookFunc(),
 			mapstructure.StringToIPNetHookFunc(),
+			mapstructure.StringToNetIPAddrHookFunc(),
+			mapstructure.StringToNetIPAddrPortHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToTimeHookFunc("2006-01-02 15:04:05"),
