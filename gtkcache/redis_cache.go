@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-06-02 03:51:04
+ * @LastEditTime: 2025-12-15 18:45:00
  * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -403,18 +403,18 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 	if val, err = rc.Get(ctx, key, timeout...); err != nil {
 		return
 	}
-	if val == nil {
-		var newVal any
-		if newVal, err = f(ctx); err != nil {
-			return
-		}
-		if utils.IsNil(newVal) && !force {
-			return
-		}
-		// 此处不判断`newVal == nil`是因为防止缓存穿透
-		val, err = rc.setget(ctx, key, newVal, timeout...)
+	if val != nil {
 		return
 	}
+	var newVal any
+	if newVal, err = f(ctx); err != nil {
+		return
+	}
+	if utils.IsNil(newVal) && !force {
+		return
+	}
+	// 此处不判断`newVal == nil`是因为防止缓存穿透
+	val, err = rc.setget(ctx, key, newVal, timeout...)
 	return
 }
 
@@ -435,18 +435,18 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, arg
 	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
 		return
 	}
-	if val == nil {
-		var newVal any
-		if newVal, err = f(ctx); err != nil {
-			return
-		}
-		if utils.IsNil(newVal) && !force {
-			return
-		}
-		// 此处不判断`newVal == nil`是因为防止缓存穿透
-		val, err = cc.Set(ctx, keys, args, newVal, timeout...)
+	if val != nil {
 		return
 	}
+	var newVal any
+	if newVal, err = f(ctx); err != nil {
+		return
+	}
+	if utils.IsNil(newVal) && !force {
+		return
+	}
+	// 此处不判断`newVal == nil`是因为防止缓存穿透
+	val, err = cc.Set(ctx, keys, args, newVal, timeout...)
 	return
 }
 

@@ -7,19 +7,21 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/confluentinc/confluent-kafka-go/v2 v2.12.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-redsync/redsync/v4 v4.14.1
+	github.com/go-redsync/redsync/v4 v4.15.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.17.2
 	github.com/spf13/viper v1.21.0
 	github.com/spf13/viper/remote v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.21
-	golang.org/x/image v0.33.0
-	google.golang.org/protobuf v1.36.10
+	golang.org/x/image v0.34.0
+	golang.org/x/sync v0.19.0
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -93,9 +95,8 @@ require (
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/api v0.248.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect

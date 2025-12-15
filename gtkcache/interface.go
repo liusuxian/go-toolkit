@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-06-02 03:52:02
+ * @LastEditTime: 2025-12-15 21:35:13
  * @Description: 缓存接口
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,6 +11,7 @@ package gtkcache
 
 import (
 	"context"
+	"io"
 	"time"
 )
 
@@ -163,6 +164,19 @@ type IRedisCache interface {
 	/* TODO Hash（哈希表）*/
 
 	/* TODO List（列表）*/
+}
+
+// IMemoryCache Memory 缓存接口
+type IMemoryCache interface {
+	ICache
+	// Save 保存缓存到 writer
+	Save(w io.Writer) (err error)
+	// Load 从 reader 加载缓存
+	Load(r io.Reader) (err error)
+	// SaveToFile 保存缓存到文件
+	SaveToFile(filename string) (err error)
+	// LoadFromFile 从文件加载缓存
+	LoadFromFile(filename string) (err error)
 }
 
 // IWechatCache 微信缓存接口（适配 github.com/silenceper/wechat/v2 库的缓存）
