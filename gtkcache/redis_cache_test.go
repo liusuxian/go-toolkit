@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-06-02 03:34:15
+ * @LastEditTime: 2025-12-16 02:01:50
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,11 +11,14 @@ package gtkcache_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/liusuxian/go-toolkit/gtkcache"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkredis"
 	"github.com/stretchr/testify/assert"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -527,4 +530,149 @@ func TestRedisCacheSortedSet(t *testing.T) {
 	score, err = cache.SSScore(ctx, "test_key_3", 1, time.Second)
 	assert.NoError(err)
 	assert.Equal(float64(-1), score)
+}
+
+func TestRedisCacheGetOrSetFuncLock(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
+	)
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
+	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
+	var (
+		executeCount int32
+		wg           sync.WaitGroup
+		concurrency  = 100
+		key          = "test_concurrent_key"
+	)
+	// 模拟100个并发请求同时访问同一个不存在的key
+	for i := range concurrency {
+		wg.Go(func() {
+			val, e := cache.GetOrSetFuncLock(ctx, key, func(ctx context.Context) (any, error) {
+				atomic.AddInt32(&executeCount, 1)
+				time.Sleep(10 * time.Millisecond)
+				return fmt.Sprintf("value_%d", i), nil
+			}, false, time.Second*10)
+			assert.NoError(e)
+			assert.NotNil(val)
+		})
+	}
+	wg.Wait()
+	finalCount := atomic.LoadInt32(&executeCount)
+	assert.Equal(int32(1), finalCount, "函数应该只执行1次，实际执行了%d次", finalCount)
+}
+
+func TestRedisCacheSetIfNotExistFuncLock(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
+	)
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
+	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
+	var (
+		executeCount int32
+		wg           sync.WaitGroup
+		concurrency  = 100
+		key          = "test_setif_key"
+		successCount int32
+	)
+	// 模拟100个并发请求同时尝试设置同一个key
+	for i := range concurrency {
+		wg.Go(func() {
+			ok, e := cache.SetIfNotExistFuncLock(ctx, key, func(ctx context.Context) (any, error) {
+				atomic.AddInt32(&executeCount, 1)
+				time.Sleep(10 * time.Millisecond)
+				return fmt.Sprintf("value_%d", i), nil
+			}, false, time.Second*10)
+			assert.NoError(e)
+			if ok {
+				atomic.AddInt32(&successCount, 1)
+			}
+		})
+	}
+	wg.Wait()
+	finalCount := atomic.LoadInt32(&executeCount)
+	finalSuccess := atomic.LoadInt32(&successCount)
+	assert.Equal(int32(1), finalCount, "函数应该只执行1次，实际执行了%d次", finalCount)
+	assert.Equal(int32(1), finalSuccess, "应该只有1个请求设置成功，实际成功了%d次", finalSuccess)
+}
+
+type SimpleCustomCache struct {
+	cache *gtkcache.RedisCache
+}
+
+func (s *SimpleCustomCache) Get(ctx context.Context, keys []string, args []any, timeout ...time.Duration) (val any, err error) {
+	// 简单实现：使用第一个 key
+	if len(keys) > 0 {
+		val, err = s.cache.Get(ctx, keys[0], timeout...)
+	}
+	return
+}
+
+func (s *SimpleCustomCache) Set(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error) {
+	// 简单实现：使用第一个 key 设置值
+	if len(keys) > 0 {
+		err = s.cache.Set(ctx, keys[0], newVal, timeout...)
+		val = newVal
+	}
+	return
+}
+
+func TestRedisCacheCustomGetOrSetFuncLock(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
+	)
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
+	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
+	var (
+		executeCount int32
+		wg           sync.WaitGroup
+		concurrency  = 100
+		keys         = []string{"test_custom_key"}
+		args         = []any{"arg1"}
+	)
+	customCache := &SimpleCustomCache{cache: cache}
+	// 模拟100个并发请求同时访问同一个自定义缓存key
+	for i := range concurrency {
+		wg.Go(func() {
+			val, e := cache.CustomGetOrSetFuncLock(ctx, keys, args, customCache, func(ctx context.Context) (any, error) {
+				atomic.AddInt32(&executeCount, 1)
+				time.Sleep(10 * time.Millisecond)
+				return fmt.Sprintf("custom_value_%d", i), nil
+			}, false, time.Second*10)
+			assert.NoError(e)
+			assert.NotNil(val)
+		})
+	}
+	wg.Wait()
+	finalCount := atomic.LoadInt32(&executeCount)
+	assert.Equal(int32(1), finalCount, "函数应该只执行1次，实际执行了%d次", finalCount)
 }

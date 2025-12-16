@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-15 21:35:13
+ * @LastEditTime: 2025-12-16 00:32:14
  * @Description: 缓存接口
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,6 +11,7 @@ package gtkcache
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"time"
 )
@@ -38,20 +39,22 @@ type ICache interface {
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	GetOrSet(ctx context.Context, key string, newVal any, timeout ...time.Duration) (val any, err error)
 	// GetOrSetFunc 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
-	//   当`timeout > 0`时，设置/重置`key`的过期时间
-	//   当`force = true`时，可防止缓存穿透
+	//	 当`timeout > 0`时，设置/重置`key`的过期时间
+	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 GetOrSetFuncLock
 	GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
-	//   当`timeout > 0`时，设置/重置`key`的过期时间
-	//   当`force = true`时，可防止缓存穿透
+	//	 当`timeout > 0`时，设置/重置`key`的过期时间
+	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 	GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
-	//   当`timeout > 0`时，设置/重置`key`的过期时间
-	//   当`force = true`时，可防止缓存穿透
+	//	 当`timeout > 0`时，设置/重置`key`的过期时间
+	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 CustomGetOrSetFuncLock
 	CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
-	//   当`timeout > 0`时，设置/重置`key`的过期时间
-	//   当`force = true`时，可防止缓存穿透
+	//	 当`timeout > 0`时，设置/重置`key`的过期时间
+	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 	CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// Set 设置缓存
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
@@ -63,12 +66,13 @@ type ICache interface {
 	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 	SetIfNotExist(ctx context.Context, key string, val any, timeout ...time.Duration) (ok bool, err error)
 	// SetIfNotExistFunc 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功
-	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-	//   当`force = true`时，可防止缓存穿透
+	//	 当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 SetIfNotExistFuncLock
 	SetIfNotExistFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error)
 	// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在写入互斥锁内执行，以确保并发安全
-	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-	//   当`force = true`时，可防止缓存穿透
+	//	 当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
+	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 	SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error)
 	// Update 当`key`存在时，则使用`val`更新`key`的值，返回`key`的旧值
 	//   当`timeout > 0`且`key`更新成功时，更新`key`的过期时间
@@ -194,4 +198,20 @@ type IContextWechatCache interface {
 	SetContext(ctx context.Context, key string, val any, timeout time.Duration) (err error) // 设置缓存
 	IsExistContext(ctx context.Context, key string) (isExist bool)                          // 缓存是否存在
 	DeleteContext(ctx context.Context, key string) (err error)                              // 删除缓存
+}
+
+// generateSingleflightKey 生成 singleflight 的唯一 key
+func generateSingleflightKey(keys []string, args []any) (uniqueKey string, err error) {
+	var (
+		data = map[string]any{
+			"keys": keys,
+			"args": args,
+		}
+		jsonBytes []byte
+	)
+	if jsonBytes, err = json.Marshal(data); err != nil {
+		return
+	}
+	uniqueKey = string(jsonBytes)
+	return
 }

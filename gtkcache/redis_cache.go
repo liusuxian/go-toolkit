@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-15 18:45:00
+ * @LastEditTime: 2025-12-16 01:55:47
  * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,6 +15,7 @@ import (
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkredis"
 	"github.com/liusuxian/go-toolkit/internal/utils"
+	"golang.org/x/sync/singleflight"
 	"time"
 )
 
@@ -22,6 +23,7 @@ import (
 type RedisCache struct {
 	ctx    context.Context
 	client *gtkredis.RedisClient // redis 客户端
+	group  singleflight.Group    // 用于防止缓存击穿，确保相同 key 的函数只执行一次
 }
 
 // 内置 lua 脚本
@@ -362,6 +364,7 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time
 	if len(keys) == 0 {
 		return
 	}
+
 	var result any
 	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args := make([]any, 0, len(keys))
@@ -375,6 +378,7 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time
 	if err != nil {
 		return
 	}
+
 	resultList := gtkconv.ToSlice(result)
 	data = make(map[string]any)
 	for k, v := range keys {
@@ -398,7 +402,8 @@ func (rc *RedisCache) GetOrSet(ctx context.Context, key string, newVal any, time
 // GetOrSetFunc 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
+//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+//	注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 GetOrSetFuncLock
 func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	if val, err = rc.Get(ctx, key, timeout...); err != nil {
 		return
@@ -406,6 +411,7 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 	if val != nil {
 		return
 	}
+	// 执行函数获取新值
 	var newVal any
 	if newVal, err = f(ctx); err != nil {
 		return
@@ -421,15 +427,26 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 // GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
+//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	return rc.GetOrSetFunc(ctx, key, f, force, timeout...)
+	if val, err = rc.Get(ctx, key, timeout...); err != nil {
+		return
+	}
+	if val != nil {
+		return
+	}
+	// 使用 singleflight 确保同一个 key 的函数只执行一次
+	val, err, _ = rc.group.Do(key, func() (v any, e error) {
+		return rc.GetOrSetFunc(ctx, key, f, force, timeout...)
+	})
+	return
 }
 
 // CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
+//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+//	注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 CustomGetOrSetFuncLock
 func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	// 获取缓存
 	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
@@ -438,6 +455,7 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, arg
 	if val != nil {
 		return
 	}
+	// 执行函数获取新值
 	var newVal any
 	if newVal, err = f(ctx); err != nil {
 		return
@@ -453,9 +471,25 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, arg
 // CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
+//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	return rc.CustomGetOrSetFunc(ctx, keys, args, cc, f, force, timeout...)
+	// 获取缓存
+	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
+		return
+	}
+	if val != nil {
+		return
+	}
+	// 生成 singleflight 的唯一 key
+	var sfKey string
+	if sfKey, err = generateSingleflightKey(keys, args); err != nil {
+		return
+	}
+	// 使用 singleflight 确保同一个 key 的函数只执行一次
+	val, err, _ = rc.group.Do(sfKey, func() (v any, e error) {
+		return rc.CustomGetOrSetFunc(ctx, keys, args, cc, f, force, timeout...)
+	})
+	return
 }
 
 // Set 设置缓存
@@ -477,6 +511,7 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 	if len(data) == 0 {
 		return
 	}
+
 	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		args := make([]any, 0, len(data)*2)
 		for k, v := range data {
@@ -513,8 +548,18 @@ func (rc *RedisCache) SetIfNotExist(ctx context.Context, key string, val any, ti
 // SetIfNotExistFunc 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功
 //
 //	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
+//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+//	注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 SetIfNotExistFuncLock
 func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
+	// 缓存是否存在
+	var isExist bool
+	if isExist, err = rc.IsExist(ctx, key); err != nil {
+		return
+	}
+	if isExist {
+		return
+	}
+	// 执行函数获取新值
 	var val any
 	if val, err = f(ctx); err != nil {
 		return
@@ -529,9 +574,44 @@ func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func,
 // SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在写入互斥锁内执行，以确保并发安全
 //
 //	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
+//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 func (rc *RedisCache) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
-	return rc.SetIfNotExistFunc(ctx, key, f, force, timeout...)
+	// 缓存是否存在
+	var isExist bool
+	if isExist, err = rc.IsExist(ctx, key); err != nil {
+		return
+	}
+	if isExist {
+		return
+	}
+	// 使用 singleflight 确保函数只执行一次
+	var val any
+	if val, err, _ = rc.group.Do(key, func() (v any, e error) {
+		// double-check：再次检查是否已存在
+		var isExist bool
+		if isExist, err = rc.IsExist(ctx, key); err != nil {
+			return
+		}
+		if isExist {
+			return
+		}
+		// 只执行函数，不设置缓存
+		return f(ctx)
+	}); err != nil {
+		return
+	}
+	// 再次检查是否已存在（可能在等待 singleflight 期间被设置）
+	if isExist, err = rc.IsExist(ctx, key); err != nil {
+		return
+	}
+	if isExist {
+		return
+	}
+	if utils.IsNil(val) && !force {
+		return
+	}
+	// 此处不判断`val == nil`是因为防止缓存穿透
+	return rc.SetIfNotExist(ctx, key, val, timeout...)
 }
 
 // Update 当`key`存在时，则使用`val`更新`key`的值，返回`key`的旧值

@@ -1,455 +1,175 @@
 /*
  * @Author: liusuxian 382185882@qq.com
- * @Date: 2025-12-15 12:50:11
+ * @Date: 2025-12-16 23:11:19
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-15 21:35:07
- * @Description: ICache 接口的内存缓存实现（基于 github.com/patrickmn/go-cache）
+ * @LastEditTime: 2025-12-17 01:54:30
+ * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package gtkcache
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
-	"github.com/liusuxian/go-toolkit/internal/utils"
-	gocache "github.com/patrickmn/go-cache"
-	"golang.org/x/sync/singleflight"
-	"io"
+	"sync"
 	"time"
 )
 
-// MemoryCache 内存缓存
-type MemoryCache struct {
-	cache  *gocache.Cache
-	group  singleflight.Group // 用于防止缓存击穿，确保相同 key 的函数只执行一次
-	closed bool
+// cacheItem 缓存项
+type cacheItem struct {
+	Object     any   // 缓存的值
+	Expiration int64 // 过期时间（Unix纳秒时间戳），0 表示永不过期
 }
 
-// NewMemoryCache 创建内存缓存
-func NewMemoryCache(ctx context.Context, cleanupInterval ...time.Duration) (mc *MemoryCache, err error) {
-	interval := time.Duration(0) // 默认懒惰删除
-	if len(cleanupInterval) > 0 {
-		interval = cleanupInterval[0]
+// isExpired 检查是否过期
+func (item *cacheItem) isExpired() bool {
+	if item.Expiration == 0 {
+		return false
 	}
-
-	mc = &MemoryCache{
-		cache:  gocache.New(gocache.NoExpiration, interval),
-		closed: false,
-	}
-	return
+	return time.Now().UnixNano() > item.Expiration
 }
 
-// Get 获取缓存
-//
-//	当`timeout > 0`且缓存命中时，设置/重置`key`的过期时间
-func (mc *MemoryCache) Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error) {
-	var isExist bool
-	if val, isExist = mc.cache.Get(key); !isExist {
-		return
-	}
-	// 重置过期时间
-	if len(timeout) > 0 && timeout[0] > 0 {
-		mc.cache.Replace(key, val, timeout[0])
-	}
-	return
+// keyAndValue 键值对
+type keyAndValue struct {
+	key   string
+	value any
 }
 
-// GetMap 批量获取缓存
-//
-//	当`timeout > 0`且所有缓存都命中时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
-func (mc *MemoryCache) GetMap(ctx context.Context, keys []string, timeout ...time.Duration) (data map[string]any, err error) {
-	if len(keys) == 0 {
-		return
-	}
+// cacheShard 缓存分片
+type cacheShard struct {
+	items     map[string]*cacheItem
+	mu        sync.RWMutex
+	onEvicted func(string, any)
+}
 
-	data = make(map[string]any)
-	allHit := true
-	for _, key := range keys {
-		var (
-			val     any
-			isExist bool
-		)
-		if val, isExist = mc.cache.Get(key); !isExist {
-			data[key] = nil
-			allHit = false
-			continue
-		}
-		data[key] = val
-	}
-	// 只有所有`key`都命中时才重置过期时间
-	if allHit && len(timeout) > 0 && timeout[0] > 0 {
-		for key, val := range data {
-			mc.cache.Replace(key, val, timeout[0])
+// OnEvicted 设置删除回调函数
+func (cs *cacheShard) OnEvicted(f func(string, any)) {
+	cs.mu.Lock()
+	cs.onEvicted = f
+	cs.mu.Unlock()
+}
+
+// DeleteExpired 删除过期缓存项
+func (cs *cacheShard) DeleteExpired() {
+	var evictedItems []keyAndValue
+	now := time.Now().UnixNano()
+	cs.mu.Lock()
+	for k, v := range cs.items {
+		if v.Expiration > 0 && now > v.Expiration {
+			ov, evicted := cs.delete(k)
+			if evicted {
+				evictedItems = append(evictedItems, keyAndValue{k, ov})
+			}
 		}
 	}
-	return
+	cs.mu.Unlock()
+	for _, v := range evictedItems {
+		cs.onEvicted(v.key, v.value)
+	}
 }
 
-// GetOrSet 检索并返回`key`的值，或者当`key`不存在时，则使用`newVal`设置`key`的值
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-func (mc *MemoryCache) GetOrSet(ctx context.Context, key string, newVal any, timeout ...time.Duration) (val any, err error) {
-	var isExist bool
-	if val, isExist = mc.cache.Get(key); isExist {
+// delete 删除缓存项
+func (cs *cacheShard) delete(k string) (any, bool) {
+	if cs.onEvicted != nil {
+		if v, found := cs.items[k]; found {
+			delete(cs.items, k)
+			return v.Object, true
+		}
+	}
+	delete(cs.items, k)
+	return nil, false
+}
+
+// getItem 获取缓存项
+func (cs *cacheShard) getItem(k string) any {
+	cs.mu.RLock()
+	defer cs.mu.RUnlock()
+
+	item, found := cs.items[k]
+	if !found || item.isExpired() {
+		return nil
+	}
+	return item.Object
+}
+
+// getItemWithExpiration 获取缓存项并重置过期时间
+func (cs *cacheShard) getItemWithExpiration(k string, expiration int64) any {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	item, found := cs.items[k]
+	if !found {
+		return nil
+	}
+	if item.isExpired() {
+		delete(cs.items, k)
+		return nil
+	}
+	item.Expiration = expiration
+	return item.Object
+}
+
+// getOrSetItemWithExpiration 获取缓存项并重置过期时间或设置新值并设置过期时间
+func (cs *cacheShard) getOrSetItemWithExpiration(k string, v any, expiration int64) any {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	item, found := cs.items[k]
+	if found && !item.isExpired() {
 		// 重置过期时间
-		if len(timeout) > 0 && timeout[0] > 0 {
-			mc.cache.Replace(key, val, timeout[0])
+		if expiration > 0 {
+			item.Expiration = expiration
 		}
-		return
+		return item.Object
 	}
 	// 设置新值
-	mc.cache.Set(key, newVal, mc.getTimeout(timeout...))
-	val = newVal
-	return
+	cs.items[k] = &cacheItem{
+		Object:     v,
+		Expiration: expiration,
+	}
+	return v
 }
 
-// GetOrSetFunc 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
-func (mc *MemoryCache) GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	var isExist bool
-	if val, isExist = mc.cache.Get(key); isExist {
-		// 重置过期时间
-		if len(timeout) > 0 && timeout[0] > 0 {
-			mc.cache.Replace(key, val, timeout[0])
-		}
-		return
+// setItemWithExpiration 设置缓存项并设置过期时间
+func (cs *cacheShard) setItemWithExpiration(k string, v any, expiration int64) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	cs.items[k] = &cacheItem{
+		Object:     v,
+		Expiration: expiration,
 	}
-	// 执行函数获取新值
-	var newVal any
-	if newVal, err = f(ctx); err != nil {
-		return
-	}
-	if utils.IsNil(newVal) && !force {
-		return
-	}
-	// 此处不判断`newVal == nil`是因为防止缓存穿透
-	mc.cache.Set(key, newVal, mc.getTimeout(timeout...))
-	val = newVal
-	return
 }
 
-// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
-func (mc *MemoryCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	var isExist bool
-	if val, isExist = mc.cache.Get(key); isExist {
-		// 重置过期时间
-		if len(timeout) > 0 && timeout[0] > 0 {
-			mc.cache.Replace(key, val, timeout[0])
-		}
-		return
-	}
-	// 使用 singleflight 确保同一个 key 的函数只执行一次
-	val, err, _ = mc.group.Do(key, func() (v any, e error) {
-		return mc.GetOrSetFunc(ctx, key, f, force, timeout...)
-	})
-	return
+// janitor 清理器
+type janitor struct {
+	Interval time.Duration
+	stop     chan bool
 }
 
-// CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
-func (mc *MemoryCache) CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	// 获取缓存
-	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
-		return
-	}
-	if val != nil {
-		return
-	}
-	// 执行函数获取新值
-	var newVal any
-	if newVal, err = f(ctx); err != nil {
-		return
-	}
-	if utils.IsNil(newVal) && !force {
-		return
-	}
-	// 此处不判断`newVal == nil`是因为防止缓存穿透
-	val, err = cc.Set(ctx, keys, args, newVal, timeout...)
-	return
-}
-
-// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
-func (mc *MemoryCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	// 获取缓存
-	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
-		return
-	}
-	if val != nil {
-		return
-	}
-	// 生成 singleflight 的唯一 key
-	var sfKey string
-	if sfKey, err = mc.generateSingleflightKey(keys, args); err != nil {
-		return
-	}
-	// 使用 singleflight 确保同一个 key 的函数只执行一次
-	val, err, _ = mc.group.Do(sfKey, func() (v any, e error) {
-		return mc.CustomGetOrSetFunc(ctx, keys, args, cc, f, force, timeout...)
-	})
-	return
-}
-
-// Set 设置缓存
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-func (mc *MemoryCache) Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) {
-	mc.cache.Set(key, val, mc.getTimeout(timeout...))
-	return
-}
-
-// SetMap 批量设置缓存，所有`key`的过期时间相同
-//
-//	当`timeout > 0`时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
-func (mc *MemoryCache) SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error) {
-	if len(data) == 0 {
-		return
-	}
-
-	duration := mc.getTimeout(timeout...)
-	for key, val := range data {
-		mc.cache.Set(key, val, duration)
-	}
-	return
-}
-
-// SetIfNotExist 当`key`不存在时，则使用`val`设置`key`的值，返回是否设置成功
-//
-//	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-func (mc *MemoryCache) SetIfNotExist(ctx context.Context, key string, val any, timeout ...time.Duration) (ok bool, err error) {
-	if e := mc.cache.Add(key, val, mc.getTimeout(timeout...)); e != nil {
-		return
-	}
-	ok = true
-	return
-}
-
-// SetIfNotExistFunc 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功
-//
-//	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
-func (mc *MemoryCache) SetIfNotExistFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
-	if _, isExist := mc.cache.Get(key); isExist {
-		return
-	}
-	// 执行函数获取新值
-	var val any
-	if val, err = f(ctx); err != nil {
-		return
-	}
-	if utils.IsNil(val) && !force {
-		return
-	}
-	// 此处不判断`val == nil`是因为防止缓存穿透
-	return mc.SetIfNotExist(ctx, key, val, timeout...)
-}
-
-// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在写入互斥锁内执行，以确保并发安全
-//
-//	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透
-func (mc *MemoryCache) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
-	if _, isExist := mc.cache.Get(key); isExist {
-		return
-	}
-	// 使用 singleflight 确保函数只执行一次
-	var val any
-	if val, err, _ = mc.group.Do(key, func() (v any, e error) {
-		// double-check：再次检查是否已存在
-		if _, isExist := mc.cache.Get(key); isExist {
+// Run 启动清理任务
+func (j *janitor) Run(mc *memoryCache) {
+	j.stop = make(chan bool)
+	tick := time.Tick(j.Interval)
+	for {
+		select {
+		case <-tick:
+			mc.DeleteExpired()
+		case <-j.stop:
 			return
 		}
-		// 只执行函数，不设置缓存
-		return f(ctx)
-	}); err != nil {
-		return
 	}
-	// 再次检查是否已存在（可能在等待 singleflight 期间被设置）
-	if _, isExist := mc.cache.Get(key); isExist {
-		return
-	}
-	if utils.IsNil(val) && !force {
-		return
-	}
-	// 此处不判断`val == nil`是因为防止缓存穿透
-	return mc.SetIfNotExist(ctx, key, val, timeout...)
 }
 
-// Update 当`key`存在时，则使用`val`更新`key`的值，返回`key`的旧值
-//
-//	当`timeout > 0`且`key`更新成功时，更新`key`的过期时间
-func (mc *MemoryCache) Update(ctx context.Context, key string, val any, timeout ...time.Duration) (oldVal any, isExist bool, err error) {
-	if oldVal, isExist = mc.cache.Get(key); !isExist {
-		return
-	}
-
-	if e := mc.cache.Replace(key, val, mc.getTimeout(timeout...)); e != nil {
-		isExist = false
-		return
-	}
-	return
+// stopJanitor 停止清理任务
+func stopJanitor(mc *MemoryCache) {
+	mc.janitor.stop <- true
 }
 
-// UpdateExpire 当`key`存在时，则更新`key`的过期时间，返回`key`的旧的过期时间值
-//
-//	当`key`不存在时，则返回-1
-//	当`key`存在但没有设置过期时间时，则返回0
-//	当`key`存在且设置了过期时间时，则返回过期时间
-//	当`timeout > 0`且`key`存在时，更新`key`的过期时间
-func (mc *MemoryCache) UpdateExpire(ctx context.Context, key string, timeout time.Duration) (oldTimeout time.Duration, err error) {
-	if timeout <= 0 {
-		err = errors.New("timeout must be greater than 0")
-		return
+// runJanitor 启动清理器
+func runJanitor(mc *memoryCache, interval time.Duration) {
+	j := &janitor{
+		Interval: interval,
 	}
-	// 使用 GetWithExpiration 获取值和过期时间
-	var (
-		val        any
-		expiration time.Time
-		isExist    bool
-	)
-	if val, expiration, isExist = mc.cache.GetWithExpiration(key); !isExist {
-		oldTimeout = -1
-		return
-	}
-	// 计算旧的剩余过期时间
-	if expiration.IsZero() {
-		oldTimeout = 0
-		if e := mc.cache.Replace(key, val, timeout); e != nil {
-			oldTimeout = -1
-			return
-		}
-		return
-	}
-
-	oldTimeout = time.Until(expiration)
-	if oldTimeout <= 0 {
-		// 已经过期，删除并返回 -1
-		mc.cache.Delete(key)
-		oldTimeout = -1
-		return
-	}
-	if e := mc.cache.Replace(key, val, timeout); e != nil {
-		oldTimeout = -1
-		return
-	}
-	return
-}
-
-// IsExist 缓存是否存在
-func (mc *MemoryCache) IsExist(ctx context.Context, key string) (isExist bool, err error) {
-	_, isExist = mc.cache.Get(key)
-	return
-}
-
-// Size 缓存中的key数量
-func (mc *MemoryCache) Size(ctx context.Context) (size int, err error) {
-	return mc.cache.ItemCount(), nil
-}
-
-// Delete 删除缓存
-func (mc *MemoryCache) Delete(ctx context.Context, keys ...string) (err error) {
-	if len(keys) == 0 {
-		return
-	}
-
-	for _, key := range keys {
-		mc.cache.Delete(key)
-	}
-	return
-}
-
-// GetExpire 获取缓存`key`的过期时间
-//
-//	当`key`不存在时，则返回-1
-//	当`key`存在但没有设置过期时间时，则返回0
-//	当`key`存在且设置了过期时间时，则返回剩余过期时间
-func (mc *MemoryCache) GetExpire(ctx context.Context, key string) (timeout time.Duration, err error) {
-	// 使用 GetWithExpiration 获取值和过期时间
-	var (
-		expiration time.Time
-		isExist    bool
-	)
-	if _, expiration, isExist = mc.cache.GetWithExpiration(key); !isExist {
-		timeout = -1
-		return
-	}
-	// 计算旧的剩余过期时间
-	if expiration.IsZero() {
-		return
-	}
-	timeout = time.Until(expiration)
-	if timeout <= 0 {
-		// 已经过期，删除并返回 -1
-		mc.cache.Delete(key)
-		timeout = -1
-		return
-	}
-	return
-}
-
-// Close 关闭缓存服务
-func (mc *MemoryCache) Close(ctx context.Context) (err error) {
-	if mc.closed {
-		return
-	}
-
-	mc.cache.Flush()
-	mc.closed = true
-	return
-}
-
-// Save 保存缓存到 writer
-func (mc *MemoryCache) Save(w io.Writer) (err error) {
-	return mc.cache.Save(w)
-}
-
-// Load 从 reader 加载缓存
-func (mc *MemoryCache) Load(r io.Reader) (err error) {
-	return mc.cache.Load(r)
-}
-
-// SaveToFile 保存缓存到文件
-func (mc *MemoryCache) SaveToFile(filename string) (err error) {
-	return mc.cache.SaveFile(filename)
-}
-
-// LoadFromFile 从文件加载缓存
-func (mc *MemoryCache) LoadFromFile(filename string) (err error) {
-	return mc.cache.LoadFile(filename)
-}
-
-// getTimeout 获取过期时间
-func (mc *MemoryCache) getTimeout(timeout ...time.Duration) (duration time.Duration) {
-	duration = gocache.NoExpiration
-	if len(timeout) > 0 && timeout[0] > 0 {
-		duration = timeout[0]
-	}
-	return
-}
-
-// generateSingleflightKey 生成 singleflight 的唯一 key
-func (mc *MemoryCache) generateSingleflightKey(keys []string, args []any) (uniqueKey string, err error) {
-	var (
-		data = map[string]any{
-			"keys": keys,
-			"args": args,
-		}
-		jsonBytes []byte
-	)
-	if jsonBytes, err = json.Marshal(data); err != nil {
-		return
-	}
-	uniqueKey = string(jsonBytes)
-	return
+	mc.janitor = j
+	go j.Run(mc)
 }
