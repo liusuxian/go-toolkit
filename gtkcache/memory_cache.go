@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-16 23:11:19
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 01:54:30
+ * @LastEditTime: 2025-12-17 12:28:58
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -148,13 +148,13 @@ type janitor struct {
 
 // Run 启动清理任务
 func (j *janitor) Run(mc *memoryCache) {
-	j.stop = make(chan bool)
-	tick := time.Tick(j.Interval)
+	ticker := time.NewTicker(j.Interval)
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			mc.DeleteExpired()
 		case <-j.stop:
+			ticker.Stop()
 			return
 		}
 	}
@@ -169,6 +169,7 @@ func stopJanitor(mc *MemoryCache) {
 func runJanitor(mc *memoryCache, interval time.Duration) {
 	j := &janitor{
 		Interval: interval,
+		stop:     make(chan bool),
 	}
 	mc.janitor = j
 	go j.Run(mc)
