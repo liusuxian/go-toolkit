@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-16 00:32:14
+ * @LastEditTime: 2025-12-18 02:11:18
  * @Description: 缓存接口
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -43,18 +43,20 @@ type ICache interface {
 	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 GetOrSetFuncLock
 	GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
-	// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
+	// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
 	//	 当`timeout > 0`时，设置/重置`key`的过期时间
 	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+	//	 注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
 	GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
 	//	 当`timeout > 0`时，设置/重置`key`的过期时间
 	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 CustomGetOrSetFuncLock
 	CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
-	// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
+	// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
 	//	 当`timeout > 0`时，设置/重置`key`的过期时间
 	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+	//	 注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
 	CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// Set 设置缓存
 	//   当`timeout > 0`时，设置/重置`key`的过期时间

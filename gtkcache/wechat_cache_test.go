@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-29 16:15:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 17:41:17
+ * @LastEditTime: 2025-12-17 23:06:51
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -24,14 +24,19 @@ func TestNewWechatCache(t *testing.T) {
 		ctx    = context.Background()
 		r      = miniredis.RunT(t)
 		assert = assert.New(t)
-		cache  *gtkcache.WechatCache
+		icache gtkcache.ICache
 		err    error
 	)
-	cache, err = gtkcache.NewWechatCache(ctx, &gtkredis.ClientConfig{
+	icache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
 		Addr:     r.Addr(),
 		DB:       1,
 		Password: "",
 	})
+	assert.NoError(err)
+	assert.NotNil(icache)
+
+	var cache *gtkcache.WechatCache
+	cache, err = gtkcache.NewWechatCache(ctx, icache)
 	assert.NoError(err)
 	assert.NotNil(cache)
 

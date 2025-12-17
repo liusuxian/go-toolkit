@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-29 16:15:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-06-02 04:00:59
+ * @LastEditTime: 2025-12-17 22:29:02
  * @Description: 适配 github.com/silenceper/wechat/v2 库的缓存
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,26 +11,25 @@ package gtkcache
 
 import (
 	"context"
-	"github.com/liusuxian/go-toolkit/gtkconv"
-	"github.com/liusuxian/go-toolkit/gtkredis"
+	"errors"
 	"time"
 )
 
 // WechatCache 微信缓存
 type WechatCache struct {
-	ctx    context.Context
-	client *gtkredis.RedisClient // redis 客户端
+	ctx   context.Context
+	cache ICache // 缓存接口
 }
 
 // NewWechatCache 创建微信缓存
-func NewWechatCache(ctx context.Context, cfg *gtkredis.ClientConfig) (wc *WechatCache, err error) {
-	var client *gtkredis.RedisClient
-	if client, err = gtkredis.NewClient(ctx, cfg); err != nil {
+func NewWechatCache(ctx context.Context, cache ICache) (wc *WechatCache, err error) {
+	if cache == nil {
+		err = errors.New("cache is nil")
 		return
 	}
 	wc = &WechatCache{
-		ctx:    ctx,
-		client: client,
+		ctx:   ctx,
+		cache: cache,
 	}
 	return
 }
@@ -48,7 +47,7 @@ func (wc *WechatCache) Get(key string) (val any) {
 // GetContext 获取缓存
 func (wc *WechatCache) GetContext(ctx context.Context, key string) (val any) {
 	var err error
-	if val, err = wc.client.Do(ctx, "GET", key); err != nil {
+	if val, err = wc.cache.Get(ctx, key); err != nil {
 		return nil
 	}
 	return
@@ -61,12 +60,7 @@ func (wc *WechatCache) Set(key string, val any, timeout time.Duration) (err erro
 
 // SetContext 设置缓存
 func (wc *WechatCache) SetContext(ctx context.Context, key string, val any, timeout time.Duration) (err error) {
-	if timeout.Milliseconds() <= 0 {
-		_, err = wc.client.Do(ctx, "SET", key, val)
-	} else {
-		_, err = wc.client.Do(ctx, "PSETEX", key, timeout.Milliseconds(), val)
-	}
-	return
+	return wc.cache.Set(ctx, key, val, timeout)
 }
 
 // IsExist 缓存是否存在
@@ -76,14 +70,10 @@ func (wc *WechatCache) IsExist(key string) (isExist bool) {
 
 // IsExistContext 缓存是否存在
 func (wc *WechatCache) IsExistContext(ctx context.Context, key string) (isExist bool) {
-	var (
-		val any
-		err error
-	)
-	if val, err = wc.client.Do(ctx, "EXISTS", key); err != nil {
-		return
+	var err error
+	if isExist, err = wc.cache.IsExist(ctx, key); err != nil {
+		return false
 	}
-	isExist = gtkconv.ToBool(val)
 	return
 }
 
@@ -94,6 +84,5 @@ func (wc *WechatCache) Delete(key string) (err error) {
 
 // DeleteContext 删除缓存
 func (wc *WechatCache) DeleteContext(ctx context.Context, key string) (err error) {
-	_, err = wc.client.Do(ctx, "DEL", key)
-	return
+	return wc.cache.Delete(ctx, key)
 }

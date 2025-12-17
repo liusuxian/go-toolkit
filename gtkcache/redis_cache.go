@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-16 01:55:47
+ * @LastEditTime: 2025-12-18 02:19:12
  * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -405,6 +405,7 @@ func (rc *RedisCache) GetOrSet(ctx context.Context, key string, newVal any, time
 //	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 //	注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 GetOrSetFuncLock
 func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+	// 获取缓存
 	if val, err = rc.Get(ctx, key, timeout...); err != nil {
 		return
 	}
@@ -424,11 +425,13 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 	return
 }
 
-// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
+// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+//	注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
 func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+	// 获取缓存
 	if val, err = rc.Get(ctx, key, timeout...); err != nil {
 		return
 	}
@@ -468,10 +471,11 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, arg
 	return
 }
 
-// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值，函数`f`是在写入互斥锁内执行，以确保并发安全
+// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
+//	注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
 func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	// 获取缓存
 	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-16 23:11:19
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 19:21:54
+ * @LastEditTime: 2025-12-18 01:33:32
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -48,7 +48,7 @@ func (cs *cacheShard) OnEvicted(f func(string, any)) {
 	cs.mu.Unlock()
 }
 
-// DeleteExpired 删除过期缓存项
+// DeleteExpired 删除过期缓存
 func (cs *cacheShard) DeleteExpired() {
 	var evictedItems []keyAndValue
 	now := time.Now().UnixNano()
@@ -67,7 +67,7 @@ func (cs *cacheShard) DeleteExpired() {
 	}
 }
 
-// delete 删除缓存项
+// delete 删除缓存
 func (cs *cacheShard) delete(k string) (any, bool) {
 	if cs.onEvicted != nil {
 		if v, found := cs.items[k]; found {
@@ -79,8 +79,8 @@ func (cs *cacheShard) delete(k string) (any, bool) {
 	return nil, false
 }
 
-// getItem 获取缓存项
-func (cs *cacheShard) getItem(k string) any {
+// get 获取缓存
+func (cs *cacheShard) get(k string) any {
 	cs.mu.RLock()
 	defer cs.mu.RUnlock()
 
@@ -91,37 +91,33 @@ func (cs *cacheShard) getItem(k string) any {
 	return item.Object
 }
 
-// getItemWithExpiration 获取缓存项并重置过期时间
-func (cs *cacheShard) getItemWithExpiration(k string, expiration int64) any {
+// getWithExpiration 获取缓存并重置过期时间
+func (cs *cacheShard) getWithExpiration(k string, expiration int64) any {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
 	item, found := cs.items[k]
-	if !found {
+	if !found || item.isExpired() {
 		return nil
 	}
-	if item.isExpired() {
-		delete(cs.items, k)
-		return nil
-	}
+
 	item.Expiration = expiration
 	return item.Object
 }
 
-// getOrSetItemWithExpiration 获取缓存项并重置过期时间或设置新值并设置过期时间
-func (cs *cacheShard) getOrSetItemWithExpiration(k string, v any, expiration int64) any {
+// getOrSetWithExpiration 获取缓存并重置过期时间或设置新值并设置过期时间
+func (cs *cacheShard) getOrSetWithExpiration(k string, v any, expiration int64) any {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
 	item, found := cs.items[k]
 	if found && !item.isExpired() {
-		// 重置过期时间
 		if expiration > 0 {
 			item.Expiration = expiration
 		}
 		return item.Object
 	}
-	// 设置新值
+
 	cs.items[k] = &cacheItem{
 		Object:     v,
 		Expiration: expiration,
@@ -129,8 +125,25 @@ func (cs *cacheShard) getOrSetItemWithExpiration(k string, v any, expiration int
 	return v
 }
 
-// setItemWithExpiration 设置缓存项并设置过期时间
-func (cs *cacheShard) setItemWithExpiration(k string, v any, expiration int64) {
+// getOrSetWithValue 获取缓存或设置指定值
+func (cs *cacheShard) getOrSetWithValue(k string, v any, expiration int64) any {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	item, found := cs.items[k]
+	if found && !item.isExpired() {
+		return item.Object
+	}
+
+	cs.items[k] = &cacheItem{
+		Object:     v,
+		Expiration: expiration,
+	}
+	return v
+}
+
+// setWithExpiration 设置缓存并设置过期时间
+func (cs *cacheShard) setWithExpiration(k string, v any, expiration int64) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
