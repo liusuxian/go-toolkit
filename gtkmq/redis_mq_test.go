@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 19:44:14
+ * @LastEditTime: 2025-12-17 19:49:44
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -302,6 +302,8 @@ func TestRedisMQDelGroup(t *testing.T) {
 	assert.NoError(err)
 	err = client.DelGroup(ctx, "queue", "testname2")
 	assert.NoError(err)
+	err = client.DelGroup(ctx, "queue_delay")
+	assert.NoError(err)
 }
 
 func TestRedisMQDelQueue(t *testing.T) {
@@ -330,6 +332,8 @@ func TestRedisMQDelQueue(t *testing.T) {
 	err = client.DelQueue(ctx, "queue_200")
 	assert.NoError(err)
 	err = client.DelQueue(ctx, "queue")
+	assert.NoError(err)
+	err = client.DelQueue(ctx, "queue_delay")
 	assert.NoError(err)
 }
 
