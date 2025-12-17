@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-16 23:11:19
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 12:28:58
+ * @LastEditTime: 2025-12-17 19:21:54
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -142,19 +142,20 @@ func (cs *cacheShard) setItemWithExpiration(k string, v any, expiration int64) {
 
 // janitor 清理器
 type janitor struct {
-	Interval time.Duration
+	interval time.Duration
 	stop     chan bool
 }
 
 // Run 启动清理任务
 func (j *janitor) Run(mc *memoryCache) {
-	ticker := time.NewTicker(j.Interval)
+	ticker := time.NewTicker(j.interval)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
 			mc.DeleteExpired()
 		case <-j.stop:
-			ticker.Stop()
 			return
 		}
 	}
@@ -168,8 +169,8 @@ func stopJanitor(mc *MemoryCache) {
 // runJanitor 启动清理器
 func runJanitor(mc *memoryCache, interval time.Duration) {
 	j := &janitor{
-		Interval: interval,
-		stop:     make(chan bool),
+		interval: interval,
+		stop:     make(chan bool, 1),
 	}
 	mc.janitor = j
 	go j.Run(mc)
