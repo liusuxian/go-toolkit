@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 19:16:19
+ * @LastEditTime: 2025-12-17 19:44:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -265,6 +265,14 @@ func TestRedisMQExpiredMessages(t *testing.T) {
 			t.Logf("expired message: %s %s\n", m.MQPartition.PartitionName, m.MQPartition.Offset)
 		}
 	}
+	messages, err = client.GetExpiredMessages(ctx, "queue_delay", true)
+	assert.NoError(err)
+	for _, v := range messages {
+		for _, m := range v {
+			t.Logf("expired message: %s %s\n", m.MQPartition.PartitionName, m.MQPartition.Offset)
+		}
+	}
+	time.Sleep(time.Second * 5)
 }
 
 func TestRedisMQDelGroup(t *testing.T) {

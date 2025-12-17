@@ -3,7 +3,7 @@ redis_mq:
   retries: 2147483647 # 发送消息失败后允许重试的次数，默认 2147483647
   retryBackoff: "100ms" # 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
   expiredTime: "5m" # 消息过期时间，默认 90天
-  delExpiredMsgInterval: "1m" # 删除过期消息的时间间隔，默认 1天
+  delExpiredMsgInterval: "2s" # 删除过期消息的时间间隔，默认 1天
   waitTimeout: "2500ms" # 指定等待消息的最大时间，默认最大 2500ms
   offsetReset: "0-0" # 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
   env: "test" # 消息队列服务环境，默认 local
