@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-16 20:38:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 02:11:58
+ * @LastEditTime: 2025-12-17 12:11:59
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -39,86 +39,25 @@ type memoryCache struct {
 // NewMemoryCache 创建内存缓存
 //
 //	cleanupInterval: 清理间隔，0 表示懒惰删除
-func NewMemoryCache(ctx context.Context, cleanupInterval ...time.Duration) (mc *MemoryCache) {
-	return NewMemoryCacheWithShards(ctx, defaultShardCount, cleanupInterval...)
+func NewMemoryCache(cleanupInterval ...time.Duration) *MemoryCache {
+	return NewMemoryCacheWithShards(defaultShardCount, cleanupInterval...)
 }
 
 // NewMemoryCacheWithShards 创建指定分片数的内存缓存
 //
 //	shardCount: 分片数量，建议设置为 2 的幂次（如 8, 16, 32, 64）
 //	cleanupInterval: 清理间隔，0 表示懒惰删除
-func NewMemoryCacheWithShards(ctx context.Context, shardCount int, cleanupInterval ...time.Duration) (mc *MemoryCache) {
-	// 分片数量
-	if shardCount <= 0 {
-		shardCount = defaultShardCount
-	}
-	// 清理间隔
-	interval := time.Duration(0)
-	if len(cleanupInterval) > 0 {
-		interval = cleanupInterval[0]
-	}
-	// 生成随机种子
+func NewMemoryCacheWithShards(shardCount int, cleanupInterval ...time.Duration) *MemoryCache {
 	var (
-		seed uint32
-		max  = big.NewInt(0).SetUint64(uint64(math.MaxUint32))
+		mc = newMemoryCacheWithShards(shardCount)
+		MC = &MemoryCache{mc}
 	)
-	rnd, err := rand.Int(rand.Reader, max)
-	if err != nil {
-		seed = insecurerand.Uint32()
-	} else {
-		seed = uint32(rnd.Uint64())
-	}
-	// 创建内存缓存对象
-	memoryCache := &memoryCache{
-		shards:     make([]*cacheShard, shardCount),
-		shardCount: uint32(shardCount),
-		seed:       seed,
-	}
-	// 创建分片
-	for i := 0; i < shardCount; i++ {
-		memoryCache.shards[i] = &cacheShard{
-			items: make(map[string]*cacheItem),
-		}
-	}
-	// 创建内存缓存对象
-	mc = &MemoryCache{memoryCache}
 	// 启动清理器
-	if interval > 0 {
-		runJanitor(memoryCache, interval)
-		runtime.SetFinalizer(mc, stopJanitor)
+	if len(cleanupInterval) > 0 && cleanupInterval[0] > 0 {
+		runJanitor(mc, cleanupInterval[0])
+		runtime.SetFinalizer(MC, stopJanitor)
 	}
-	return
-}
-
-// djb33 哈希算法
-func djb33(seed uint32, k string) uint32 {
-	var (
-		l = uint32(len(k))
-		d = 5381 + seed + l
-		i = uint32(0)
-	)
-	if l >= 4 {
-		for i < l-4 {
-			d = (d * 33) ^ uint32(k[i])
-			d = (d * 33) ^ uint32(k[i+1])
-			d = (d * 33) ^ uint32(k[i+2])
-			d = (d * 33) ^ uint32(k[i+3])
-			i += 4
-		}
-	}
-	switch l - i {
-	case 1:
-	case 2:
-		d = (d * 33) ^ uint32(k[i])
-	case 3:
-		d = (d * 33) ^ uint32(k[i])
-		d = (d * 33) ^ uint32(k[i+1])
-	case 4:
-		d = (d * 33) ^ uint32(k[i])
-		d = (d * 33) ^ uint32(k[i+1])
-		d = (d * 33) ^ uint32(k[i+2])
-	}
-	return d ^ (d >> 16)
+	return MC
 }
 
 // DeleteExpired 删除过期缓存项
@@ -291,4 +230,67 @@ func (mc *memoryCache) getExpiration(timeout ...time.Duration) int64 {
 		return time.Now().Add(timeout[0]).UnixNano()
 	}
 	return 0
+}
+
+// newMemoryCacheWithShards 创建指定分片数的内存缓存
+func newMemoryCacheWithShards(shardCount int) (mc *memoryCache) {
+	// 分片数量
+	if shardCount <= 0 {
+		shardCount = defaultShardCount
+	}
+	// 生成随机种子
+	var (
+		seed uint32
+		max  = big.NewInt(0).SetUint64(uint64(math.MaxUint32))
+	)
+	rnd, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		seed = insecurerand.Uint32()
+	} else {
+		seed = uint32(rnd.Uint64())
+	}
+	// 创建内存缓存对象
+	mc = &memoryCache{
+		shards:     make([]*cacheShard, shardCount),
+		shardCount: uint32(shardCount),
+		seed:       seed,
+	}
+	// 创建分片
+	for i := 0; i < shardCount; i++ {
+		mc.shards[i] = &cacheShard{
+			items: make(map[string]*cacheItem),
+		}
+	}
+	return
+}
+
+// djb33 哈希算法
+func djb33(seed uint32, k string) uint32 {
+	var (
+		l = uint32(len(k))
+		d = 5381 + seed + l
+		i = uint32(0)
+	)
+	if l >= 4 {
+		for i < l-4 {
+			d = (d * 33) ^ uint32(k[i])
+			d = (d * 33) ^ uint32(k[i+1])
+			d = (d * 33) ^ uint32(k[i+2])
+			d = (d * 33) ^ uint32(k[i+3])
+			i += 4
+		}
+	}
+	switch l - i {
+	case 1:
+	case 2:
+		d = (d * 33) ^ uint32(k[i])
+	case 3:
+		d = (d * 33) ^ uint32(k[i])
+		d = (d * 33) ^ uint32(k[i+1])
+	case 4:
+		d = (d * 33) ^ uint32(k[i])
+		d = (d * 33) ^ uint32(k[i+1])
+		d = (d * 33) ^ uint32(k[i+2])
+	}
+	return d ^ (d >> 16)
 }
