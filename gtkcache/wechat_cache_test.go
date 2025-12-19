@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-29 16:15:07
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 23:06:51
+ * @LastEditTime: 2025-12-19 00:08:13
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -54,4 +54,21 @@ func TestNewWechatCache(t *testing.T) {
 	assert.NoError(err)
 	isExist = cache.IsExist("test_key_1")
 	assert.False(isExist)
+
+	icache = gtkcache.NewMemoryCache(time.Second * 1)
+	cache, err = gtkcache.NewWechatCache(ctx, icache)
+	assert.NoError(err)
+	assert.NotNil(cache)
+
+	val = cache.Get("test_key_1")
+	assert.Nil(val)
+	err = cache.Set("test_key_1", 100, time.Second*10)
+	assert.NoError(err)
+	isExist = cache.IsExist("test_key_1")
+	assert.True(isExist)
+	err = cache.Delete("test_key_1")
+	assert.NoError(err)
+	isExist = cache.IsExist("test_key_1")
+	assert.False(isExist)
+	time.Sleep(time.Second * 2)
 }

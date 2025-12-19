@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-18 02:19:12
+ * @LastEditTime: 2025-12-20 01:11:07
  * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -28,13 +28,17 @@ type RedisCache struct {
 
 // 内置 lua 脚本
 var internalScriptMap = map[string]string{
-	"SETGET": `
-	if tonumber(ARGV[2], 10) > 0 then
-		redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
-	else
-		redis.call('SET', KEYS[1], ARGV[1])
+	"ADD_EX": `
+	local val = redis.call('GET', KEYS[1])
+	if not val then
+		if tonumber(ARGV[2], 10) > 0 then
+			redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
+		else
+			redis.call('SET', KEYS[1], ARGV[1])
+		end
+		return ARGV[1]
 	end
-	return redis.call('GET', KEYS[1])
+	return val
 	`,
 
 	"GET_EX": `
@@ -53,12 +57,12 @@ var internalScriptMap = map[string]string{
 		if not val then
 			allKeysExist = false
 			break
-    end
+		end
 	end
 	if allKeysExist then
-    for i = 1, #KEYS do
+		for i = 1, #KEYS do
 			redis.call('PEXPIRE', KEYS[i], ARGV[1])
-    end
+		end
 	end
 	return vals
 	`,
@@ -71,7 +75,7 @@ var internalScriptMap = map[string]string{
 		else
 			redis.call('SET', KEYS[1], ARGV[1])
 		end
-		return redis.call('GET', KEYS[1])
+		return ARGV[1]
 	end
 	if tonumber(ARGV[2], 10) > 0 then
 		redis.call('PEXPIRE', KEYS[1], ARGV[2])
@@ -125,8 +129,8 @@ var internalScriptMap = map[string]string{
 	"SISMEMBER_EX": `
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return 0
-  end
+		return 0
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	return redis.call('SISMEMBER', KEYS[1], ARGV[1])
 	`,
@@ -134,8 +138,8 @@ var internalScriptMap = map[string]string{
 	"SMEMBERS_EX": `
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return nil
-  end
+		return nil
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[1])
 	return redis.call('SMEMBERS', KEYS[1])
 	`,
@@ -144,8 +148,8 @@ var internalScriptMap = map[string]string{
 	local members = redis.call('SPOP', KEYS[1], ARGV[1])
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return members
-  end
+		return members
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	return members
 	`,
@@ -157,12 +161,12 @@ var internalScriptMap = map[string]string{
 		if isExist == 0 then
 			allKeysExist = false
 			break
-  	end
+		end
 	end
 	if allKeysExist then
-    for i = 1, #KEYS do
+		for i = 1, #KEYS do
 			redis.call('PEXPIRE', KEYS[i], ARGV[1])
-    end
+		end
 	end
 	return redis.call('SUNION', unpack(KEYS))
 	`,
@@ -170,8 +174,8 @@ var internalScriptMap = map[string]string{
 	"SCARD_EX": `
 	local count = redis.call('SCARD', KEYS[1])
 	if count == 0 then
-    return count
-  end
+		return count
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[1])
 	return count
 	`,
@@ -180,8 +184,8 @@ var internalScriptMap = map[string]string{
 	local count = redis.call('SREM', KEYS[1], unpack(ARGV, 1, #ARGV - 1))
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return count
-  end
+		return count
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return count
 	`,
@@ -195,8 +199,8 @@ var internalScriptMap = map[string]string{
 	"RANGE_EX": `
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return nil
-  end
+		return nil
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return redis.call(ARGV[1], KEYS[1], unpack(ARGV, 2, #ARGV - 1))
 	`,
@@ -223,8 +227,8 @@ var internalScriptMap = map[string]string{
 	"ZCARD_EX": `
 	local count = redis.call('ZCARD', KEYS[1])
 	if count == 0 then
-    return count
-  end
+		return count
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[1])
 	return count
 	`,
@@ -232,8 +236,8 @@ var internalScriptMap = map[string]string{
 	"ZCOUNT_EX": `
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return 0
-  end
+		return 0
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return redis.call('ZCOUNT', KEYS[1], ARGV[1], ARGV[2])
 	`,
@@ -247,22 +251,18 @@ var internalScriptMap = map[string]string{
 	"RANGEBYSCORE_EX": `
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return nil
-  end
+		return nil
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return redis.call(ARGV[1], KEYS[1], unpack(ARGV, 2, #ARGV - 1))
 	`,
 
 	"RANK_EX": `
-	local isExist = redis.call('EXISTS', KEYS[1])
-	if isExist == 0 then
-    return -1
-  end
-	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	local rank = redis.call(ARGV[1], KEYS[1], ARGV[2])
 	if not rank then
-    return -1
-  end
+		return -1
+	end
+	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return rank
 	`,
 
@@ -270,8 +270,8 @@ var internalScriptMap = map[string]string{
 	local count = redis.call('ZREM', KEYS[1], unpack(ARGV, 1, #ARGV - 1))
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return count
-  end
+		return count
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[#ARGV])
 	return count
 	`,
@@ -280,8 +280,8 @@ var internalScriptMap = map[string]string{
 	local count = redis.call('ZREMRANGEBYRANK', KEYS[1], ARGV[1], ARGV[2])
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return count
-  end
+		return count
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return count
 	`,
@@ -290,22 +290,18 @@ var internalScriptMap = map[string]string{
 	local count = redis.call('ZREMRANGEBYSCORE', KEYS[1], ARGV[1], ARGV[2])
 	local isExist = redis.call('EXISTS', KEYS[1])
 	if isExist == 0 then
-    return count
-  end
+		return count
+	end
 	redis.call('PEXPIRE', KEYS[1], ARGV[3])
 	return count
 	`,
 
 	"ZSCORE_EX": `
-	local isExist = redis.call('EXISTS', KEYS[1])
-	if isExist == 0 then
-    return -1
-  end
-	redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	local score = redis.call('ZSCORE', KEYS[1], ARGV[1])
 	if not score then
-    return -1
-  end
+		return -1
+	end
+	redis.call('PEXPIRE', KEYS[1], ARGV[2])
 	return score
 	`,
 }
@@ -333,14 +329,15 @@ func (rc *RedisCache) Client() (client *gtkredis.RedisClient) {
 	return rc.client
 }
 
-// setget 设置`key`的值，并读取`key`的新值
+// add 添加缓存
 //
-//	当`timeout > 0`时，设置`key`的过期时间
-func (rc *RedisCache) setget(ctx context.Context, key string, val any, timeout ...time.Duration) (newVal any, err error) {
+//	当`key`已存在且未过期时，返回现有值（不修改）
+//	当`key`不存在或已过期时，设置新值并返回新值
+func (rc *RedisCache) add(ctx context.Context, key string, val any, timeout ...time.Duration) (newVal any, err error) {
 	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
-		newVal, err = rc.client.EvalSha(ctx, "SETGET", []string{key}, val, 0)
+		newVal, err = rc.client.EvalSha(ctx, "ADD_EX", []string{key}, val, 0)
 	} else {
-		newVal, err = rc.client.EvalSha(ctx, "SETGET", []string{key}, val, timeout[0].Milliseconds())
+		newVal, err = rc.client.EvalSha(ctx, "ADD_EX", []string{key}, val, timeout[0].Milliseconds())
 	}
 	return
 }
@@ -403,7 +400,7 @@ func (rc *RedisCache) GetOrSet(ctx context.Context, key string, newVal any, time
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-//	注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 GetOrSetFuncLock
+//	注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
 func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	// 获取缓存
 	if val, err = rc.Get(ctx, key, timeout...); err != nil {
@@ -412,71 +409,45 @@ func (rc *RedisCache) GetOrSetFunc(ctx context.Context, key string, f Func, forc
 	if val != nil {
 		return
 	}
-	// 执行函数获取新值
-	var newVal any
-	if newVal, err = f(ctx); err != nil {
+	// 使用 singleflight 确保函数只执行一次
+	var result any
+	if result, err, _ = rc.group.Do(key, func() (v any, e error) {
+		// 获取缓存（double-check）
+		var cVal any
+		if cVal, e = rc.Get(ctx, key, timeout...); e != nil {
+			return
+		}
+		if cVal != nil {
+			v = singleflightValue{val: cVal, fromCache: true}
+			return
+		}
+		// 执行函数获取新值
+		var fVal any
+		if fVal, e = f(ctx); e != nil {
+			return
+		}
+		v = singleflightValue{val: fVal, fromCache: false}
+		return
+	}); err != nil {
 		return
 	}
-	if utils.IsNil(newVal) && !force {
+	sfVal := result.(singleflightValue)
+	if sfVal.fromCache {
+		val = sfVal.val
 		return
 	}
-	// 此处不判断`newVal == nil`是因为防止缓存穿透
-	val, err = rc.setget(ctx, key, newVal, timeout...)
-	return
-}
-
-// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-//	注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
-func (rc *RedisCache) GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	// 获取缓存
-	if val, err = rc.Get(ctx, key, timeout...); err != nil {
+	if utils.IsNil(sfVal.val) && !force {
 		return
 	}
-	if val != nil {
-		return
-	}
-	// 使用 singleflight 确保同一个 key 的函数只执行一次
-	val, err, _ = rc.group.Do(key, func() (v any, e error) {
-		return rc.GetOrSetFunc(ctx, key, f, force, timeout...)
-	})
-	return
+	return rc.add(ctx, key, sfVal.val, timeout...)
 }
 
 // CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-//	注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 CustomGetOrSetFuncLock
-func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
-	// 获取缓存
-	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
-		return
-	}
-	if val != nil {
-		return
-	}
-	// 执行函数获取新值
-	var newVal any
-	if newVal, err = f(ctx); err != nil {
-		return
-	}
-	if utils.IsNil(newVal) && !force {
-		return
-	}
-	// 此处不判断`newVal == nil`是因为防止缓存穿透
-	val, err = cc.Set(ctx, keys, args, newVal, timeout...)
-	return
-}
-
-// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
-//
-//	当`timeout > 0`时，设置/重置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 //	注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
-func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
+func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error) {
 	// 获取缓存
 	if val, err = cc.Get(ctx, keys, args, timeout...); err != nil {
 		return
@@ -489,11 +460,37 @@ func (rc *RedisCache) CustomGetOrSetFuncLock(ctx context.Context, keys []string,
 	if sfKey, err = generateSingleflightKey(keys, args); err != nil {
 		return
 	}
-	// 使用 singleflight 确保同一个 key 的函数只执行一次
-	val, err, _ = rc.group.Do(sfKey, func() (v any, e error) {
-		return rc.CustomGetOrSetFunc(ctx, keys, args, cc, f, force, timeout...)
-	})
-	return
+	// 使用 singleflight 确保函数只执行一次
+	var result any
+	if result, err, _ = rc.group.Do(sfKey, func() (v any, e error) {
+		// 获取缓存（double-check）
+		var cVal any
+		if cVal, e = cc.Get(ctx, keys, args, timeout...); e != nil {
+			return
+		}
+		if cVal != nil {
+			v = singleflightValue{val: cVal, fromCache: true}
+			return
+		}
+		// 执行函数获取新值
+		var fVal any
+		if fVal, e = f(ctx); e != nil {
+			return
+		}
+		v = singleflightValue{val: fVal, fromCache: false}
+		return
+	}); err != nil {
+		return
+	}
+	sfVal := result.(singleflightValue)
+	if sfVal.fromCache {
+		val = sfVal.val
+		return
+	}
+	if utils.IsNil(sfVal.val) && !force {
+		return
+	}
+	return cc.Add(ctx, keys, args, sfVal.val, timeout...)
 }
 
 // Set 设置缓存
@@ -553,7 +550,7 @@ func (rc *RedisCache) SetIfNotExist(ctx context.Context, key string, val any, ti
 //
 //	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 //	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-//	注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 SetIfNotExistFuncLock
+//	注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
 func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
 	// 缓存是否存在
 	var isExist bool
@@ -563,59 +560,36 @@ func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func,
 	if isExist {
 		return
 	}
-	// 执行函数获取新值
-	var val any
-	if val, err = f(ctx); err != nil {
-		return
-	}
-	if utils.IsNil(val) && !force {
-		return
-	}
-	// 此处不判断`val == nil`是因为防止缓存穿透
-	return rc.SetIfNotExist(ctx, key, val, timeout...)
-}
-
-// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在写入互斥锁内执行，以确保并发安全
-//
-//	当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-//	当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-func (rc *RedisCache) SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error) {
-	// 缓存是否存在
-	var isExist bool
-	if isExist, err = rc.IsExist(ctx, key); err != nil {
-		return
-	}
-	if isExist {
-		return
-	}
 	// 使用 singleflight 确保函数只执行一次
-	var val any
-	if val, err, _ = rc.group.Do(key, func() (v any, e error) {
-		// double-check：再次检查是否已存在
-		var isExist bool
-		if isExist, err = rc.IsExist(ctx, key); err != nil {
+	var result any
+	if result, err, _ = rc.group.Do(key, func() (v any, e error) {
+		// 缓存是否存在（double-check）
+		var cIsExist bool
+		if cIsExist, e = rc.IsExist(ctx, key); e != nil {
 			return
 		}
-		if isExist {
+		if cIsExist {
+			v = singleflightValue{val: nil, fromCache: true}
 			return
 		}
-		// 只执行函数，不设置缓存
-		return f(ctx)
+		// 执行函数获取新值
+		var fVal any
+		if fVal, e = f(ctx); e != nil {
+			return
+		}
+		v = singleflightValue{val: fVal, fromCache: false}
+		return
 	}); err != nil {
 		return
 	}
-	// 再次检查是否已存在（可能在等待 singleflight 期间被设置）
-	if isExist, err = rc.IsExist(ctx, key); err != nil {
+	sfVal := result.(singleflightValue)
+	if sfVal.fromCache {
 		return
 	}
-	if isExist {
+	if utils.IsNil(sfVal.val) && !force {
 		return
 	}
-	if utils.IsNil(val) && !force {
-		return
-	}
-	// 此处不判断`val == nil`是因为防止缓存穿透
-	return rc.SetIfNotExist(ctx, key, val, timeout...)
+	return rc.SetIfNotExist(ctx, key, sfVal.val, timeout...)
 }
 
 // Update 当`key`存在时，则使用`val`更新`key`的值，返回`key`的旧值
@@ -686,6 +660,7 @@ func (rc *RedisCache) Delete(ctx context.Context, keys ...string) (err error) {
 	if len(keys) == 0 {
 		return
 	}
+
 	args := make([]any, 0, len(keys))
 	for _, v := range keys {
 		args = append(args, v)

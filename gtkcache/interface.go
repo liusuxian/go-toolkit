@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-18 02:11:18
+ * @LastEditTime: 2025-12-20 02:02:07
  * @Description: 缓存接口
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,8 +11,6 @@ package gtkcache
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"time"
 )
 
@@ -22,9 +20,13 @@ type Func func(ctx context.Context) (val any, err error)
 // ICustomCache 自定义缓存接口
 type ICustomCache interface {
 	// Get 获取缓存
+	//   当`timeout > 0`且缓存命中时，设置/重置`keys`的过期时间
 	Get(ctx context.Context, keys []string, args []any, timeout ...time.Duration) (val any, err error)
-	// Set 设置缓存
-	Set(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error)
+	// Add 添加缓存
+	//   当`keys`已存在且未过期时，返回现有值（不修改）
+	//   当`keys`不存在或已过期时，设置新值并返回新值
+	//   当`timeout > 0`时，设置/重置`keys`的过期时间
+	Add(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error)
 }
 
 // ICache 缓存接口
@@ -41,23 +43,13 @@ type ICache interface {
 	// GetOrSetFunc 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
 	//	 当`timeout > 0`时，设置/重置`key`的过期时间
 	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 GetOrSetFuncLock
-	GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
-	// GetOrSetFuncLock 检索并返回`key`的值，或者当`key`不存在时，则使用函数`f`的结果设置`key`的值
-	//	 当`timeout > 0`时，设置/重置`key`的过期时间
-	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 	//	 注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
-	GetOrSetFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
+	GetOrSetFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// CustomGetOrSetFunc 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
 	//	 当`timeout > 0`时，设置/重置`key`的过期时间
 	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 CustomGetOrSetFuncLock
-	CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
-	// CustomGetOrSetFuncLock 从缓存中获取指定键`keys`的值，如果缓存未命中，则使用函数`f`的结果设置`keys`的值
-	//	 当`timeout > 0`时，设置/重置`key`的过期时间
-	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
 	//	 注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
-	CustomGetOrSetFuncLock(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
+	CustomGetOrSetFunc(ctx context.Context, keys []string, args []any, cc ICustomCache, f Func, force bool, timeout ...time.Duration) (val any, err error)
 	// Set 设置缓存
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error)
@@ -70,12 +62,8 @@ type ICache interface {
 	// SetIfNotExistFunc 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功
 	//	 当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-	//	 注意：高并发时函数f会被多次执行，可能导致缓存击穿，如需防止请使用 SetIfNotExistFuncLock
+	//	 注意：使用`singleflight`机制确保相同`key`的函数`f`只执行一次，其他并发请求等待并共享第一个请求的执行结果，有效防止缓存击穿
 	SetIfNotExistFunc(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error)
-	// SetIfNotExistFuncLock 当`key`不存在时，则使用函数`f`的结果设置`key`的值，返回是否设置成功，函数`f`是在写入互斥锁内执行，以确保并发安全
-	//	 当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
-	//	 当`force = true`时，可防止缓存穿透（即使`f`返回`nil`也会缓存）
-	SetIfNotExistFuncLock(ctx context.Context, key string, f Func, force bool, timeout ...time.Duration) (ok bool, err error)
 	// Update 当`key`存在时，则使用`val`更新`key`的值，返回`key`的旧值
 	//   当`timeout > 0`且`key`更新成功时，更新`key`的过期时间
 	Update(ctx context.Context, key string, val any, timeout ...time.Duration) (oldVal any, isExist bool, err error)
@@ -172,19 +160,6 @@ type IRedisCache interface {
 	/* TODO List（列表）*/
 }
 
-// IMemoryCache Memory 缓存接口
-type IMemoryCache interface {
-	ICache
-	// Save 保存缓存到 writer
-	Save(w io.Writer) (err error)
-	// Load 从 reader 加载缓存
-	Load(r io.Reader) (err error)
-	// SaveToFile 保存缓存到文件
-	SaveToFile(filename string) (err error)
-	// LoadFromFile 从文件加载缓存
-	LoadFromFile(filename string) (err error)
-}
-
 // IWechatCache 微信缓存接口（适配 github.com/silenceper/wechat/v2 库的缓存）
 type IWechatCache interface {
 	Get(key string) (val any)                                   // 获取缓存
@@ -200,20 +175,4 @@ type IContextWechatCache interface {
 	SetContext(ctx context.Context, key string, val any, timeout time.Duration) (err error) // 设置缓存
 	IsExistContext(ctx context.Context, key string) (isExist bool)                          // 缓存是否存在
 	DeleteContext(ctx context.Context, key string) (err error)                              // 删除缓存
-}
-
-// generateSingleflightKey 生成 singleflight 的唯一 key
-func generateSingleflightKey(keys []string, args []any) (uniqueKey string, err error) {
-	var (
-		data = map[string]any{
-			"keys": keys,
-			"args": args,
-		}
-		jsonBytes []byte
-	)
-	if jsonBytes, err = json.Marshal(data); err != nil {
-		return
-	}
-	uniqueKey = string(jsonBytes)
-	return
 }

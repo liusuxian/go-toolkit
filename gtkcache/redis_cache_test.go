@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-16 02:01:50
+ * @LastEditTime: 2025-12-20 02:49:51
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -27,15 +27,16 @@ type AAA struct {
 	A     int
 	B     float64
 	C     string
-	cache *gtkcache.RedisCache
+	cache gtkcache.ICache
 }
 
 func (a *AAA) Get(ctx context.Context, keys []string, args []any, timeout ...time.Duration) (val any, err error) {
 	return
 }
 
-func (a *AAA) Set(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error) {
-	script := `
+func (a *AAA) Add(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error) {
+	if redisCache, ok := a.cache.(*gtkcache.RedisCache); ok {
+		script := `
 		local result = redis.call('PSETEX', KEYS[1], ARGV[3], ARGV[1])
 		if not result['ok'] then
 			return false
@@ -46,7 +47,9 @@ func (a *AAA) Set(ctx context.Context, keys []string, args []any, newVal any, ti
 		end
 		return redis.call('MGET', KEYS[1], KEYS[2])
 		`
-	val, err = a.cache.Client().Eval(ctx, script, keys, 1000, 2000, 120000)
+		val, err = redisCache.Client().Eval(ctx, script, keys, 1000, 2000, 120000)
+		return
+	}
 	return
 }
 
@@ -532,7 +535,7 @@ func TestRedisCacheSortedSet(t *testing.T) {
 	assert.Equal(float64(-1), score)
 }
 
-func TestRedisCacheGetOrSetFuncLock(t *testing.T) {
+func TestRedisCacheGetOrSetFunc(t *testing.T) {
 	var (
 		ctx    = context.Background()
 		r      = miniredis.RunT(t)
@@ -556,13 +559,14 @@ func TestRedisCacheGetOrSetFuncLock(t *testing.T) {
 	)
 	// 模拟100个并发请求同时访问同一个不存在的key
 	for i := range concurrency {
+		index := i
 		wg.Go(func() {
-			val, e := cache.GetOrSetFuncLock(ctx, key, func(ctx context.Context) (any, error) {
+			val, err := cache.GetOrSetFunc(ctx, key, func(ctx context.Context) (any, error) {
 				atomic.AddInt32(&executeCount, 1)
 				time.Sleep(10 * time.Millisecond)
-				return fmt.Sprintf("value_%d", i), nil
+				return fmt.Sprintf("value_%d", index), nil
 			}, false, time.Second*10)
-			assert.NoError(e)
+			assert.NoError(err)
 			assert.NotNil(val)
 		})
 	}
@@ -571,7 +575,7 @@ func TestRedisCacheGetOrSetFuncLock(t *testing.T) {
 	assert.Equal(int32(1), finalCount, "函数应该只执行1次，实际执行了%d次", finalCount)
 }
 
-func TestRedisCacheSetIfNotExistFuncLock(t *testing.T) {
+func TestRedisCacheSetIfNotExistFunc(t *testing.T) {
 	var (
 		ctx    = context.Background()
 		r      = miniredis.RunT(t)
@@ -596,13 +600,14 @@ func TestRedisCacheSetIfNotExistFuncLock(t *testing.T) {
 	)
 	// 模拟100个并发请求同时尝试设置同一个key
 	for i := range concurrency {
+		index := i
 		wg.Go(func() {
-			ok, e := cache.SetIfNotExistFuncLock(ctx, key, func(ctx context.Context) (any, error) {
+			ok, err := cache.SetIfNotExistFunc(ctx, key, func(ctx context.Context) (any, error) {
 				atomic.AddInt32(&executeCount, 1)
 				time.Sleep(10 * time.Millisecond)
-				return fmt.Sprintf("value_%d", i), nil
+				return fmt.Sprintf("value_%d", index), nil
 			}, false, time.Second*10)
-			assert.NoError(e)
+			assert.NoError(err)
 			if ok {
 				atomic.AddInt32(&successCount, 1)
 			}
@@ -616,27 +621,36 @@ func TestRedisCacheSetIfNotExistFuncLock(t *testing.T) {
 }
 
 type SimpleCustomCache struct {
-	cache *gtkcache.RedisCache
+	cache gtkcache.ICache
 }
 
 func (s *SimpleCustomCache) Get(ctx context.Context, keys []string, args []any, timeout ...time.Duration) (val any, err error) {
 	// 简单实现：使用第一个 key
 	if len(keys) > 0 {
-		val, err = s.cache.Get(ctx, keys[0], timeout...)
+		if redisCache, ok := s.cache.(*gtkcache.RedisCache); ok {
+			return redisCache.Get(ctx, keys[0], timeout...)
+		}
+		return s.cache.Get(ctx, keys[0], timeout...)
 	}
 	return
 }
 
-func (s *SimpleCustomCache) Set(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error) {
+func (s *SimpleCustomCache) Add(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error) {
 	// 简单实现：使用第一个 key 设置值
 	if len(keys) > 0 {
+		if redisCache, ok := s.cache.(*gtkcache.RedisCache); ok {
+			err = redisCache.Set(ctx, keys[0], newVal, timeout...)
+			val = newVal
+			return
+		}
 		err = s.cache.Set(ctx, keys[0], newVal, timeout...)
 		val = newVal
+		return
 	}
 	return
 }
 
-func TestRedisCacheCustomGetOrSetFuncLock(t *testing.T) {
+func TestRedisCacheCustomGetOrSetFunc(t *testing.T) {
 	var (
 		ctx    = context.Background()
 		r      = miniredis.RunT(t)
@@ -662,13 +676,14 @@ func TestRedisCacheCustomGetOrSetFuncLock(t *testing.T) {
 	customCache := &SimpleCustomCache{cache: cache}
 	// 模拟100个并发请求同时访问同一个自定义缓存key
 	for i := range concurrency {
+		index := i
 		wg.Go(func() {
-			val, e := cache.CustomGetOrSetFuncLock(ctx, keys, args, customCache, func(ctx context.Context) (any, error) {
+			val, err := cache.CustomGetOrSetFunc(ctx, keys, args, customCache, func(ctx context.Context) (any, error) {
 				atomic.AddInt32(&executeCount, 1)
 				time.Sleep(10 * time.Millisecond)
-				return fmt.Sprintf("custom_value_%d", i), nil
+				return fmt.Sprintf("custom_value_%d", index), nil
 			}, false, time.Second*10)
-			assert.NoError(e)
+			assert.NoError(err)
 			assert.NotNil(val)
 		})
 	}

@@ -63,21 +63,21 @@ type PipelineResult struct {
 // 内置 lua 脚本
 var internalScriptMap = map[string]string{
 	"COMPARE_AND_DELETE": `
-		if redis.call("GET", KEYS[1]) == ARGV[1] then
-			return redis.call("DEL", KEYS[1])
-		else
-			return 0
-		end
-		`,
+	if redis.call("GET", KEYS[1]) == ARGV[1] then
+		return redis.call("DEL", KEYS[1])
+	else
+		return 0
+	end
+	`,
 
 	"POLLING": `
-		local next = redis.call("INCRBY", KEYS[1], 1)
-		if next > tonumber(ARGV[1], 10) then
-			redis.call("SET", KEYS[1], 1)
-			return 0
-		end
-		return next-1
-		`,
+	local next = redis.call("INCRBY", KEYS[1], 1)
+	if next > tonumber(ARGV[1], 10) then
+		redis.call("SET", KEYS[1], 1)
+		return 0
+	end
+	return next-1
+	`,
 }
 
 // NewClient 创建 redis 客户端

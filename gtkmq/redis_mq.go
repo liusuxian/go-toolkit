@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-17 19:07:27
+ * @LastEditTime: 2025-12-19 01:23:04
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -61,44 +61,103 @@ type redisMQClient struct {
 // 内置 lua 脚本
 var internalScriptMap = map[string]string{
 	"XGROUP_CREATE": `
-		local partitionNum = tonumber(ARGV[1], 10) or 12 -- 默认 12 个分区
-		for i = 0, partitionNum - 1 do
-			local partitionQueue = KEYS[1] .. "@" .. i
-			local partitionGroup = KEYS[2] .. "@" .. i
-			-- 检查指定的流是否存在
-			local partitionQueueExists = tonumber(redis.call('EXISTS', partitionQueue), 10)
-			if partitionQueueExists == 0 then
-				-- 如果流不存在，创建流和消费者组
-				redis.call("XGROUP", "CREATE", partitionQueue, partitionGroup, ARGV[2], "MKSTREAM")
-			else
-				-- 如果流存在，检查消费者组是否存在
-				local partitionGroupExists = false
-				local partitionGroups = redis.call("XINFO", "GROUPS", partitionQueue)
-				for _, group in ipairs(partitionGroups) do
-					if group[2] == partitionGroup then
-						partitionGroupExists = true
-						break
-					end
-				end
-				-- 如果消费者组不存在，创建消费者组
-				if not partitionGroupExists then
-					redis.call("XGROUP", "CREATE", partitionQueue, partitionGroup, ARGV[2], "MKSTREAM")
+	local partitionNum = tonumber(ARGV[1], 10) or 12 -- 默认 12 个分区
+	for i = 0, partitionNum - 1 do
+		local partitionQueue = KEYS[1] .. "@" .. i
+		local partitionGroup = KEYS[2] .. "@" .. i
+		-- 检查指定的流是否存在
+		local partitionQueueExists = tonumber(redis.call('EXISTS', partitionQueue), 10)
+		if partitionQueueExists == 0 then
+			-- 如果流不存在，创建流和消费者组
+			redis.call("XGROUP", "CREATE", partitionQueue, partitionGroup, ARGV[2], "MKSTREAM")
+		else
+			-- 如果流存在，检查消费者组是否存在
+			local partitionGroupExists = false
+			local partitionGroups = redis.call("XINFO", "GROUPS", partitionQueue)
+			for _, group in ipairs(partitionGroups) do
+				if group[2] == partitionGroup then
+					partitionGroupExists = true
+					break
 				end
 			end
+			-- 如果消费者组不存在，创建消费者组
+			if not partitionGroupExists then
+				redis.call("XGROUP", "CREATE", partitionQueue, partitionGroup, ARGV[2], "MKSTREAM")
+			end
 		end
-    `,
+	end
+	`,
 
 	"SEND_MESSAGE": `
-		local partition = tonumber(ARGV[1], 10) or -1
-		local targetPartition = 0
-		-- 寻找目标分区
-		if partition < 0 then
-			-- 如果 partition 为负数，则选择分区长度最短的队列
-			local partitionNum = tonumber(ARGV[2], 10) or 12 -- 默认 12 个分区
-			local minPartitionQueueLen = math.huge
+	local partition = tonumber(ARGV[1], 10) or -1
+	local targetPartition = 0
+	-- 寻找目标分区
+	if partition < 0 then
+		-- 如果 partition 为负数，则选择分区长度最短的队列
+		local partitionNum = tonumber(ARGV[2], 10) or 12 -- 默认 12 个分区
+		local minPartitionQueueLen = math.huge
 
+		for i = 0, partitionNum - 1 do
+			local partitionQueue = KEYS[1] .. "@" .. i
+			local rawLen = redis.call('XLEN', partitionQueue)
+			local partitionQueueLen = 0
+			-- 检查rawLen的类型来处理不同的返回值
+			if type(rawLen) == "table" then
+				if #rawLen == 0 then
+					partitionQueueLen = 0
+				else
+					partitionQueueLen = tonumber(rawLen[1], 10) or 0
+				end
+			else
+				partitionQueueLen = tonumber(rawLen, 10) or 0
+			end
+			-- 在第一次循环时, minPartitionQueueLen 会被设置为第一个队列的长度
+			if partitionQueueLen < minPartitionQueueLen then
+				minPartitionQueueLen = partitionQueueLen
+				targetPartition = i
+			end
+		end
+	else
+		-- 如果 partition 为非负整数，则选择指定的分区
+		targetPartition = partition
+	end
+	-- 发送消息到目标分区
+	local targetPartitionQueue = KEYS[1] .. "@" .. targetPartition
+	redis.call("XADD", targetPartitionQueue, "*", "key", ARGV[3], "value", ARGV[4], "timestamp", ARGV[5], "expire_time", ARGV[6])
+	return targetPartition
+	`,
+
+	"SEND_DELAY_MESSAGES": `
+	-- FNV-1a 32位哈希函数(与 Go 的 fnv.New32a() 完全一致)
+	local function fnv1a32(str)
+		local hash = 2166136261  -- FNV-1a offset basis
+		local prime = 16777619   -- FNV prime
+		for i = 1, #str do
+			local byte = string.byte(str, i)
+			hash = bit32.bxor(hash, byte)  -- hash XOR byte
+			hash = (hash * prime) % 4294967296  -- (hash * prime) mod 2^32
+		end
+		return hash
+	end
+	-- 获取到期的延迟消息
+	local messages = redis.call('ZRANGEBYSCORE', KEYS[1], 0, tonumber(ARGV[1], 10), 'LIMIT', 0, tonumber(ARGV[2], 10))
+	local partitionNum = tonumber(ARGV[3], 10) or 12 -- 默认 12 个分区
+	local transferredCount = 0
+	
+	for _, msgJson in ipairs(messages) do
+		-- 解析消息
+		local msg = cjson.decode(msgJson)
+		-- 寻找目标分区
+		local targetPartition = 0
+		if msg.key and msg.key ~= "" then
+			-- 根据 key 计算分区（与 Go 代码完全一致）
+			local hash = fnv1a32(msg.key)
+			targetPartition = hash % partitionNum
+		else
+			-- 如果 msg.key 为空，则选择分区长度最短的队列
+			local minPartitionQueueLen = math.huge
 			for i = 0, partitionNum - 1 do
-				local partitionQueue = KEYS[1] .. "@" .. i
+				local partitionQueue = KEYS[2] .. "@" .. i
 				local rawLen = redis.call('XLEN', partitionQueue)
 				local partitionQueueLen = 0
 				-- 检查rawLen的类型来处理不同的返回值
@@ -117,77 +176,18 @@ var internalScriptMap = map[string]string{
 					targetPartition = i
 				end
 			end
-		else
-			-- 如果 partition 为非负整数，则选择指定的分区
-			targetPartition = partition
 		end
 		-- 发送消息到目标分区
-		local targetPartitionQueue = KEYS[1] .. "@" .. targetPartition
-		redis.call("XADD", targetPartitionQueue, "*", "key", ARGV[3], "value", ARGV[4], "timestamp", ARGV[5], "expire_time", ARGV[6])
-		return targetPartition
-		`,
-
-	"SEND_DELAY_MESSAGES": `
-		-- FNV-1a 32位哈希函数(与 Go 的 fnv.New32a() 完全一致)
-		local function fnv1a32(str)
-			local hash = 2166136261  -- FNV-1a offset basis
-			local prime = 16777619   -- FNV prime
-			for i = 1, #str do
-				local byte = string.byte(str, i)
-				hash = bit32.bxor(hash, byte)  -- hash XOR byte
-				hash = (hash * prime) % 4294967296  -- (hash * prime) mod 2^32
-			end
-			return hash
+		local targetPartitionQueue = KEYS[2] .. "@" .. targetPartition
+		local streamId = redis.call("XADD", targetPartitionQueue, "*", "key", msg.key or "", "value", cjson.encode(msg.data), "timestamp", ARGV[1], "expire_time", ARGV[4])
+		if streamId then
+			-- Stream 添加成功，从 ZSET 删除
+			redis.call('ZREM', KEYS[1], msgJson)
+			transferredCount = transferredCount + 1
 		end
-		-- 获取到期的延迟消息
-		local messages = redis.call('ZRANGEBYSCORE', KEYS[1], 0, tonumber(ARGV[1], 10), 'LIMIT', 0, tonumber(ARGV[2], 10))
-		local partitionNum = tonumber(ARGV[3], 10) or 12 -- 默认 12 个分区
-		local transferredCount = 0
-		
-		for _, msgJson in ipairs(messages) do
-			-- 解析消息
-			local msg = cjson.decode(msgJson)
-			-- 寻找目标分区
-			local targetPartition = 0
-			if msg.key and msg.key ~= "" then
-				-- 根据 key 计算分区（与 Go 代码完全一致）
-				local hash = fnv1a32(msg.key)
-				targetPartition = hash % partitionNum
-			else
-				-- 如果 msg.key 为空，则选择分区长度最短的队列
-				local minPartitionQueueLen = math.huge
-				for i = 0, partitionNum - 1 do
-					local partitionQueue = KEYS[2] .. "@" .. i
-					local rawLen = redis.call('XLEN', partitionQueue)
-					local partitionQueueLen = 0
-					-- 检查rawLen的类型来处理不同的返回值
-					if type(rawLen) == "table" then
-						if #rawLen == 0 then
-							partitionQueueLen = 0
-						else
-							partitionQueueLen = tonumber(rawLen[1], 10) or 0
-						end
-					else
-						partitionQueueLen = tonumber(rawLen, 10) or 0
-					end
-					-- 在第一次循环时, minPartitionQueueLen 会被设置为第一个队列的长度
-					if partitionQueueLen < minPartitionQueueLen then
-						minPartitionQueueLen = partitionQueueLen
-						targetPartition = i
-					end
-				end
-			end
-			-- 发送消息到目标分区
-			local targetPartitionQueue = KEYS[2] .. "@" .. targetPartition
-			local streamId = redis.call("XADD", targetPartitionQueue, "*", "key", msg.key or "", "value", cjson.encode(msg.data), "timestamp", ARGV[1], "expire_time", ARGV[4])
-			if streamId then
-				-- Stream 添加成功，从 ZSET 删除
-				redis.call('ZREM', KEYS[1], msgJson)
-				transferredCount = transferredCount + 1
-			end
-		end
-		return transferredCount
-		`,
+	end
+	return transferredCount
+	`,
 }
 
 const (
