@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 16:52:17
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:44:49
+ * @LastEditTime: 2025-12-22 23:20:07
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -63,7 +63,7 @@ func ToBytesE(i any) (iv []byte, err error) {
 		case reflect.Array, reflect.Slice:
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]byte, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				var intv uint8
 				if intv, err = ToUint8E(originValueAndKind.OriginValue.Index(j).Interface()); err != nil {
 					return []byte{}, convertError(i, "[]byte")

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-19 11:58:36
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:48:01
+ * @LastEditTime: 2025-12-22 23:34:16
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -214,7 +214,7 @@ func ToUint64SliceE(i any) (iv []uint64, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]uint64, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToUint64E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []uint64{}, convertError(i, "[]uint64")
@@ -427,7 +427,7 @@ func ToUint32SliceE(i any) (iv []uint32, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]uint32, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToUint32E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []uint32{}, convertError(i, "[]uint32")
@@ -640,7 +640,7 @@ func ToUint16SliceE(i any) (iv []uint16, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]uint16, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToUint16E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []uint16{}, convertError(i, "[]uint16")
@@ -853,7 +853,7 @@ func ToUint8SliceE(i any) (iv []uint8, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]uint8, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToUint8E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []uint8{}, convertError(i, "[]uint8")
@@ -1066,7 +1066,7 @@ func ToUintSliceE(i any) (iv []uint, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]uint, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToUintE(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []uint{}, convertError(i, "[]uint")

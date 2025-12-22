@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 20:35:57
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 13:44:30
+ * @LastEditTime: 2025-12-20 22:26:11
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -19,7 +19,7 @@ import (
 // LeEncode
 func LeEncode(vals ...any) (bs []byte) {
 	buf := new(bytes.Buffer)
-	for i := 0; i < len(vals); i++ {
+	for i := range vals {
 		if vals[i] == nil {
 			return buf.Bytes()
 		}
@@ -77,7 +77,7 @@ func LeEncodeByLength(length int, vals ...any) (bs []byte) {
 // LeDecode
 func LeDecode(b []byte, vals ...any) (err error) {
 	var buf = bytes.NewBuffer(b)
-	for i := 0; i < len(vals); i++ {
+	for i := range vals {
 		if err = binary.Read(buf, binary.LittleEndian, vals[i]); err != nil {
 			err = fmt.Errorf("binary.read failed: %w", err)
 			return
@@ -212,7 +212,7 @@ func LeDecodeToInt(b []byte) (val int) {
 	}
 }
 
-// LeDecodeToInt
+// LeDecodeToUint
 func LeDecodeToUint(b []byte) (val uint) {
 	if len(b) < 2 {
 		return uint(LeDecodeToUint8(b))

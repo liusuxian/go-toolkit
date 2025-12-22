@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-08 14:00:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 15:31:13
+ * @LastEditTime: 2025-12-22 23:07:35
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -65,21 +65,22 @@ func TestLinkedList_PushBack(t *testing.T) {
 func TestLinkedList_InsertBefore(t *testing.T) {
 	var (
 		assert = assert.New(t)
-		index  = 0
 		list   = gtkdoubly.NewLinkedList()
 		err    error
 	)
 
 	assert.Equal(0, list.Len())
-	err = list.InsertBefore("100", gtkdoubly.Node{Uuid: "9", Value: 9}, gtkdoubly.Node{Uuid: "9", Value: 100}, gtkdoubly.Node{Uuid: "8", Value: 8}, gtkdoubly.Node{Uuid: "7", Value: 7})
-	assert.NoError(err)
+	list.PushFront(gtkdoubly.Node{Uuid: "9", Value: 9}, gtkdoubly.Node{Uuid: "9", Value: 100}, gtkdoubly.Node{Uuid: "8", Value: 8}, gtkdoubly.Node{Uuid: "7", Value: 7})
 	assert.Equal(3, list.Len())
 	err = list.InsertBefore("100", gtkdoubly.Node{Uuid: "9", Value: 200})
 	assert.Error(err)
 
+	// 当前链表: 7 -> 8 -> 9(值100)
+	// 在 "7" 之前插入: [6, 6(更新值), 5, 4, 3, 2, 1, 0]
+	// 预期结果: 6(值100) -> 5 -> 4 -> 3 -> 2 -> 1 -> 0 -> 7 -> 8 -> 9(值100)
 	err = list.InsertBefore("7", []gtkdoubly.Node{
 		{Uuid: "6", Value: 6},
-		{Uuid: "6", Value: 100},
+		{Uuid: "6", Value: 100}, // 重复的uuid，会更新值
 		{Uuid: "5", Value: 5},
 		{Uuid: "4", Value: 4},
 		{Uuid: "3", Value: 3},
@@ -90,9 +91,15 @@ func TestLinkedList_InsertBefore(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(10, list.Len())
 
+	// 验证正确的顺序: 6(值100) -> 5 -> 4 -> 3 -> 2 -> 1 -> 0 -> 7 -> 8 -> 9(值100)
+	expectedOrder := []string{"6", "5", "4", "3", "2", "1", "0", "7", "8", "9"}
+	expectedValues := []int{100, 5, 4, 3, 2, 1, 0, 7, 8, 100} // 注意 uuid "6" 和 "9" 的值都被更新了
+
 	iterator := list.NewIterator()
+	index := 0
 	for node := iterator.Next(); node != nil; node = iterator.Next() {
-		assert.Equal(strconv.Itoa(index), node.Uuid)
+		assert.Equal(expectedOrder[index], node.Uuid, "Position %d uuid mismatch", index)
+		assert.Equal(expectedValues[index], node.Value, "Position %d value mismatch", index)
 		t.Logf("node: %+v", node)
 		index++
 	}
@@ -107,8 +114,7 @@ func TestLinkedList_InsertAfter(t *testing.T) {
 	)
 
 	assert.Equal(0, list.Len())
-	err = list.InsertAfter("100", gtkdoubly.Node{Uuid: "0", Value: 0}, gtkdoubly.Node{Uuid: "0", Value: 100}, gtkdoubly.Node{Uuid: "1", Value: 1}, gtkdoubly.Node{Uuid: "2", Value: 2})
-	assert.NoError(err)
+	list.PushBack(gtkdoubly.Node{Uuid: "0", Value: 0}, gtkdoubly.Node{Uuid: "0", Value: 100}, gtkdoubly.Node{Uuid: "1", Value: 1}, gtkdoubly.Node{Uuid: "2", Value: 2})
 	assert.Equal(3, list.Len())
 	err = list.InsertAfter("100", gtkdoubly.Node{Uuid: "0", Value: 200})
 	assert.Error(err)
@@ -199,13 +205,13 @@ func TestLinkedList_Poll(t *testing.T) {
 	}...)
 	assert.Equal(10, list.Len())
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		node, err = list.Poll()
 		assert.NoError(err)
 		assert.Equal(strconv.Itoa(i), node.Uuid)
 		t.Logf("node: %+v", node)
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		node, err = list.Poll()
 		assert.NoError(err)
 		assert.Equal(strconv.Itoa(i), node.Uuid)
@@ -237,7 +243,7 @@ func TestLinkedList_GetCurrentAndMoveToNext(t *testing.T) {
 	}...)
 	assert.Equal(10, list.Len())
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		node, err = list.GetCurrentAndMoveToNext()
 		assert.NoError(err)
 		assert.Equal(strconv.Itoa(i), node.Uuid)

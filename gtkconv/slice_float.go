@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-05 14:55:53
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:46:29
+ * @LastEditTime: 2025-12-22 23:30:34
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -214,7 +214,7 @@ func ToFloat64SliceE(i any) (iv []float64, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]float64, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				floatv, err := ToFloat64E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []float64{}, convertError(i, "[]float64")
@@ -427,7 +427,7 @@ func ToFloat32SliceE(i any) (iv []float32, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]float32, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				floatv, err := ToFloat32E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []float32{}, convertError(i, "[]float32")

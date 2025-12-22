@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-04 14:22:21
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:41:57
+ * @LastEditTime: 2025-12-22 23:25:13
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -36,7 +36,7 @@ type PersonTag struct {
 	Name    string      `json:"name" struct:"name1" dc:"name"`
 	Age     int         `json:"age" struct:"age1" dc:"age"`
 	Address *AddressTag `json:"address" struct:"address1" dc:"address"`
-	sex     int         `json:"sex" struct:"sex1" dc:"sex"`
+	sex     int         `json:"-" struct:"sex1" dc:"sex"`
 }
 
 func TestToStringMapE(t *testing.T) {

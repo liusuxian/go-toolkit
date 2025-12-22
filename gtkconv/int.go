@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-03 17:24:03
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:36:40
+ * @LastEditTime: 2025-12-22 23:24:26
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -131,7 +131,7 @@ func ToInt32E(i any) (iv int32, err error) {
 }
 
 // ToInt16E 将 any 转换为 int16 类型
-func ToInt16E(i interface{}) (iv int16, err error) {
+func ToInt16E(i any) (iv int16, err error) {
 	i = indirect(i)
 
 	intv, ok := toInt(i)
@@ -247,7 +247,7 @@ func ToInt8E(i any) (iv int8, err error) {
 }
 
 // ToIntE 将 any 转换为 int 类型
-func ToIntE(i interface{}) (iv int, err error) {
+func ToIntE(i any) (iv int, err error) {
 	i = indirect(i)
 
 	intv, ok := toInt(i)

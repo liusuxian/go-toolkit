@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 21:20:27
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 21:39:50
+ * @LastEditTime: 2025-12-20 22:22:06
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -91,8 +91,6 @@ func TestLeEncodeInt(t *testing.T) {
 	assert := assert.New(t)
 	expected := make([]byte, 4)
 	binary.LittleEndian.PutUint32(expected, uint32(123456))
-	t.Log("expected:", expected)
 	actual := gtkbinary.LeEncode(123456)
-	t.Log("actual:", actual)
 	assert.Equal(expected, actual)
 }

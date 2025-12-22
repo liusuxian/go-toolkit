@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 16:52:17
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 22:27:11
+ * @LastEditTime: 2025-12-22 23:49:40
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,7 +10,6 @@
 package gtkconv_test
 
 import (
-	"github.com/liusuxian/go-toolkit/gtkbinary"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -47,5 +46,5 @@ func TestToBytesE(t *testing.T) {
 	assert := assert.New(t)
 	b, err := gtkconv.ToBytesE(User{"wenzi1", 999, "www.baidu.com"})
 	assert.NoError(err)
-	assert.Equal("{wenzi1 999 www.baidu.com}", gtkbinary.DecodeToString(b))
+	assert.Equal("{\"Name\":\"wenzi1\",\"Age\":999,\"Url\":\"www.baidu.com\"}", string(b))
 }

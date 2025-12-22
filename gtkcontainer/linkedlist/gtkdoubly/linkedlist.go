@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-08 14:00:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 15:31:02
+ * @LastEditTime: 2025-12-22 23:03:58
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -78,16 +78,14 @@ func (list *LinkedList) InsertBefore(targetUuid string, items ...Node) (err erro
 		return
 	}
 
+	// 检查 targetUuid 是否为空
+	if targetUuid == "" {
+		return fmt.Errorf("targetUuid cannot be empty")
+	}
+
 	list.lock.Lock()
 	defer list.lock.Unlock()
 
-	// 处理链表为空的情况
-	if list.length == 0 {
-		list.doPushFront(items...)
-		return
-	}
-
-	// 处理链表非空的情况
 	return list.doInsertBefore(targetUuid, items...)
 }
 
@@ -97,14 +95,13 @@ func (list *LinkedList) InsertAfter(targetUuid string, items ...Node) (err error
 		return
 	}
 
+	// 检查 targetUuid 是否为空
+	if targetUuid == "" {
+		return fmt.Errorf("targetUuid cannot be empty")
+	}
+
 	list.lock.Lock()
 	defer list.lock.Unlock()
-
-	// 处理链表为空的情况
-	if list.length == 0 {
-		list.doPushBack(items...)
-		return
-	}
 
 	// 处理链表非空的情况
 	return list.doInsertAfter(targetUuid, items...)
@@ -132,6 +129,11 @@ func (list *LinkedList) Len() (length int) {
 
 // SetCurrent 设置当前节点
 func (list *LinkedList) SetCurrent(uuid string) (err error) {
+	// 检查 uuid 是否为空
+	if uuid == "" {
+		return fmt.Errorf("uuid cannot be empty")
+	}
+
 	list.lock.Lock()
 	defer list.lock.Unlock()
 
@@ -144,8 +146,13 @@ func (list *LinkedList) SetCurrent(uuid string) (err error) {
 
 // GetNodeValue 获取节点的值
 func (list *LinkedList) GetNodeValue(uuid string) (value any, err error) {
-	list.lock.Lock()
-	defer list.lock.Unlock()
+	// 检查 uuid 是否为空
+	if uuid == "" {
+		return nil, fmt.Errorf("uuid cannot be empty")
+	}
+
+	list.lock.RLock()
+	defer list.lock.RUnlock()
 
 	if node, exists := list.nodes[uuid]; exists {
 		return node.Value, nil
@@ -155,6 +162,11 @@ func (list *LinkedList) GetNodeValue(uuid string) (value any, err error) {
 
 // UpdateNodeValue 更新节点的值
 func (list *LinkedList) UpdateNodeValue(uuid string, value any) (err error) {
+	// 检查 uuid 是否为空
+	if uuid == "" {
+		return fmt.Errorf("uuid cannot be empty")
+	}
+
 	list.lock.Lock()
 	defer list.lock.Unlock()
 
@@ -176,7 +188,7 @@ func (list *LinkedList) Poll() (node *Node, err error) {
 	}
 
 	if list.current == nil {
-		return nil, fmt.Errorf("current node is nil")
+		list.current = list.head
 	}
 
 	node = &Node{}
@@ -212,7 +224,7 @@ func (list *LinkedList) GetCurrentAndMoveToNext() (node *Node, err error) {
 	return node, nil
 }
 
-// NewIterator 新建环形链表迭代器
+// NewIterator 新建链表迭代器
 func (list *LinkedList) NewIterator() (it *Iterator) {
 	list.lock.RLock()
 	defer list.lock.RUnlock()
@@ -246,5 +258,7 @@ func (it *Iterator) Next() (node *Node) {
 		it.finished = true
 		return nil
 	}
-	return it.current
+	node = &Node{}
+	*node = *it.current
+	return node
 }

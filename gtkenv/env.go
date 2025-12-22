@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-06 13:08:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 13:53:29
+ * @LastEditTime: 2025-12-22 23:40:53
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -39,8 +39,7 @@ func Get(key string, def ...string) (value string) {
 
 // Set 设置环境变量
 func Set(key, value string) (err error) {
-	err = os.Setenv(key, value)
-	if err != nil {
+	if err = os.Setenv(key, value); err != nil {
 		err = fmt.Errorf("set environment key-value failed with key `%s`, value `%s`, error: %w", key, value, err)
 	}
 	return

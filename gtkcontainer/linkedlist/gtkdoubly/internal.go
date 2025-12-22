@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-10 13:10:33
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 15:29:08
+ * @LastEditTime: 2025-12-21 03:26:56
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -76,23 +76,21 @@ func (list *LinkedList) doInsertBefore(targetUuid string, items ...Node) (err er
 		return
 	}
 
-	lastNode := targetNode
+	insertPoint := targetNode
 	for _, item := range items {
 		if node, exists := list.nodes[item.Uuid]; exists {
 			// uuid 已存在，更新节点值
 			node.Value = item.Value
-			lastNode = node
 		} else {
 			newNode := &Node{Uuid: item.Uuid, Value: item.Value}
-			newNode.prev = lastNode.prev
-			newNode.next = lastNode
-			if lastNode.prev == nil {
+			newNode.prev = insertPoint.prev
+			newNode.next = insertPoint
+			if insertPoint.prev == nil {
 				list.head = newNode
 			} else {
-				lastNode.prev.next = newNode
+				insertPoint.prev.next = newNode
 			}
-			lastNode.prev = newNode
-			lastNode = newNode
+			insertPoint.prev = newNode
 
 			list.nodes[item.Uuid] = newNode
 			list.length++
@@ -116,23 +114,22 @@ func (list *LinkedList) doInsertAfter(targetUuid string, items ...Node) (err err
 		return
 	}
 
-	lastNode := targetNode
+	insertPoint := targetNode
 	for _, item := range items {
 		if node, exists := list.nodes[item.Uuid]; exists {
 			// uuid 已存在，更新节点值
 			node.Value = item.Value
-			lastNode = node
 		} else {
 			newNode := &Node{Uuid: item.Uuid, Value: item.Value}
-			newNode.next = lastNode.next
-			newNode.prev = lastNode
-			if lastNode.next == nil {
+			newNode.next = insertPoint.next
+			newNode.prev = insertPoint
+			if insertPoint.next == nil {
 				list.tail = newNode
 			} else {
-				lastNode.next.prev = newNode
+				insertPoint.next.prev = newNode
 			}
-			lastNode.next = newNode
-			lastNode = newNode
+			insertPoint.next = newNode
+			insertPoint = newNode
 
 			list.nodes[item.Uuid] = newNode
 			list.length++
@@ -158,20 +155,26 @@ func (list *LinkedList) doRemove(uuids ...string) {
 			list.tail = nil
 			list.current = nil
 		} else {
-			if node == list.head {
+			switch node {
+			case list.head:
 				list.head = node.next
 				list.head.prev = nil
-			} else if node == list.tail {
+			case list.tail:
 				list.tail = node.prev
 				list.tail.next = nil
-			} else {
+			default:
 				node.prev.next = node.next
 				node.next.prev = node.prev
 			}
 
 			// 如果当前节点是要删除的节点，则将 current 更新为下一个节点
 			if node == list.current {
-				list.current = node.next
+				if node.next == nil {
+					// 如果删除的是尾节点，循环回到头部
+					list.current = list.head
+				} else {
+					list.current = node.next
+				}
 			}
 		}
 

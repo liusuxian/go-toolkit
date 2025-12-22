@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-03-13 11:04:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 22:33:19
+ * @LastEditTime: 2025-12-21 02:35:15
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -75,7 +75,7 @@ func TestLocalConfig(t *testing.T) {
 		assert.Equal("{\"Path\":\"logs\",\"Details\":[{\"Type\":1,\"Level\":0,\"Format\":0,\"Filename\":\"info.log\",\"MaxSize\":10,\"MaxBackups\":10,\"MaxAge\":7,\"Compress\":false,\"Stdout\":true},{\"Type\":2,\"Level\":2,\"Format\":0,\"Filename\":\"error.log\",\"MaxSize\":10,\"MaxBackups\":10,\"MaxAge\":7,\"Compress\":false,\"Stdout\":true}]}", gtkjson.MustString(logConfig))
 	}
 	var localCfg *gtkconf.Config
-	localCfg, err = gtkconf.NewConfig("config/test.json")
+	localCfg, err = gtkconf.NewConfig(gtkconf.WithConfigFile("config/test.json"))
 	if assert.NoError(err) {
 		testCfg1 := TestCfg{}
 		err = localCfg.StructKey("test", &testCfg1)
@@ -99,7 +99,7 @@ func TestRemoteConfig(t *testing.T) {
 		cfg    *gtkconf.Config
 		assert = assert.New(t)
 	)
-	cfg, err = gtkconf.NewRemoteConfig("consul", "127.0.0.1:8500", "config/test", "json")
+	cfg, err = gtkconf.NewRemoteConfig("consul", "127.0.0.1:8500", "config/test", gtkconf.WithConfigType("json"))
 	if assert.Error(err) {
 		assert.Nil(cfg)
 	}

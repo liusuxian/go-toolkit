@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-16 02:20:09
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:46:08
+ * @LastEditTime: 2025-12-22 23:30:07
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -194,7 +194,7 @@ func ToBoolSliceE(i any) (iv []bool, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]bool, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				bl, err := ToBoolE(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []bool{}, convertError(i, "[]bool")

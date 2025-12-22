@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-18 17:47:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:45:29
+ * @LastEditTime: 2025-12-22 23:29:28
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -142,7 +142,7 @@ func ToSliceE(i any) (iv []any, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]any, length)
-			for i := 0; i < length; i++ {
+			for i := range length {
 				iv[i] = originValueAndKind.OriginValue.Index(i).Interface()
 			}
 			return

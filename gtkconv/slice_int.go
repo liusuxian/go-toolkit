@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-18 17:05:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:46:51
+ * @LastEditTime: 2025-12-22 23:32:48
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -214,7 +214,7 @@ func ToInt64SliceE(i any) (iv []int64, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]int64, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToInt64E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []int64{}, convertError(i, "[]int64")
@@ -427,7 +427,7 @@ func ToInt32SliceE(i any) (iv []int32, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]int32, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToInt32E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []int32{}, convertError(i, "[]int32")
@@ -640,7 +640,7 @@ func ToInt16SliceE(i any) (iv []int16, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]int16, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToInt16E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []int16{}, convertError(i, "[]int16")
@@ -853,7 +853,7 @@ func ToInt8SliceE(i any) (iv []int8, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]int8, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToInt8E(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []int8{}, convertError(i, "[]int8")
@@ -1066,7 +1066,7 @@ func ToIntSliceE(i any) (iv []int, err error) {
 		if originKind == reflect.Slice || originKind == reflect.Array {
 			length := originValueAndKind.OriginValue.Len()
 			iv = make([]int, length)
-			for j := 0; j < length; j++ {
+			for j := range length {
 				intv, err := ToIntE(originValueAndKind.OriginValue.Index(j).Interface())
 				if err != nil {
 					return []int{}, convertError(i, "[]int")

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 21:25:11
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-03-01 21:43:21
+ * @LastEditTime: 2025-12-20 22:21:47
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -91,8 +91,6 @@ func TestBeEncodeInt(t *testing.T) {
 	assert := assert.New(t)
 	expected := make([]byte, 4)
 	binary.BigEndian.PutUint32(expected, uint32(123456))
-	t.Log("expected:", expected)
 	actual := gtkbinary.BeEncode(123456)
-	t.Log("actual:", actual)
 	assert.Equal(expected, actual)
 }
