@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-23 17:56:03
+ * @LastEditTime: 2025-12-23 21:58:47
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -267,8 +267,8 @@ func (rc *RedisClient) SetCD(ctx context.Context, key string, cd time.Duration) 
 	return
 }
 
-// Cad compare and delete
-func (rc *RedisClient) Cad(ctx context.Context, key string, value any) (ok bool, err error) {
+// CompareAndDelete 比较并删除
+func (rc *RedisClient) CompareAndDelete(ctx context.Context, key string, value any) (ok bool, err error) {
 	var result any
 	if result, err = rc.EvalSha(ctx, "COMPARE_AND_DELETE", []string{key}, value); err != nil {
 		return

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-11 13:42:14
+ * @LastEditTime: 2025-12-23 21:38:44
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -104,6 +104,6 @@ type MQClient interface {
 	DelGroup(ctx context.Context, queue string, group ...string) (err error)
 	// DelQueue 删除队列（请谨慎使用）
 	DelQueue(ctx context.Context, queue string) (err error)
-	// 关闭客户端
+	// Close 关闭客户端
 	Close() (err error)
 }
