@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 18:17:33
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 23:27:43
+ * @LastEditTime: 2025-12-24 19:45:55
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -65,7 +65,7 @@ func FileToReader(filename string) (reader *ImageReader, err error) {
 	// 创建图像读取器
 	reader = &ImageReader{
 		Reader:   bytes.NewReader(data),
-		filename: fmt.Sprintf("%s.%s", utils.Name(filename), format),
+		filename: utils.Name(filename) + "." + format,
 	}
 	return
 }
@@ -87,7 +87,7 @@ func URLToReader(url, baseName string, timeout time.Duration) (reader *ImageRead
 	// 创建图像读取器
 	reader = &ImageReader{
 		Reader:   bytes.NewReader(data),
-		filename: fmt.Sprintf("%s.%s", baseName, format),
+		filename: baseName + "." + format,
 	}
 	return
 }
@@ -117,7 +117,7 @@ func Base64ToReader(b64, baseName string) (reader *ImageReader, err error) {
 	// 创建图像读取器
 	reader = &ImageReader{
 		Reader:   bytes.NewReader(data),
-		filename: fmt.Sprintf("%s.%s", baseName, format),
+		filename: baseName + "." + format,
 	}
 	return
 }
@@ -315,17 +315,17 @@ func toBase64(data []byte) (b64 string, err error) {
 	// 根据格式返回不同的Base64编码
 	switch format {
 	case "jpeg", "jpg":
-		b64 = fmt.Sprintf("data:image/jpeg;base64,%s", base64Str)
+		b64 = "data:image/jpeg;base64," + base64Str
 	case "png":
-		b64 = fmt.Sprintf("data:image/png;base64,%s", base64Str)
+		b64 = "data:image/png;base64," + base64Str
 	case "webp":
-		b64 = fmt.Sprintf("data:image/webp;base64,%s", base64Str)
+		b64 = "data:image/webp;base64," + base64Str
 	case "gif":
-		b64 = fmt.Sprintf("data:image/gif;base64,%s", base64Str)
+		b64 = "data:image/gif;base64," + base64Str
 	case "bmp":
-		b64 = fmt.Sprintf("data:image/bmp;base64,%s", base64Str)
+		b64 = "data:image/bmp;base64," + base64Str
 	case "tiff":
-		b64 = fmt.Sprintf("data:image/tiff;base64,%s", base64Str)
+		b64 = "data:image/tiff;base64," + base64Str
 	default:
 		err = fmt.Errorf("unsupported file extension: %s", format)
 	}
@@ -344,7 +344,7 @@ func saveImage(data []byte, outputDir, baseName string) (filename string, err er
 		return
 	}
 	// 写入文件
-	filename = filepath.Join(outputDir, fmt.Sprintf("%s.%s", baseName, format))
+	filename = filepath.Join(outputDir, baseName+"."+format)
 	if err = os.WriteFile(filename, data, 0644); err != nil {
 		err = fmt.Errorf("failed to write image file: %w", err)
 		return

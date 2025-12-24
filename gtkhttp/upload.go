@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-07-15 17:56:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 23:03:19
+ * @LastEditTime: 2025-12-24 19:55:14
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -16,6 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 )
@@ -183,7 +184,7 @@ func (s *UploadFileService) doUpload(file multipart.File, fileHeader *multipart.
 		return
 	}
 	// 构建文件完整路径
-	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileHeader.Filename))
+	filePath = filepath.Join(dirPath, s.uploadFileNameFn(fileHeader.Filename))
 	// 创建文件
 	var outFile *os.File
 	if outFile, err = os.Create(filePath); err != nil {

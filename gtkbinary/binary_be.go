@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 20:51:11
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-20 22:17:36
+ * @LastEditTime: 2025-12-24 18:46:44
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,7 +12,9 @@ package gtkbinary
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"math"
 )
 
@@ -48,16 +50,36 @@ func BeEncode(vals ...any) (bs []byte) {
 		case bool:
 			buf.Write(BeEncodeBool(val))
 		case string:
-			buf.Write(BeEncodeString(val))
+			buf.WriteString(val)
 		case []byte:
 			buf.Write(val)
 		case float32:
 			buf.Write(BeEncodeFloat32(val))
 		case float64:
 			buf.Write(BeEncodeFloat64(val))
+		case json.Number:
+			buf.WriteString(val.String())
+		case template.HTML:
+			buf.WriteString(string(val))
+		case template.URL:
+			buf.WriteString(string(val))
+		case template.JS:
+			buf.WriteString(string(val))
+		case template.CSS:
+			buf.WriteString(string(val))
+		case template.HTMLAttr:
+			buf.WriteString(string(val))
+		case fmt.Stringer:
+			buf.WriteString(val.String())
+		case error:
+			buf.WriteString(val.Error())
 		default:
 			if err := binary.Write(buf, binary.BigEndian, val); err != nil {
-				buf.Write(BeEncodeString(fmt.Sprintf("%v", val)))
+				if jsonData, e := json.Marshal(val); e == nil {
+					buf.Write(jsonData)
+				} else {
+					fmt.Fprint(buf, val)
+				}
 			}
 		}
 	}

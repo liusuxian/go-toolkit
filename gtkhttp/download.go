@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-04-23 19:46:05
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 23:05:24
+ * @LastEditTime: 2025-12-24 19:29:43
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -17,11 +17,12 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
 // DownloadFile 从指定的 URL 下载文件到本地路径
-func DownloadFile(url, dirPath string) (filePath string, err error) {
+func DownloadFile(url, dirPath string, fileName ...string) (filePath string, err error) {
 	// 发起 HTTP GET 请求
 	var resp *http.Response
 	if resp, err = http.Get(url); err != nil {
@@ -40,8 +41,13 @@ func DownloadFile(url, dirPath string) (filePath string, err error) {
 		return
 	}
 	// 构建文件完整路径
-	fileName := ExtractFileNameFromURL(url)
-	filePath = fmt.Sprintf("%s/%s", dirPath, utils.GenRandomFilename(fileName))
+	var fname string
+	if len(fileName) > 0 && fileName[0] != "" {
+		fname = fileName[0]
+	} else {
+		fname = ExtractFileNameFromURL(url)
+	}
+	filePath = filepath.Join(dirPath, fname)
 	// 创建文件
 	var outFile *os.File
 	if outFile, err = os.Create(filePath); err != nil {

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-11 15:22:18
+ * @LastEditTime: 2025-12-24 19:58:27
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -668,27 +668,27 @@ func (kc *KafkaClient) calcPartition(key string, partitionNum uint32) (partition
 
 // getGlobalProducerName 获取全局生产者名称
 func (kc *KafkaClient) getGlobalProducerName(globalProducer string) (producerName string) {
-	return fmt.Sprintf("producer_%s", globalProducer)
+	return "producer_" + globalProducer
 }
 
 // getProducerName 获取生产者名称
 func (kc *KafkaClient) getProducerName(topic string) (producerName string) {
-	return fmt.Sprintf("producer_%s", topic)
+	return "producer_" + topic
 }
 
 // getConsumerName 获取消费者名称
 func (kc *KafkaClient) getConsumerName(topic string) (consumerName string) {
-	return fmt.Sprintf("consumer_%s", topic)
+	return "consumer_" + topic
 }
 
 // getFullTopicName 获取完整的 topic 名称
 func (kc *KafkaClient) getFullTopicName(topic string) (fullTopicName string) {
-	return fmt.Sprintf("%s_%s", kc.config.Env, topic)
+	return kc.config.Env + "_" + topic
 }
 
 // getConsumerGroupName 获取消费者组名称
 func (kc *KafkaClient) getConsumerGroupName(topic string) (group string) {
-	return fmt.Sprintf("%s_group_%s", kc.config.ConsumerEnv, topic)
+	return kc.config.ConsumerEnv + "_group_" + topic
 }
 
 // kafkaSetKey kafka 设置连接配置

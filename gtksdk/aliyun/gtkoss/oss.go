@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:06:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-15 17:50:14
+ * @LastEditTime: 2025-12-24 18:08:15
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,7 +12,6 @@ package gtkoss
 import (
 	"context"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
-	"github.com/liusuxian/go-toolkit/internal/utils"
 	"time"
 )
 
@@ -119,7 +118,7 @@ func NewAliyunOSS(config OSSConfig, opts ...Option) (s *AliyunOSS, err error) {
 	// 设置默认上传文件时生成文件名的函数
 	if s.uploadFileNameFn == nil {
 		s.uploadFileNameFn = func(filename string) (newFilename string) {
-			return utils.GenRandomFilename(filename)
+			return filename
 		}
 	}
 	// 设置默认节点类型

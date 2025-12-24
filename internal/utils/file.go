@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-13 12:57:31
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 16:09:40
+ * @LastEditTime: 2025-12-24 20:11:43
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -54,7 +54,7 @@ func Name(path string) (str string) {
 
 // GenRandomFilename 生成随机文件名
 func GenRandomFilename(filename string) (newFilename string) {
-	return fmt.Sprintf("%s%s", uuid.New().String(), filepath.Ext(filename))
+	return uuid.New().String() + filepath.Ext(filename)
 }
 
 // MakeDirAll 创建给定路径的所有目录，包括任何必要的父目录

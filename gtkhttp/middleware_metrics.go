@@ -12,7 +12,6 @@ package gtkhttp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"maps"
 	"net"
 	"slices"
@@ -117,7 +116,7 @@ func (c *DefaultMetricsCollector) RecordError(method string, errorType string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	key := fmt.Sprintf("%s:%s", c.getKey(method), errorType)
+	key := c.getKey(method) + ":" + errorType
 	c.errorCounts[key]++
 }
 

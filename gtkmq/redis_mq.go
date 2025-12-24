@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-19 01:23:04
+ * @LastEditTime: 2025-12-24 20:08:59
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -23,6 +23,7 @@ import (
 	"math"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -191,9 +192,8 @@ var internalScriptMap = map[string]string{
 }
 
 const (
-	defaultPartitionNum uint32 = 12                        // 默认分区数
-	partitionAny        int32  = -1                        // 任意分区
-	delayQueueKey       string = "gtkmq:delay:queue:%s_%s" // 延迟队列redis key
+	defaultPartitionNum uint32 = 12 // 默认分区数
+	partitionAny        int32  = -1 // 任意分区
 )
 
 // delayMessage 延迟消息
@@ -638,7 +638,7 @@ func (mq *redisMQClient) sendDelayMessage(ctx context.Context, queue string, pro
 		BaseDelay:   mq.config.RetryBackoff,
 	}).Do(ctx, func(ctx context.Context) (e error) {
 		delayMsg.Timestamp = time.Now()
-		_, e = mq.rc.Do(ctx, "ZADD", fmt.Sprintf(delayQueueKey, mq.config.Env, queue), producerMessage.DelayTime.UnixMilli(), delayMsg)
+		_, e = mq.rc.Do(ctx, "ZADD", mq.getDelayQueueKey(queue), producerMessage.DelayTime.UnixMilli(), delayMsg)
 		return
 	}); err != nil {
 		mq.logger.Errorf(ctx, "producer: %s send delay message, data: %s error: %+v", producerName, gtkjson.MustString(delayMsg), err)
@@ -895,42 +895,47 @@ func (mq *redisMQClient) getPartitionNum(queue string) (partitionNum uint32, err
 
 // getGlobalProducerName 获取全局生产者名称
 func (mq *redisMQClient) getGlobalProducerName(globalProducer string) (producerName string) {
-	return fmt.Sprintf("producer_%s", globalProducer)
+	return "producer_" + globalProducer
 }
 
 // getProducerName 获取生产者名称
 func (mq *redisMQClient) getProducerName(queue string) (producerName string) {
-	return fmt.Sprintf("producer_%s", queue)
+	return "producer_" + queue
 }
 
 // getConsumerName 获取消费者名称
 func (mq *redisMQClient) getConsumerName(queue string) (consumerName string) {
-	return fmt.Sprintf("consumer_%s", queue)
+	return "consumer_" + queue
 }
 
 // getFullQueueName 获取完整的队列名称
 func (mq *redisMQClient) getFullQueueName(queue string) (fullQueueName string) {
-	return fmt.Sprintf("%s_%s", mq.config.Env, queue)
+	return mq.config.Env + "_" + queue
 }
 
 // getPartitionQueueName 获取分区队列名称
 func (mq *redisMQClient) getPartitionQueueName(queue string, partition int32) (partitionQueueName string) {
-	return fmt.Sprintf("%s@%d", mq.getFullQueueName(queue), partition)
+	return mq.getFullQueueName(queue) + "@" + strconv.FormatInt(int64(partition), 10)
 }
 
 // getConsumerGroupName 获取消费者组名称
 func (mq *redisMQClient) getConsumerGroupName(queue string) (group string) {
-	return fmt.Sprintf("%s_group_%s", mq.config.ConsumerEnv, queue)
+	return mq.config.ConsumerEnv + "_group_" + queue
 }
 
 // getPartitionGroupName 获取分区消费者组名称
 func (mq *redisMQClient) getPartitionGroupName(queue string, partition int32) (partitionGroupName string) {
-	return fmt.Sprintf("%s@%d", mq.getConsumerGroupName(queue), partition)
+	return mq.getConsumerGroupName(queue) + "@" + strconv.FormatInt(int64(partition), 10)
 }
 
 // getPartitionConsumerName 获取分区消费者名称
 func (mq *redisMQClient) getPartitionConsumerName(queue string, partition int32) (partitionConsumerName string) {
-	return fmt.Sprintf("%s@%d", mq.getConsumerName(queue), partition)
+	return mq.getConsumerName(queue) + "@" + strconv.FormatInt(int64(partition), 10)
+}
+
+// getDelayQueueKey 获取延迟队列 key
+func (mq *redisMQClient) getDelayQueueKey(queue string) (key string) {
+	return "gtkmq:delay:queue:" + mq.config.Env + "_" + queue
 }
 
 // newRedisMQClient 创建 Redis 消息队列客户端
@@ -1056,8 +1061,8 @@ func (ds *delaySender) Run(ctx context.Context, mq *redisMQClient) {
 			var (
 				now  = time.Now()
 				keys = []string{
-					fmt.Sprintf(delayQueueKey, mq.config.Env, ds.queue), // KEYS[1]: 延迟队列key
-					mq.getFullQueueName(ds.queue),                       // KEYS[2]: 实际队列key
+					mq.getDelayQueueKey(ds.queue), // KEYS[1]: 延迟队列key
+					mq.getFullQueueName(ds.queue), // KEYS[2]: 实际队列key
 				}
 				args = []any{
 					now.UnixMilli(),                       // ARGV[1]: 当前时间戳

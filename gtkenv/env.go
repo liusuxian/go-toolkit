@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-06 13:08:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-22 23:40:53
+ * @LastEditTime: 2025-12-24 18:55:44
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -87,7 +87,7 @@ func MapFromEnv(envs []string) (m map[string]string) {
 func MapToEnv(m map[string]string) (envs []string) {
 	envs = make([]string, 0, len(m))
 	for k, v := range m {
-		envs = append(envs, fmt.Sprintf(`%s=%s`, k, v))
+		envs = append(envs, k+"="+v)
 	}
 	return
 }

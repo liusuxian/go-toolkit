@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-03-01 21:25:11
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-20 22:21:47
+ * @LastEditTime: 2025-12-24 19:05:07
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -84,7 +84,7 @@ func TestBeEncodeStruct(t *testing.T) {
 	user := User{"wenzi1", 999, "www.baidu.com"}
 	ve := gtkbinary.BeEncode(user)
 	s := gtkbinary.BeDecodeToString(ve)
-	assert.Equal("{wenzi1 999 www.baidu.com}", s)
+	assert.Equal("{\"Name\":\"wenzi1\",\"Age\":999,\"Url\":\"www.baidu.com\"}", s)
 }
 
 func TestBeEncodeInt(t *testing.T) {

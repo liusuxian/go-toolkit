@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 17:16:41
+ * @LastEditTime: 2025-12-24 18:12:52
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,12 +10,14 @@
 package gtkoss
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/liusuxian/go-toolkit/internal/utils"
 	"io/fs"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"sync"
 )
@@ -83,6 +85,62 @@ func (s *AliyunOSS) UploadFromHttp(r *http.Request, dirPath string, opts ...Opti
 		FileSize: fileHeader.Size,
 		FilePath: filePath,
 		FileType: fileHeader.Header.Get("Content-type"),
+	}
+	return
+}
+
+// UploadFromBytes 从字节切片中上传文件
+func (s *AliyunOSS) UploadFromBytes(data []byte, fileName string, dirPath string, opts ...Option) (fileInfo *UploadFileInfo) {
+	// 检查数据是否为空
+	fileSize := int64(len(data))
+	if fileSize == 0 {
+		fileInfo = &UploadFileInfo{
+			err:      fmt.Errorf("data is empty"),
+			FileName: fileName,
+			FileType: utils.ExtName(fileName),
+		}
+		return
+	}
+	// 判断上传文件类型是否合法
+	if !s.checkFileType(fileName) {
+		fileInfo = &UploadFileInfo{
+			err:      fmt.Errorf("unsupported file type"),
+			FileName: fileName,
+			FileSize: fileSize,
+			FileType: utils.ExtName(fileName),
+		}
+		return
+	}
+	// 检查上传文件大小是否合法
+	if !s.checkSize(fileSize) {
+		fileInfo = &UploadFileInfo{
+			err:      fmt.Errorf("unsupported file size"),
+			FileName: fileName,
+			FileSize: fileSize,
+			FileType: utils.ExtName(fileName),
+		}
+		return
+	}
+	// 执行上传
+	var (
+		filePath string
+		err      error
+	)
+	if filePath, err = s.doUploadFromBytes(data, fileName, dirPath, opts...); err != nil {
+		fileInfo = &UploadFileInfo{
+			err:      err,
+			FileName: fileName,
+			FileSize: fileSize,
+			FileType: utils.ExtName(fileName),
+		}
+		return
+	}
+	// 返回
+	fileInfo = &UploadFileInfo{
+		FileName: fileName,
+		FileSize: fileSize,
+		FilePath: filePath,
+		FileType: utils.ExtName(fileName),
 	}
 	return
 }
@@ -291,7 +349,7 @@ func (s *AliyunOSS) checkSize(fileSize int64) (ok bool) {
 // doUploadFromHttp 执行上传
 func (s *AliyunOSS) doUploadFromHttp(file multipart.File, fileHeader *multipart.FileHeader, dirPath string, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
-	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileHeader.Filename))
+	filePath = filepath.Join(dirPath, s.uploadFileNameFn(fileHeader.Filename))
 	// 获取存储空间
 	var (
 		client *oss.Client
@@ -309,10 +367,31 @@ func (s *AliyunOSS) doUploadFromHttp(file multipart.File, fileHeader *multipart.
 	return
 }
 
+// doUploadFromBytes 执行上传
+func (s *AliyunOSS) doUploadFromBytes(data []byte, fileName, dirPath string, opts ...Option) (filePath string, err error) {
+	// 构建文件完整路径
+	filePath = filepath.Join(dirPath, s.uploadFileNameFn(fileName))
+	// 获取存储空间
+	var (
+		client *oss.Client
+		bucket *oss.Bucket
+	)
+	if client, bucket, err = s.getBucket(opts...); err != nil {
+		return
+	}
+	// 关闭空闲连接
+	defer s.closeIdleConnections(client)
+	// 上传文件
+	if err = bucket.PutObject(filePath, bytes.NewReader(data), s.ossOptions...); err != nil {
+		return
+	}
+	return
+}
+
 // doUploadFromFile 执行上传
 func (s *AliyunOSS) doUploadFromFile(fileName, dirPath string, fileStat fs.FileInfo, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
-	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileStat.Name()))
+	filePath = filepath.Join(dirPath, s.uploadFileNameFn(fileStat.Name()))
 	// 获取存储空间
 	var (
 		client *oss.Client

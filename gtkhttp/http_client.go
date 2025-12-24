@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-28 17:56:51
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 22:49:10
+ * @LastEditTime: 2025-12-24 19:51:20
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -210,7 +210,7 @@ func WithCookie(cookies []*http.Cookie) (reqOpt RequestOption) {
 	return func(reqOpts *RequestOptions) {
 		cookieList := make([]string, 0, len(cookies))
 		for _, v := range cookies {
-			cookieList = append(cookieList, fmt.Sprintf("%s=%s", v.Name, v.Value))
+			cookieList = append(cookieList, v.Name+"="+v.Value)
 		}
 		reqOpts.header.Set("Cookie", strings.Join(cookieList, "; "))
 	}
@@ -339,9 +339,7 @@ func isFailureStatusCode(resp *http.Response) (ok bool) {
 
 // FullURL 获取完整 URL
 func (c *HTTPClient) FullURL(suffix string) (url string) {
-	baseURL := strings.TrimRight(c.config.BaseURL, "/")
-	url = fmt.Sprintf("%s%s", baseURL, suffix)
-	return
+	return strings.TrimRight(c.config.BaseURL, "/") + suffix
 }
 
 // setRequestID 设置请求ID
