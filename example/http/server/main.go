@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 23:28:33
+ * @LastEditTime: 2025-12-24 17:17:51
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -141,7 +141,7 @@ func main() {
 	})
 	// 单文件OSS上传处理函数
 	http.HandleFunc("/ossUpload", func(w http.ResponseWriter, r *http.Request) {
-		fileInfo := aliyunOSS.Upload(r, "test_upload")
+		fileInfo := aliyunOSS.UploadFromHttp(r, "test_upload")
 		if fileInfo.GetErr() != nil {
 			if errors.Is(fileInfo.GetErr(), http.ErrMissingFile) {
 				gtkresp.RespFail(w, -1, "Missing File")
@@ -154,7 +154,7 @@ func main() {
 	})
 	// 批量文件OSS上传处理函数
 	http.HandleFunc("/ossBatchUpload", func(w http.ResponseWriter, r *http.Request) {
-		fileInfos := aliyunOSS.BatchUpload(r, "test_upload")
+		fileInfos := aliyunOSS.BatchUploadFromHttp(r, "test_upload")
 		for _, v := range fileInfos {
 			if v.GetErr() != nil {
 				if errors.Is(v.GetErr(), http.ErrMissingFile) {

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-06-05 15:48:50
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 23:42:52
+ * @LastEditTime: 2025-12-24 17:10:06
  * @Description: 分布式唯一ID生成器
  * 默认情况下，ID由以下部分组成：
  * 39位时间（以10毫秒为单位）
@@ -14,9 +14,7 @@
 package gtkflake
 
 import (
-	"crypto/rand"
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -164,20 +162,23 @@ func (f *Flake) ID() (id int64, err error) {
 
 // RequestID 生成唯一请求ID
 func (f *Flake) RequestID() (requestId string, err error) {
-	var (
-		now = time.Now()
-		id  int64
-	)
+	var id int64
 	if id, err = f.ID(); err != nil {
 		return
 	}
-	timeStr := now.Format("20060102150405")
-	// 生成2字节随机数
-	randomBytes := make([]byte, 2)
-	if _, err = rand.Reader.Read(randomBytes); err != nil {
+
+	requestId = time.Now().Format("20060102150405") + formatHexUpper(id)
+	return
+}
+
+// ShortID 生成短小的唯一ID（Base62编码）
+func (f *Flake) ShortID() (shortId string, err error) {
+	var id int64
+	if id, err = f.ID(); err != nil {
 		return
 	}
-	requestId = fmt.Sprintf("%s%016X%04X", timeStr, id, randomBytes)
+
+	shortId = encodeBase62(id)
 	return
 }
 
@@ -304,4 +305,53 @@ func lower16BitPrivateIP(interfaceAddrs InterfaceAddrs) (machine int, err error)
 
 	machine = (int(ip[2]) << 8) + int(ip[3])
 	return
+}
+
+// formatHexUpper 将 int64 转换为大写十六进制字符串
+func formatHexUpper(n int64) string {
+	const hexDigits = "0123456789ABCDEF"
+	if n == 0 {
+		return "0"
+	}
+	// 先计算需要多少位
+	var (
+		temp   = n
+		length = 0
+	)
+	for temp > 0 {
+		length++
+		temp >>= 4
+	}
+	// 从前往后填充（从高位到低位）
+	result := make([]byte, length)
+	for i := length - 1; i >= 0; i-- {
+		result[i] = hexDigits[n&0xF]
+		n >>= 4
+	}
+	return string(result)
+}
+
+// encodeBase62 将 int64 编码为 Base62 字符串
+func encodeBase62(n int64) string {
+	const base62Chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	const base = 62
+	if n == 0 {
+		return "0"
+	}
+	// 先计算需要多少位
+	var (
+		temp   = n
+		length = 0
+	)
+	for temp > 0 {
+		length++
+		temp /= base
+	}
+	// 从前往后填充（从高位到低位）
+	result := make([]byte, length)
+	for i := length - 1; i >= 0; i-- {
+		result[i] = base62Chars[n%base]
+		n /= base
+	}
+	return string(result)
 }

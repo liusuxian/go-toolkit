@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-27 15:03:40
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 13:11:37
+ * @LastEditTime: 2025-12-24 16:26:25
  * @Description: 负载均衡器
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -12,10 +12,8 @@ package gtkhttp
 import (
 	"errors"
 	"math"
-	"math/rand/v2"
 	"slices"
 	"sync"
-	"time"
 )
 
 var (
@@ -37,16 +35,12 @@ type APIKey struct {
 // LoadBalancer 负载均衡器
 type LoadBalancer struct {
 	apiKeyList []*APIKey    // API密钥列表
-	rng        *rand.Rand   // 随机数生成器
 	mu         sync.RWMutex // 读写锁
 }
 
 // NewLoadBalancer 创建负载均衡器
 func NewLoadBalancer(keyList []string) (lb *LoadBalancer) {
-	now := time.Now().UnixNano()
-	lb = &LoadBalancer{
-		rng: rand.New(rand.NewPCG(uint64(now), uint64(now>>32))),
-	}
+	lb = &LoadBalancer{}
 	// 初始化API密钥列表
 	for _, key := range keyList {
 		lb.apiKeyList = append(lb.apiKeyList, &APIKey{

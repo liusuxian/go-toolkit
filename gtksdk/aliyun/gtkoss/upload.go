@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-15 18:02:40
+ * @LastEditTime: 2025-12-24 17:16:41
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -34,8 +34,8 @@ func (u *UploadFileInfo) GetErr() (err error) {
 	return u.err
 }
 
-// Upload 上传
-func (s *AliyunOSS) Upload(r *http.Request, dirPath string, opts ...Option) (fileInfo *UploadFileInfo) {
+// UploadFromHttp 从 HTTP 请求中上传文件
+func (s *AliyunOSS) UploadFromHttp(r *http.Request, dirPath string, opts ...Option) (fileInfo *UploadFileInfo) {
 	if r.Method != "POST" {
 		fileInfo = &UploadFileInfo{err: fmt.Errorf("unsupported method")}
 		return
@@ -73,7 +73,7 @@ func (s *AliyunOSS) Upload(r *http.Request, dirPath string, opts ...Option) (fil
 	}
 	// 执行上传
 	var filePath string
-	if filePath, err = s.doUpload(file, fileHeader, dirPath, opts...); err != nil {
+	if filePath, err = s.doUploadFromHttp(file, fileHeader, dirPath, opts...); err != nil {
 		fileInfo = &UploadFileInfo{err: err}
 		return
 	}
@@ -134,8 +134,8 @@ func (s *AliyunOSS) UploadFromFile(dirPath, fileName string, opts ...Option) (fi
 	return
 }
 
-// BatchUpload 批量上传
-func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string, opts ...Option) (fileInfos []*UploadFileInfo) {
+// BatchUploadFromHttp 从 HTTP 请求中批量上传文件
+func (s *AliyunOSS) BatchUploadFromHttp(r *http.Request, dirPath string, opts ...Option) (fileInfos []*UploadFileInfo) {
 	if r.Method != "POST" {
 		fileInfos = []*UploadFileInfo{{err: fmt.Errorf("unsupported method")}}
 		return
@@ -195,7 +195,7 @@ func (s *AliyunOSS) BatchUpload(r *http.Request, dirPath string, opts ...Option)
 			}
 			// 执行上传
 			var filePath string
-			if filePath, err = s.doUpload(file, fileHeader, dirPath, opts...); err != nil {
+			if filePath, err = s.doUploadFromHttp(file, fileHeader, dirPath, opts...); err != nil {
 				fileInfos[idx] = &UploadFileInfo{err: err}
 				return
 			}
@@ -288,8 +288,8 @@ func (s *AliyunOSS) checkSize(fileSize int64) (ok bool) {
 	return int64(s.config.MaxSize*1024*1024) >= fileSize
 }
 
-// doUpload 执行上传
-func (s *AliyunOSS) doUpload(file multipart.File, fileHeader *multipart.FileHeader, dirPath string, opts ...Option) (filePath string, err error) {
+// doUploadFromHttp 执行上传
+func (s *AliyunOSS) doUploadFromHttp(file multipart.File, fileHeader *multipart.FileHeader, dirPath string, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
 	filePath = fmt.Sprintf("%s/%s", dirPath, s.uploadFileNameFn(fileHeader.Filename))
 	// 获取存储空间

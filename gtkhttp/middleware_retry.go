@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-06-04 11:56:13
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-11 13:39:48
+ * @LastEditTime: 2025-12-24 16:27:33
  * @Description: 重试中间件
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -18,15 +18,6 @@ import (
 	"slices"
 	"time"
 )
-
-// rng 随机数生成器
-var rng *rand.Rand
-
-// 包初始化时设置随机数种子
-func init() {
-	now := time.Now().UnixNano()
-	rng = rand.New(rand.NewPCG(uint64(now), uint64(now>>32)))
-}
 
 // RetryStrategy 重试策略
 type RetryStrategy string
@@ -178,7 +169,7 @@ func (m *RetryMiddleware) calculateDelay(attempt int) (delay time.Duration) {
 		exponentialDelay := m.calculateExponentialDelay(attempt)
 		// 添加双向随机抖动（基于配置的百分比）
 		jitterRange := float64(exponentialDelay) * m.config.JitterPercent
-		jitter := time.Duration((rng.Float64() - 0.5) * 2 * jitterRange)
+		jitter := time.Duration((rand.Float64() - 0.5) * 2 * jitterRange)
 		// 确保抖动后的延迟在合理范围内
 		delay = max(exponentialDelay+jitter, exponentialDelay/2)
 	default:

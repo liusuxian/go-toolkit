@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 00:19:02
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-24 16:43:36
+ * @LastEditTime: 2025-12-24 16:35:29
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -21,7 +21,7 @@ func TestRandomWeight(t *testing.T) {
 	counts := map[int]int{}
 
 	stime := time.Now() // 获取当前时间
-	for i := 0; i < 1000000; i++ {
+	for range 1000000 {
 		index := gtkrandom.RandomWeight(weights)
 		counts[index]++
 	}

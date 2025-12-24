@@ -2,14 +2,17 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 14:08:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2024-01-22 22:51:55
+ * @LastEditTime: 2025-12-24 15:30:35
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package gtkstr
 
-import "strings"
+import (
+	"github.com/liusuxian/go-toolkit/internal/utils"
+	"strings"
+)
 
 // DefaultTrimChars 是默认情况下被 Trim* 函数剥离的字符
 var DefaultTrimChars = string([]byte{
@@ -55,4 +58,9 @@ func Split(str, sep string) (list []string) {
 	}
 	list = strings.Split(str, sep)
 	return
+}
+
+// GenerateRandomString 生成随机字符串
+func GenerateRandomString(length int, charset ...string) (str string) {
+	return utils.GenerateRandomString(length, charset...)
 }
