@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-12 15:56:02
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-09 23:58:25
+ * @LastEditTime: 2025-12-25 11:45:00
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,15 +13,15 @@ import "time"
 
 // Merchant	商户信息
 type Merchant struct {
-	Appid           string // appid
-	Mchid           string // 商户号/服务商商户号
-	CertNo          string // 商户证书序列号
-	APIKey          string // API密钥
-	SpAppid         string // 服务商appid
-	SubMchid        string // 子商户商户号
-	PrivateCacheKey string // 商户证书私钥文件缓存key
-	PublicCacheKey  string // 商户证书公钥文件缓存key
-	PublicKeyID     string // 商户证书公钥ID
+	Appid           string `json:"appid"`             // appid
+	Mchid           string `json:"mchid"`             // 商户号/服务商商户号
+	CertNo          string `json:"cert_no"`           // 商户证书序列号
+	APIKey          string `json:"api_key"`           // API密钥
+	SpAppid         string `json:"sp_appid"`          // 服务商appid
+	SubMchid        string `json:"sub_mchid"`         // 子商户商户号
+	PrivateCacheKey string `json:"private_cache_key"` // 商户证书私钥文件缓存key
+	PublicCacheKey  string `json:"public_cache_key"`  // 商户证书公钥文件缓存key
+	PublicKeyID     string `json:"public_key_id"`     // 商户证书公钥ID
 }
 
 // PrepayRequest 支付预下单请求参数

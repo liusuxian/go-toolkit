@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:06:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 18:08:15
+ * @LastEditTime: 2025-12-25 11:39:36
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -21,15 +21,15 @@ const (
 
 // OSSConfig 阿里云OSS配置
 type OSSConfig struct {
-	Bucket             string   `json:"bucket"`             // bucket名称
-	EndpointAccelerate string   `json:"endpointAccelerate"` // 传输加速节点
-	EndpointInternal   string   `json:"endpointInternal"`   // 内网访问节点
-	EndpointAccess     string   `json:"endpointAccess"`     // 外网访问节点
-	AccessKeyID        string   `json:"accessKeyID"`        // accessKeyID
-	AccessKeySecret    string   `json:"accessKeySecret"`    // accessKeySecret
-	AllowTypeList      []string `json:"allowTypeList"`      // 允许上传的文件类型
-	MaxSize            int      `json:"maxSize"`            // 单个文件最大上传大小(MB)，默认1MB
-	MaxCount           int      `json:"maxCount"`           // 单次上传文件的最大数量，默认10
+	Bucket             string   `json:"bucket"`              // bucket名称
+	EndpointAccelerate string   `json:"endpoint_accelerate"` // 传输加速节点
+	EndpointInternal   string   `json:"endpoint_internal"`   // 内网访问节点
+	EndpointAccess     string   `json:"endpoint_access"`     // 外网访问节点
+	AccessKeyID        string   `json:"access_key_id"`       // accessKeyID
+	AccessKeySecret    string   `json:"access_key_secret"`   // accessKeySecret
+	AllowTypeList      []string `json:"allow_type_list"`     // 允许上传的文件类型
+	MaxSize            int      `json:"max_size"`            // 单个文件最大上传大小(MB)，默认1MB
+	MaxCount           int      `json:"max_count"`           // 单次上传文件的最大数量，默认10
 }
 
 // Cache 缓存

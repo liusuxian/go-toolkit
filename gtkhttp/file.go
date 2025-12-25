@@ -2,14 +2,12 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:14:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 23:02:13
+ * @LastEditTime: 2025-12-25 10:33:31
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
  */
 package gtkhttp
-
-import "github.com/liusuxian/go-toolkit/internal/utils"
 
 const (
 	defaultMaxMemory = 32 << 20 // 32 MB
@@ -61,7 +59,7 @@ func NewUploadFileService(config UploadFileConfig, opts ...Option) (s *UploadFil
 	// 设置默认上传文件时生成文件名的函数
 	if s.uploadFileNameFn == nil {
 		s.uploadFileNameFn = func(filename string) (newFilename string) {
-			return utils.GenRandomFilename(filename)
+			return filename
 		}
 	}
 	return

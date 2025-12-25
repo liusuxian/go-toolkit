@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-10 00:22:13
+ * @LastEditTime: 2025-12-25 11:47:03
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -61,28 +61,28 @@ func main() {
 	// 创建OSS客户端
 	if aliyunOSS, err = gtkoss.NewAliyunOSS(gtkoss.OSSConfig{
 		Bucket:             gtkenv.Get("bucket"),
-		EndpointAccelerate: gtkenv.Get("endpointAccelerate"),
-		EndpointInternal:   gtkenv.Get("endpointInternal"),
-		EndpointAccess:     gtkenv.Get("endpointAccess"),
-		AccessKeyID:        gtkenv.Get("accessKeyID"),
-		AccessKeySecret:    gtkenv.Get("accessKeySecret"),
+		EndpointAccelerate: gtkenv.Get("endpoint_accelerate"),
+		EndpointInternal:   gtkenv.Get("endpoint_internal"),
+		EndpointAccess:     gtkenv.Get("endpoint_access"),
+		AccessKeyID:        gtkenv.Get("access_key_id"),
+		AccessKeySecret:    gtkenv.Get("access_key_secret"),
 	}); err != nil {
 		fmt.Printf("NewAliyunOSS Error: %+v\n", err)
 		os.Exit(1)
 	}
 	certFileManager := &AliyunOSSCertFileManager{
 		oss:         aliyunOSS,
-		privateFile: gtkenv.Get("ossPrivateFile"),
-		publicFile:  gtkenv.Get("ossPublicFile"),
+		privateFile: gtkenv.Get("oss_private_file"),
+		publicFile:  gtkenv.Get("oss_public_file"),
 	}
 	// 创建商户
 	mch = &gtkpay.Merchant{
 		Mchid:           gtkenv.Get("mchid"),
-		CertNo:          gtkenv.Get("certNo"),
-		APIKey:          gtkenv.Get("apiKey"),
-		PrivateCacheKey: gtkenv.Get("privateCacheKey"),
-		PublicCacheKey:  gtkenv.Get("publicCacheKey"),
-		PublicKeyID:     gtkenv.Get("publicKeyID"),
+		CertNo:          gtkenv.Get("cert_no"),
+		APIKey:          gtkenv.Get("api_key"),
+		PrivateCacheKey: gtkenv.Get("private_cache_key"),
+		PublicCacheKey:  gtkenv.Get("public_cache_key"),
+		PublicKeyID:     gtkenv.Get("public_key_id"),
 	}
 	// 创建 RedisCache
 	var cache *gtkcache.RedisCache

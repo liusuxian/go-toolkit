@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 14:08:59
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 15:30:35
+ * @LastEditTime: 2025-12-25 10:52:09
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,7 +10,7 @@
 package gtkstr
 
 import (
-	"github.com/liusuxian/go-toolkit/internal/utils"
+	"math/rand/v2"
 	"strings"
 )
 
@@ -62,5 +62,14 @@ func Split(str, sep string) (list []string) {
 
 // GenerateRandomString 生成随机字符串
 func GenerateRandomString(length int, charset ...string) (str string) {
-	return utils.GenerateRandomString(length, charset...)
+	chars := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	if len(charset) > 0 {
+		chars = charset[0] // 使用自定义字符集
+	}
+
+	result := make([]byte, length)
+	for i := range length {
+		result[i] = chars[rand.IntN(len(chars))]
+	}
+	return string(result)
 }

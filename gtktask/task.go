@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-01 13:15:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 22:24:50
+ * @LastEditTime: 2025-12-25 10:42:17
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -133,7 +133,7 @@ func GetGoroutinesAndTasks(total, expected uint) (goroutineNum uint, tasks []uin
 	}
 	// 如果有余数，则将剩余的任务逐一分配给部分协程，以保证所有任务都能被处理
 	remainder := total % goroutineNum
-	for i := uint(0); i < remainder; i++ {
+	for i := range remainder {
 		tasks[i]++
 	}
 	return

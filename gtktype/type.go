@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-14 15:13:27
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-14 15:22:46
+ * @LastEditTime: 2025-12-25 10:45:52
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -199,7 +199,7 @@ func IntSlice(a []int) []*int {
 		return nil
 	}
 	res := make([]*int, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -211,7 +211,7 @@ func IntValueSlice(a []*int) []int {
 		return nil
 	}
 	res := make([]int, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -225,7 +225,7 @@ func Int8Slice(a []int8) []*int8 {
 		return nil
 	}
 	res := make([]*int8, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -237,7 +237,7 @@ func Int8ValueSlice(a []*int8) []int8 {
 		return nil
 	}
 	res := make([]int8, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -251,7 +251,7 @@ func Int16Slice(a []int16) []*int16 {
 		return nil
 	}
 	res := make([]*int16, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -263,7 +263,7 @@ func Int16ValueSlice(a []*int16) []int16 {
 		return nil
 	}
 	res := make([]int16, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -277,7 +277,7 @@ func Int32Slice(a []int32) []*int32 {
 		return nil
 	}
 	res := make([]*int32, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -289,7 +289,7 @@ func Int32ValueSlice(a []*int32) []int32 {
 		return nil
 	}
 	res := make([]int32, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -303,7 +303,7 @@ func Int64Slice(a []int64) []*int64 {
 		return nil
 	}
 	res := make([]*int64, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -315,7 +315,7 @@ func Int64ValueSlice(a []*int64) []int64 {
 		return nil
 	}
 	res := make([]int64, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -329,7 +329,7 @@ func UintSlice(a []uint) []*uint {
 		return nil
 	}
 	res := make([]*uint, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -341,7 +341,7 @@ func UintValueSlice(a []*uint) []uint {
 		return nil
 	}
 	res := make([]uint, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -355,7 +355,7 @@ func Uint8Slice(a []uint8) []*uint8 {
 		return nil
 	}
 	res := make([]*uint8, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -367,7 +367,7 @@ func Uint8ValueSlice(a []*uint8) []uint8 {
 		return nil
 	}
 	res := make([]uint8, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -381,7 +381,7 @@ func Uint16Slice(a []uint16) []*uint16 {
 		return nil
 	}
 	res := make([]*uint16, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -393,7 +393,7 @@ func Uint16ValueSlice(a []*uint16) []uint16 {
 		return nil
 	}
 	res := make([]uint16, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -407,7 +407,7 @@ func Uint32Slice(a []uint32) []*uint32 {
 		return nil
 	}
 	res := make([]*uint32, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -419,7 +419,7 @@ func Uint32ValueSlice(a []*uint32) []uint32 {
 		return nil
 	}
 	res := make([]uint32, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -433,7 +433,7 @@ func Uint64Slice(a []uint64) []*uint64 {
 		return nil
 	}
 	res := make([]*uint64, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -445,7 +445,7 @@ func Uint64ValueSlice(a []*uint64) []uint64 {
 		return nil
 	}
 	res := make([]uint64, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -459,7 +459,7 @@ func Float32Slice(a []float32) []*float32 {
 		return nil
 	}
 	res := make([]*float32, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -471,7 +471,7 @@ func Float32ValueSlice(a []*float32) []float32 {
 		return nil
 	}
 	res := make([]float32, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -485,7 +485,7 @@ func Float64Slice(a []float64) []*float64 {
 		return nil
 	}
 	res := make([]*float64, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -497,7 +497,7 @@ func Float64ValueSlice(a []*float64) []float64 {
 		return nil
 	}
 	res := make([]float64, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -511,7 +511,7 @@ func StringSlice(a []string) []*string {
 		return nil
 	}
 	res := make([]*string, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -523,7 +523,7 @@ func StringSliceValue(a []*string) []string {
 		return nil
 	}
 	res := make([]string, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -537,7 +537,7 @@ func BoolSlice(a []bool) []*bool {
 		return nil
 	}
 	res := make([]*bool, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -549,7 +549,7 @@ func BoolSliceValue(a []*bool) []bool {
 		return nil
 	}
 	res := make([]bool, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}
@@ -576,7 +576,7 @@ func TimeSlice(a []time.Time) []*time.Time {
 		return nil
 	}
 	res := make([]*time.Time, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		res[i] = &a[i]
 	}
 	return res
@@ -588,7 +588,7 @@ func TimeSliceValue(a []*time.Time) []time.Time {
 		return nil
 	}
 	res := make([]time.Time, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != nil {
 			res[i] = *a[i]
 		}

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-05-13 13:14:03
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 13:14:05
+ * @LastEditTime: 2025-12-25 10:49:43
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -29,7 +29,7 @@ func OriginValueAndKind(value any) (out OriginValueAndKindOutput) {
 	out.InputKind = out.InputValue.Kind()
 	out.OriginValue = out.InputValue
 	out.OriginKind = out.InputKind
-	for out.OriginKind == reflect.Ptr {
+	for out.OriginKind == reflect.Pointer {
 		out.OriginValue = out.OriginValue.Elem()
 		out.OriginKind = out.OriginValue.Kind()
 	}
@@ -61,7 +61,7 @@ func OriginTypeAndKind(value any) (out OriginTypeAndKindOutput) {
 	out.InputKind = out.InputType.Kind()
 	out.OriginType = out.InputType
 	out.OriginKind = out.InputKind
-	for out.OriginKind == reflect.Ptr {
+	for out.OriginKind == reflect.Pointer {
 		out.OriginType = out.OriginType.Elem()
 		out.OriginKind = out.OriginType.Kind()
 	}
@@ -86,7 +86,7 @@ func ValueToInterface(v reflect.Value) (value any, ok bool) {
 		return v.Complex(), true
 	case reflect.String:
 		return v.String(), true
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return ValueToInterface(v.Elem())
 	case reflect.Interface:
 		return ValueToInterface(v.Elem())
@@ -114,7 +114,7 @@ func IsNil(value any) (isNil bool) {
 		reflect.Interface,
 		reflect.UnsafePointer:
 		return !rv.IsValid() || rv.IsNil()
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return !rv.IsValid() || rv.IsNil()
 	}
 	return false

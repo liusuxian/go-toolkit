@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-05-26 15:33:37
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 23:40:06
+ * @LastEditTime: 2025-12-25 10:29:24
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	errNoPrivateAddress = errors.New("no private ip address") // 没有私有IP地址
+	ErrNoPrivateAddress = errors.New("no private ip address") // 没有私有IP地址
 )
 
 // IsPrivateIPv4 判断是否是私有 IPv4 地址
@@ -44,7 +44,7 @@ func PrivateIPv4() (ip net.IP, err error) {
 		}
 	}
 
-	err = errNoPrivateAddress
+	err = ErrNoPrivateAddress
 	return
 }
 

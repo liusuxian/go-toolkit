@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-10 14:24:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-05-13 14:12:56
+ * @LastEditTime: 2025-12-25 10:53:15
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -35,4 +35,13 @@ func TestSplit(t *testing.T) {
 	assert.ElementsMatch([]string{}, gtkstr.Split("", "."))
 	assert.ElementsMatch([]string{}, gtkstr.Split(" ", "."))
 	assert.ElementsMatch([]string{}, gtkstr.Split("   ", "."))
+}
+
+func TestGenerateRandomString(t *testing.T) {
+	for range 10 {
+		t.Log(gtkstr.GenerateRandomString(12))
+	}
+	for range 10 {
+		t.Log(gtkstr.GenerateRandomString(16))
+	}
 }

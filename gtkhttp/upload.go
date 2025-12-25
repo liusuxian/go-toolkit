@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-07-15 17:56:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 19:55:14
+ * @LastEditTime: 2025-12-25 10:35:59
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -75,7 +75,12 @@ func (s *UploadFileService) Upload(r *http.Request, dirPath string) (fileInfo *U
 	// 执行上传
 	var filePath string
 	if filePath, err = s.doUpload(file, fileHeader, dirPath); err != nil {
-		fileInfo = &UploadFileInfo{err: err}
+		fileInfo = &UploadFileInfo{
+			err:      err,
+			FileName: fileHeader.Filename,
+			FileSize: fileHeader.Size,
+			FileType: fileHeader.Header.Get("Content-type"),
+		}
 		return
 	}
 	// 返回
@@ -150,7 +155,12 @@ func (s *UploadFileService) BatchUpload(r *http.Request, dirPath string) (fileIn
 			// 执行上传
 			var filePath string
 			if filePath, err = s.doUpload(file, fileHeader, dirPath); err != nil {
-				fileInfos[idx] = &UploadFileInfo{err: err}
+				fileInfos[idx] = &UploadFileInfo{
+					err:      err,
+					FileName: fileHeader.Filename,
+					FileSize: fileHeader.Size,
+					FileType: fileHeader.Header.Get("Content-type"),
+				}
 				return
 			}
 			// 返回
