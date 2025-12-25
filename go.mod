@@ -7,7 +7,6 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/confluentinc/confluent-kafka-go/v2 v2.12.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-redsync/redsync/v4 v4.15.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3

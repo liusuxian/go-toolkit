@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-25 11:52:05
+ * @LastEditTime: 2025-12-25 12:07:33
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -36,7 +36,7 @@ type UploadFileInfo struct {
 	FileSize int64  `json:"file_size"` // 文件大小
 	FilePath string `json:"file_path"` // 文件路径
 	FileType string `json:"file_type"` // 文件类型
-	err      error  `json:"-"`         // 上传失败时返回的错误信息
+	err      error  // 上传失败时返回的错误信息
 }
 
 // GetErr 获取上传失败时返回的错误信息
