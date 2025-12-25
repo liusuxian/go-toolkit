@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-07-15 17:56:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-25 12:08:09
+ * @LastEditTime: 2025-12-25 12:20:58
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -10,6 +10,7 @@
 package gtkhttp
 
 import (
+	"errors"
 	"fmt"
 	"github.com/liusuxian/go-toolkit/internal/utils"
 	"io"
@@ -21,13 +22,20 @@ import (
 	"sync"
 )
 
+var (
+	ErrMissingFile         = errors.New("no such file")
+	ErrUnsupportedMethod   = errors.New("unsupported method")
+	ErrUnsupportedFileType = errors.New("unsupported file type")
+	ErrUnsupportedFileSize = errors.New("unsupported file size")
+)
+
 // UploadFileInfo 上传的文件信息
 type UploadFileInfo struct {
 	FileName string `json:"file_name"` // 文件名
 	FileSize int64  `json:"file_size"` // 文件大小
 	FilePath string `json:"file_path"` // 文件路径
 	FileType string `json:"file_type"` // 文件类型
-	err      error  // 上传失败时返回的错误信息
+	err      error  `json:"-"`         // 上传失败时返回的错误信息
 }
 
 // GetErr 获取上传失败时返回的错误信息
@@ -38,7 +46,7 @@ func (ufi *UploadFileInfo) GetErr() (err error) {
 // Upload 上传
 func (s *UploadFileService) Upload(r *http.Request, dirPath string) (fileInfo *UploadFileInfo) {
 	if r.Method != "POST" {
-		fileInfo = &UploadFileInfo{err: fmt.Errorf("unsupported method")}
+		fileInfo = &UploadFileInfo{err: ErrUnsupportedMethod}
 		return
 	}
 	var (
@@ -55,7 +63,7 @@ func (s *UploadFileService) Upload(r *http.Request, dirPath string) (fileInfo *U
 	// 判断上传文件类型是否合法
 	if !s.checkFileType(fileHeader.Filename) {
 		fileInfo = &UploadFileInfo{
-			err:      fmt.Errorf("unsupported file type"),
+			err:      ErrUnsupportedFileType,
 			FileName: fileHeader.Filename,
 			FileSize: fileHeader.Size,
 			FileType: fileHeader.Header.Get("Content-type"),
@@ -65,7 +73,7 @@ func (s *UploadFileService) Upload(r *http.Request, dirPath string) (fileInfo *U
 	// 检查上传文件大小是否合法
 	if !s.checkSize(fileHeader.Size) {
 		fileInfo = &UploadFileInfo{
-			err:      fmt.Errorf("unsupported file size"),
+			err:      ErrUnsupportedFileSize,
 			FileName: fileHeader.Filename,
 			FileSize: fileHeader.Size,
 			FileType: fileHeader.Header.Get("Content-type"),
@@ -96,7 +104,7 @@ func (s *UploadFileService) Upload(r *http.Request, dirPath string) (fileInfo *U
 // BatchUpload 批量上传
 func (s *UploadFileService) BatchUpload(r *http.Request, dirPath string) (fileInfos []*UploadFileInfo) {
 	if r.Method != "POST" {
-		fileInfos = []*UploadFileInfo{{err: fmt.Errorf("unsupported method")}}
+		fileInfos = []*UploadFileInfo{{err: ErrUnsupportedMethod}}
 		return
 	}
 	var err error
@@ -107,7 +115,7 @@ func (s *UploadFileService) BatchUpload(r *http.Request, dirPath string) (fileIn
 	// 检查文件数量
 	files := r.MultipartForm.File["file"]
 	if len(files) == 0 {
-		fileInfos = []*UploadFileInfo{{err: http.ErrMissingFile}}
+		fileInfos = []*UploadFileInfo{{err: ErrMissingFile}}
 		return
 	}
 	if len(files) > s.config.MaxCount {
@@ -135,7 +143,7 @@ func (s *UploadFileService) BatchUpload(r *http.Request, dirPath string) (fileIn
 			// 判断上传文件类型是否合法
 			if !s.checkFileType(fileHeader.Filename) {
 				fileInfos[idx] = &UploadFileInfo{
-					err:      fmt.Errorf("unsupported file type"),
+					err:      ErrUnsupportedFileType,
 					FileName: fileHeader.Filename,
 					FileSize: fileHeader.Size,
 					FileType: fileHeader.Header.Get("Content-type"),
@@ -145,7 +153,7 @@ func (s *UploadFileService) BatchUpload(r *http.Request, dirPath string) (fileIn
 			// 检查上传文件大小是否合法
 			if !s.checkSize(fileHeader.Size) {
 				fileInfos[idx] = &UploadFileInfo{
-					err:      fmt.Errorf("unsupported file size"),
+					err:      ErrUnsupportedFileSize,
 					FileName: fileHeader.Filename,
 					FileSize: fileHeader.Size,
 					FileType: fileHeader.Header.Get("Content-type"),
