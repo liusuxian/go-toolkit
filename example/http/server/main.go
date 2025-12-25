@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-26 01:04:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 17:17:51
+ * @LastEditTime: 2025-12-25 12:02:50
  * @Description: 注意跨域问题
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -43,22 +43,22 @@ func main() {
 	}
 	if aliyunOSS, err = gtkoss.NewAliyunOSS(gtkoss.OSSConfig{
 		Bucket:             gtkenv.Get("bucket"),
-		EndpointAccelerate: gtkenv.Get("endpointAccelerate"),
-		EndpointInternal:   gtkenv.Get("endpointInternal"),
-		EndpointAccess:     gtkenv.Get("endpointAccess"),
-		AccessKeyID:        gtkenv.Get("accessKeyID"),
-		AccessKeySecret:    gtkenv.Get("accessKeySecret"),
-		AllowTypeList:      gtkconv.ToStringSlice(gtkenv.Get("allowTypeList")),
-		MaxSize:            gtkconv.ToInt(gtkenv.Get("maxSize")),
-		MaxCount:           gtkconv.ToInt(gtkenv.Get("maxCount")),
+		EndpointAccelerate: gtkenv.Get("endpoint_accelerate"),
+		EndpointInternal:   gtkenv.Get("endpoint_internal"),
+		EndpointAccess:     gtkenv.Get("endpoint_access"),
+		AccessKeyID:        gtkenv.Get("access_key_id"),
+		AccessKeySecret:    gtkenv.Get("access_key_secret"),
+		AllowTypeList:      gtkconv.ToStringSlice(gtkenv.Get("allow_type_list")),
+		MaxSize:            gtkconv.ToInt(gtkenv.Get("max_size")),
+		MaxCount:           gtkconv.ToInt(gtkenv.Get("max_count")),
 	}); err != nil {
 		fmt.Println("NewAliyunOSS Error: ", err)
 		os.Exit(1)
 	}
 	uploadFileService = gtkhttp.NewUploadFileService(gtkhttp.UploadFileConfig{
-		AllowTypeList: gtkconv.ToStringSlice(gtkenv.Get("allowTypeList")),
-		MaxSize:       gtkconv.ToInt(gtkenv.Get("maxSize")),
-		MaxCount:      gtkconv.ToInt(gtkenv.Get("maxCount")),
+		AllowTypeList: gtkconv.ToStringSlice(gtkenv.Get("allow_type_list")),
+		MaxSize:       gtkconv.ToInt(gtkenv.Get("max_size")),
+		MaxCount:      gtkconv.ToInt(gtkenv.Get("max_count")),
 	}, gtkhttp.WithUploadFileNameFn(func(filename string) (newFilename string) {
 		return filename
 	}))

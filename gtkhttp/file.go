@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:14:55
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-25 10:33:31
+ * @LastEditTime: 2025-12-25 11:56:15
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,9 +15,9 @@ const (
 
 // UploadFileConfig 上传文件配置
 type UploadFileConfig struct {
-	AllowTypeList []string `json:"allowTypeList"` // 允许上传的文件类型
-	MaxSize       int      `json:"maxSize"`       // 单个文件最大上传大小(MB)，默认1MB
-	MaxCount      int      `json:"maxCount"`      // 单次上传文件的最大数量，默认10
+	AllowTypeList []string `json:"allow_type_list"` // 允许上传的文件类型
+	MaxSize       int      `json:"max_size"`        // 单个文件最大上传大小(MB)，默认1MB
+	MaxCount      int      `json:"max_count"`       // 单次上传文件的最大数量，默认10
 }
 
 // UploadFileService 上传文件服务
