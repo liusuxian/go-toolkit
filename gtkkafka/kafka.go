@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 19:58:27
+ * @LastEditTime: 2025-12-29 16:14:57
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -37,49 +37,49 @@ const (
 // TopicConfig topic 配置
 type TopicConfig struct {
 	// topic 分区数量，默认 12 个分区
-	PartitionNum uint32 `json:"partitionNum,omitempty"`
+	PartitionNum uint32 `json:"partition_num,omitempty"`
 	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-	Mode ProducerConsumerStartMode `json:"mode"`
+	Mode ProducerConsumerStartMode `json:"mode,omitempty"`
 	// 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀
 	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
 	Groups []string `json:"groups,omitempty"`
 	// 批量消费的条数，默认 200
-	BatchConsumeSize int `json:"batchConsumeSize,omitempty"`
+	BatchConsumeSize int `json:"batch_consume_size,omitempty"`
 	// 批量消费的间隔时间，默认 5s
-	BatchConsumeInterval time.Duration `json:"batchConsumeInterval,omitempty"`
+	BatchConsumeInterval time.Duration `json:"batch_consume_interval,omitempty"`
 	// 当消费失败时的重试配置，默认不重试
-	RetryConfig gtkretry.RetryConfig `json:"retryConfig"`
+	RetryConfig gtkretry.RetryConfig `json:"retry_config"`
 }
 
 // ProducerMessage 生产者消息
 type ProducerMessage struct {
-	Key       string `json:"key" dc:"键"`   // 键
-	Data      any    `json:"data" dc:"数据"` // 数据
+	Key       string `json:"key,omitempty"`  // 键
+	Data      any    `json:"data,omitempty"` // 数据
 	dataBytes []byte // 数据字节数组
 }
 
 // Config kafka 客户端配置
 type Config struct {
-	BootstrapServers           string                 `json:"bootstrapServers"`           // Kafka 服务器的地址列表，格式为 host1:port1,host2:port2
-	SecurityProtocol           string                 `json:"securityProtocol"`           // Kafka 通信的安全协议，如 PLAINTEXT、SSL、SASL_PLAINTEXT、SASL_SSL
-	SaslMechanism              string                 `json:"saslMechanism"`              // SASL 认证机制，如 GSSAPI、PLAIN、OAUTHBEARER、SCRAM-SHA-256、SCRAM-SHA-512
-	SaslUsername               string                 `json:"saslUsername"`               // SASL 认证的用户名
-	SaslPassword               string                 `json:"saslPassword"`               // SASL 认证的密码
-	StickyPartitioningLingerMs int                    `json:"stickyPartitioningLingerMs"` // 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
-	BatchSize                  int                    `json:"batchSize"`                  // 批量发送大小，默认 10485760 字节
-	MessageMaxBytes            int                    `json:"messageMaxBytes"`            // 最大消息大小，默认 16384 字节
-	Retries                    int                    `json:"retries"`                    // 发送消息失败后允许重试的次数，默认 2147483647
-	RetryBackoffMs             int                    `json:"retryBackoffMs"`             // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-	LingerMs                   int                    `json:"lingerMs"`                   // 发送延迟时间，默认 100ms
-	QueueBufferingMaxKbytes    int                    `json:"queueBufferingMaxKbytes"`    // Producer 攒批发送中，默认 1048576kb
-	WaitTimeout                time.Duration          `json:"waitTimeout"`                // 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
-	OffsetReset                string                 `json:"offsetReset"`                // 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-	IsClose                    bool                   `json:"isClose"`                    // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
-	Env                        string                 `json:"env"`                        // topic 服务环境，默认 local
-	ConsumerEnv                string                 `json:"consumerEnv"`                // 消费者服务环境，默认和 topic 服务环境一致
-	GlobalProducer             string                 `json:"globalProducer"`             // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	TopicConfig                map[string]TopicConfig `json:"topicConfig"`                // topic 配置，key 为 topic 名称
-	ExcludeTopics              []string               `json:"excludeTopics"`              // 指定哪些 topic 不发送 Kafka 消息
+	BootstrapServers           string                 `json:"bootstrap_servers"`             // Kafka 服务器的地址列表，格式为 host1:port1,host2:port2
+	SecurityProtocol           string                 `json:"security_protocol"`             // Kafka 通信的安全协议，如 PLAINTEXT、SSL、SASL_PLAINTEXT、SASL_SSL
+	SaslMechanism              string                 `json:"sasl_mechanism"`                // SASL 认证机制，如 GSSAPI、PLAIN、OAUTHBEARER、SCRAM-SHA-256、SCRAM-SHA-512
+	SaslUsername               string                 `json:"sasl_username"`                 // SASL 认证的用户名
+	SaslPassword               string                 `json:"sasl_password"`                 // SASL 认证的密码
+	StickyPartitioningLingerMs int                    `json:"sticky_partitioning_linger_ms"` // 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
+	BatchSize                  int                    `json:"batch_size"`                    // 批量发送大小，默认 10485760 字节
+	MessageMaxBytes            int                    `json:"message_max_bytes"`             // 最大消息大小，默认 16384 字节
+	Retries                    int                    `json:"retries"`                       // 发送消息失败后允许重试的次数，默认 2147483647
+	RetryBackoffMs             int                    `json:"retry_backoff_ms"`              // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	LingerMs                   int                    `json:"linger_ms"`                     // 发送延迟时间，默认 100ms
+	QueueBufferingMaxKbytes    int                    `json:"queue_buffering_max_kbytes"`    // Producer 攒批发送中，默认 1048576kb
+	WaitTimeout                time.Duration          `json:"wait_timeout"`                  // 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
+	OffsetReset                string                 `json:"offset_reset"`                  // 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
+	IsClose                    bool                   `json:"is_close"`                      // 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
+	Env                        string                 `json:"env"`                           // topic 服务环境，默认 local
+	ConsumerEnv                string                 `json:"consumer_env"`                  // 消费者服务环境，默认和 topic 服务环境一致
+	GlobalProducer             string                 `json:"global_producer"`               // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	TopicConfig                map[string]TopicConfig `json:"topic_config"`                  // topic 配置，key 为 topic 名称
+	ExcludeTopics              []string               `json:"exclude_topics"`                // 指定哪些 topic 不发送 Kafka 消息
 }
 
 // KafkaClient kafka 客户端

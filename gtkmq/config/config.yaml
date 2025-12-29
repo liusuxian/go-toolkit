@@ -1,36 +1,36 @@
 # redis_mq 配置
 redis_mq:
   retries: 2147483647 # 发送消息失败后允许重试的次数，默认 2147483647
-  retryBackoff: "100ms" # 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-  expiredTime: "5m" # 消息过期时间，默认 90天
-  delExpiredMsgInterval: "2s" # 删除过期消息的时间间隔，默认 1天
-  waitTimeout: "2500ms" # 指定等待消息的最大时间，默认最大 2500ms
-  offsetReset: "0-0" # 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+  retry_backoff: "100ms" # 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+  expired_time: "5m" # 消息过期时间，默认 90天
+  del_expired_msg_interval: "2s" # 删除过期消息的时间间隔，默认 1天
+  wait_timeout: "2500ms" # 指定等待消息的最大时间，默认最大 2500ms
+  offset_reset: "0-0" # 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
   env: "test" # 消息队列服务环境，默认 local
-  consumerEnv: "gray" # 消费者服务环境，默认和消息队列服务环境一致
-  # globalProducer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-  mqConfig: # 消息队列配置，key 为消息队列名称
+  consumer_env: "gray" # 消费者服务环境，默认和消息队列服务环境一致
+  # global_producer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+  mq_config: # 消息队列配置，key 为消息队列名称
     queue: # 队列名称
-      partitionNum: 12 # 消息队列分区数量，默认 12 个分区
+      partition_num: 12 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
       groups: ["testname1", "testname2"] # 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀。可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
-      retryConfig: # 重试配置
-        maxAttempts: 3 # 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+      retry_config: # 重试配置
+        max_attempts: 3 # 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
         strategy: "exponential" # 重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
-        baseDelay: "1s" # 基础延迟时间，默认 1s
-        maxDelay: "10s" # 最大延迟时间，默认 10s
+        base_delay: "1s" # 基础延迟时间，默认 1s
+        max_delay: "10s" # 最大延迟时间，默认 10s
         multiplier: 2.0 # 重试间隔倍数（用于指数退避），默认 2.0
-        jitterPercent: 0.1 # 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
+        jitter_percent: 0.1 # 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
     queue_100: # 队列名称
-      partitionNum: 1 # 消息队列分区数量，默认 12 个分区
+      partition_num: 1 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
     queue_200: # 队列名称
-      partitionNum: 1 # 消息队列分区数量，默认 12 个分区
+      partition_num: 1 # 消息队列分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
     queue_delay: # 队列名称
-      partitionNum: 12 # 消息队列分区数量，默认 12 个分区
+      partition_num: 12 # 消息队列分区数量，默认 12 个分区
       mode: 1 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-      isDelayQueue: true # 是否开启延迟队列
-      delayQueueCheckInterval: "1s" # 延迟队列检查间隔，默认 10s
-      delayQueueBatchSize: 100 # 延迟队列批处理大小，默认 100
-  excludeMQList: ["queue_100", "queue_200"] # 指定哪些消息队列不发送消息
+      enable_delay_queue: true # 是否开启延迟队列
+      delay_queue_check_interval: "1s" # 延迟队列检查间隔，默认 10s
+      delay_queue_batch_size: 100 # 延迟队列批处理大小，默认 100
+  exclude_mqs: ["queue_100", "queue_200"] # 指定哪些消息队列不发送消息

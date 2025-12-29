@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-09 17:23:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 16:28:25
+ * @LastEditTime: 2025-12-29 16:25:33
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -34,13 +34,13 @@ const (
 
 // RetryConfig 重试配置
 type RetryConfig struct {
-	MaxAttempts   int            `json:"maxAttempts"`   // 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
-	Strategy      RetryStrategy  `json:"strategy"`      // 重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
-	BaseDelay     time.Duration  `json:"baseDelay"`     // 基础延迟时间，默认 1s
-	MaxDelay      time.Duration  `json:"maxDelay"`      // 最大延迟时间，默认 10s
-	Multiplier    float64        `json:"multiplier"`    // 重试间隔倍数（用于指数退避），默认 2.0
-	JitterPercent float64        `json:"jitterPercent"` // 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
-	Condition     RetryCondition `json:"-"`             // 重试条件，默认总是重试
+	MaxAttempts   int            `json:"max_attempts,omitempty"`   // 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+	Strategy      RetryStrategy  `json:"strategy,omitempty"`       // 重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
+	BaseDelay     time.Duration  `json:"base_delay,omitempty"`     // 基础延迟时间，默认 1s
+	MaxDelay      time.Duration  `json:"max_delay,omitempty"`      // 最大延迟时间，默认 10s
+	Multiplier    float64        `json:"multiplier,omitempty"`     // 重试间隔倍数（用于指数退避），默认 2.0
+	JitterPercent float64        `json:"jitter_percent,omitempty"` // 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
+	Condition     RetryCondition `json:"-"`                        // 重试条件，默认总是重试
 }
 
 // Retry 重试

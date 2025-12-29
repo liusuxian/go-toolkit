@@ -1,36 +1,36 @@
 # kafka 配置
 kafka:
-  bootstrapServers: "127.0.0.1:19092" # Kafka 服务器的地址列表，格式为 host1:port1,host2:port2
-  securityProtocol: "PLAINTEXT" # Kafka 通信的安全协议，如 PLAINTEXT、SSL、SASL_PLAINTEXT、SASL_SSL
-  stickyPartitioningLingerMs: 100 # 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
-  batchSize: 10485760 # 批量发送大小，默认 10485760 字节
-  messageMaxBytes: 16384 # 最大消息大小，默认 16384 字节
+  bootstrap_servers: "127.0.0.1:19092" # Kafka 服务器的地址列表，格式为 host1:port1,host2:port2
+  security_protocol: "PLAINTEXT" # Kafka 通信的安全协议，如 PLAINTEXT、SSL、SASL_PLAINTEXT、SASL_SSL
+  sticky_partitioning_linger_ms: 100 # 黏性分区策略的延迟时间，此设置允许生产者在指定时间内将消息发送到同一个分区，以增加消息批次的大小，提高压缩效率和吞吐量。设置为 0 时，生产者不会等待，消息会立即发送。默认 100ms
+  batch_size: 10485760 # 批量发送大小，默认 10485760 字节
+  message_max_bytes: 16384 # 最大消息大小，默认 16384 字节
   retries: 2147483647 # 发送消息失败后允许重试的次数，默认 2147483647
-  retryBackoffMs: 100 # 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-  lingerMs: 100 # 发送延迟时间，默认 100ms
-  queueBufferingMaxKbytes: 1048576 # Producer 攒批发送中，默认 1048576kb
-  waitTimeout: "5s" # 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
-  offsetReset: "earliest" # 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
-  isClose: true # 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
+  retry_backoff_ms: 100 # 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+  linger_ms: 100 # 发送延迟时间，默认 100ms
+  queue_buffering_max_kbytes: 1048576 # Producer 攒批发送中，默认 1048576kb
+  wait_timeout: "5s" # 指定等待消息的最大时间，默认 -1，表示无限期等待消息，直到有消息到达
+  offset_reset: "earliest" # 重置消费者偏移量的策略，可选值: earliest 最早位置，latest 最新位置，none 找不到之前的偏移量，消费者将抛出一个异常，停止工作，默认 earliest
+  is_close: true # 是否不启动 Kafka 客户端（适用于本地调试有时候没有kafka环境的情况）
   env: "test" # topic 服务环境，默认 local
-  # consumerEnv: "gray" # 消费者服务环境，默认和 topic 服务环境一致
-  globalProducer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-  topicConfig: # topic 配置，key 为 topic 名称
+  # consumer_env: "gray" # 消费者服务环境，默认和 topic 服务环境一致
+  global_producer: "test_global" # 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+  topic_config: # topic 配置，key 为 topic 名称
     topic_100: # topic 名称
-      partitionNum: 12 # topic 分区数量，默认 12 个分区
+      partition_num: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
       groups: ["testname1", "testname2"] # 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀。可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
-      retryConfig: # 重试配置
-        maxAttempts: 3 # 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
+      retry_config: # 重试配置
+        max_attempts: 3 # 最大重试次数（-1表示无限重试，0表示不重试只执行一次，>0表示重试指定次数），默认不重试
         strategy: "exponential" # 重试策略，可选值: fixed 固定间隔，linear 线性递增，exponential 指数退避，jitter 带抖动的指数退避，默认 exponential
-        baseDelay: "1s" # 基础延迟时间，默认 1s
-        maxDelay: "10s" # 最大延迟时间，默认 10s
+        base_delay: "1s" # 基础延迟时间，默认 1s
+        max_delay: "10s" # 最大延迟时间，默认 10s
         multiplier: 2.0 # 重试间隔倍数（用于指数退避），默认 2.0
-        jitterPercent: 0.1 # 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
+        jitter_percent: 0.1 # 抖动百分比（用于抖动策略，范围0-1，如0.1表示±10%），默认 0.1
     topic_101: # topic 名称
-      partitionNum: 12 # topic 分区数量，默认 12 个分区
+      partition_num: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
     topic_102: # topic 名称
-      partitionNum: 12 # topic 分区数量，默认 12 个分区
+      partition_num: 12 # topic 分区数量，默认 12 个分区
       mode: 3 # 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-  excludeTopics: ["topic_101", "topic_102"] # 指定哪些 topic 不发送 Kafka 消息
+  exclude_topics: ["topic_101", "topic_102"] # 指定哪些 topic 不发送 Kafka 消息

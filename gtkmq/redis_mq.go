@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-24 20:08:59
+ * @LastEditTime: 2025-12-29 16:18:03
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -30,17 +30,17 @@ import (
 
 // RedisMQConfig Redis 消息队列配置
 type RedisMQConfig struct {
-	Retries               int                 `json:"retries"`               // 发送消息失败后允许重试的次数，默认 2147483647
-	RetryBackoff          time.Duration       `json:"retryBackoff"`          // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
-	ExpiredTime           time.Duration       `json:"expiredTime"`           // 消息过期时间，默认 90天
-	DelExpiredMsgInterval time.Duration       `json:"delExpiredMsgInterval"` // 删除过期消息的时间间隔，默认 1天
-	WaitTimeout           time.Duration       `json:"waitTimeout"`           // 指定等待消息的最大时间，默认最大 2500ms
-	OffsetReset           string              `json:"offsetReset"`           // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
-	Env                   string              `json:"env"`                   // 消息队列服务环境，默认 local
-	ConsumerEnv           string              `json:"consumerEnv"`           // 消费者服务环境，默认和消息队列服务环境一致
-	GlobalProducer        string              `json:"globalProducer"`        // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
-	MQConfig              map[string]MQConfig `json:"mqConfig"`              // 消息队列配置，key 为消息队列名称
-	ExcludeMQList         []string            `json:"excludeMQList"`         // 指定哪些消息队列不发送消息
+	Retries               int                 `json:"retries,omitempty"`                  // 发送消息失败后允许重试的次数，默认 2147483647
+	RetryBackoff          time.Duration       `json:"retry_backoff,omitempty"`            // 发送消息失败后，下一次重试发送前的等待时间，默认 100ms
+	ExpiredTime           time.Duration       `json:"expired_time,omitempty"`             // 消息过期时间，默认 90天
+	DelExpiredMsgInterval time.Duration       `json:"del_expired_msg_interval,omitempty"` // 删除过期消息的时间间隔，默认 1天
+	WaitTimeout           time.Duration       `json:"wait_timeout,omitempty"`             // 指定等待消息的最大时间，默认最大 2500ms
+	OffsetReset           string              `json:"offset_reset,omitempty"`             // 重置消费者偏移量的策略，可选值: 0-0 最早位置，$ 最新位置，默认 0-0
+	Env                   string              `json:"env,omitempty"`                      // 消息队列服务环境，默认 local
+	ConsumerEnv           string              `json:"consumer_env,omitempty"`             // 消费者服务环境，默认和消息队列服务环境一致
+	GlobalProducer        string              `json:"global_producer,omitempty"`          // 全局生产者名称，配置此项时，客户端将使用全局生产者，不再创建新的生产者，默认为空
+	MQConfig              map[string]MQConfig `json:"mq_config,omitempty"`                // 消息队列配置，key 为消息队列名称
+	ExcludeMqs            []string            `json:"exclude_mqs,omitempty"`              // 指定哪些消息队列不发送消息
 }
 
 // RedisMQClient Redis 消息队列客户端
@@ -325,7 +325,7 @@ func (mq *redisMQClient) SendMessage(ctx context.Context, queue string, producer
 	if !isStart {
 		return
 	}
-	if mqConfig.IsDelayQueue && !producerMessage.DelayTime.IsZero() {
+	if mqConfig.EnableDelayQueue && !producerMessage.DelayTime.IsZero() {
 		// 发送延迟消息
 		return mq.sendDelayMessage(ctx, queue, producerMessage)
 	}
@@ -558,7 +558,7 @@ func (mq *redisMQClient) Close() (err error) {
 // sendMessage 发送消息
 func (mq *redisMQClient) sendMessage(ctx context.Context, queue string, mqConfig *MQConfig, producerMessage *ProducerMessage) (err error) {
 	// 检测哪些消息队列不发送消息
-	if slices.Contains(mq.config.ExcludeMQList, queue) {
+	if slices.Contains(mq.config.ExcludeMqs, queue) {
 		return
 	}
 	// 计算分区号
@@ -613,7 +613,7 @@ func (mq *redisMQClient) sendMessage(ctx context.Context, queue string, mqConfig
 // sendDelayMessage 发送延迟消息
 func (mq *redisMQClient) sendDelayMessage(ctx context.Context, queue string, producerMessage *ProducerMessage) (err error) {
 	// 检测哪些消息队列不发送消息
-	if slices.Contains(mq.config.ExcludeMQList, queue) {
+	if slices.Contains(mq.config.ExcludeMqs, queue) {
 		return
 	}
 	// 判断是否配置了全局生产者名称
@@ -837,7 +837,7 @@ func (mq *redisMQClient) getProducerConfig(queue string) (isStart bool, mqConfig
 			mqConfig.PartitionNum = defaultPartitionNum
 		}
 		// 是否开启延迟队列
-		mqConfig.IsDelayQueue = config.IsDelayQueue
+		mqConfig.EnableDelayQueue = config.EnableDelayQueue
 		return
 	}
 	err = fmt.Errorf("queue `%s` Not Found", queue)
@@ -1101,7 +1101,7 @@ func (ds *delaySender) Run(ctx context.Context, mq *redisMQClient) {
 func runDelaySender(ctx context.Context, mq *redisMQClient) {
 	for queue, mqConfig := range mq.config.MQConfig {
 		if mqConfig.Mode == ModeBoth || mqConfig.Mode == ModeProducer {
-			if mqConfig.IsDelayQueue {
+			if mqConfig.EnableDelayQueue {
 				var (
 					interval     = mqConfig.DelayQueueCheckInterval
 					batchSize    = mqConfig.DelayQueueBatchSize

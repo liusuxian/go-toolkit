@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-23 21:38:44
+ * @LastEditTime: 2025-12-29 16:20:26
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -28,49 +28,49 @@ const (
 // MQConfig 消息队列配置
 type MQConfig struct {
 	// 消息队列分区数量，默认 12 个分区
-	PartitionNum uint32 `json:"partitionNum,omitempty"`
+	PartitionNum uint32 `json:"partition_num,omitempty"`
 	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-	Mode ProducerConsumerStartMode `json:"mode"`
+	Mode ProducerConsumerStartMode `json:"mode,omitempty"`
 	// 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀
 	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
 	Groups []string `json:"groups,omitempty"`
 	// 批量消费的条数，默认 200
-	BatchSize int `json:"batchSize,omitempty"`
+	BatchSize int `json:"batch_size,omitempty"`
 	// 批量消费的间隔时间，默认 5s
-	BatchInterval time.Duration `json:"batchInterval,omitempty"`
+	BatchInterval time.Duration `json:"batch_interval,omitempty"`
 	// 当消费失败时的重试配置，默认不重试
-	RetryConfig gtkretry.RetryConfig `json:"retryConfig"`
+	RetryConfig gtkretry.RetryConfig `json:"retry_config"`
 	// 是否开启延迟队列
-	IsDelayQueue bool `json:"isDelayQueue,omitempty"`
+	EnableDelayQueue bool `json:"enable_delay_queue,omitempty"`
 	// 延迟队列检查间隔，默认 10s
-	DelayQueueCheckInterval time.Duration `json:"delayQueueCheckInterval,omitempty"`
+	DelayQueueCheckInterval time.Duration `json:"delay_queue_check_interval,omitempty"`
 	// 延迟队列批处理大小，默认 100
-	DelayQueueBatchSize int `json:"delayQueueBatchSize,omitempty"`
+	DelayQueueBatchSize int `json:"delay_queue_batch_size,omitempty"`
 }
 
 // ProducerMessage 生产者消息
 type ProducerMessage struct {
-	Key       string    `json:"key,omitempty"` // 键
-	Data      any       `json:"data"`          // 数据
-	DelayTime time.Time `json:"delay_time"`    // 延迟投递的截止时间点
+	Key       string    `json:"key,omitempty"`  // 键
+	Data      any       `json:"data,omitempty"` // 数据
+	DelayTime time.Time `json:"delay_time"`     // 延迟投递的截止时间点
 	dataBytes []byte    // 数据字节数组
 }
 
 // MQPartition 消息队列分区
 type MQPartition struct {
-	Queue         string `json:"queue"`          // 队列名称
-	PartitionName string `json:"partition_name"` // 分区名称
-	Partition     int32  `json:"partition"`      // 分区号
-	Offset        string `json:"offset"`         // 偏移量
+	Queue         string `json:"queue,omitempty"`          // 队列名称
+	PartitionName string `json:"partition_name,omitempty"` // 分区名称
+	Partition     int32  `json:"partition,omitempty"`      // 分区号
+	Offset        string `json:"offset,omitempty"`         // 偏移量
 }
 
 // MQMessage 消息队列消息
 type MQMessage struct {
-	MQPartition MQPartition `json:"mq_partition"` // 消息队列分区
-	Key         []byte      `json:"key"`          // 键
-	Value       []byte      `json:"value"`        // 值
-	Timestamp   time.Time   `json:"timestamp"`    // 发送消息的时间戳
-	ExpireTime  time.Time   `json:"expire_time"`  // 消息过期时间
+	MQPartition MQPartition `json:"mq_partition"`    // 消息队列分区
+	Key         []byte      `json:"key,omitempty"`   // 键
+	Value       []byte      `json:"value,omitempty"` // 值
+	Timestamp   time.Time   `json:"timestamp"`       // 发送消息的时间戳
+	ExpireTime  time.Time   `json:"expire_time"`     // 消息过期时间
 }
 
 // MQClient 消息队列客户端接口
