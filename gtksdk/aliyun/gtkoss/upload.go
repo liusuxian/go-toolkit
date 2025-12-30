@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-02-22 23:33:32
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-25 12:21:17
+ * @LastEditTime: 2025-12-30 16:56:23
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -458,7 +458,11 @@ func (s *AliyunOSS) checkSize(fileSize int64) (ok bool) {
 // doUploadFromHttp 执行上传
 func (s *AliyunOSS) doUploadFromHttp(file multipart.File, fileHeader *multipart.FileHeader, dirPath string, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
-	filePath = dirPath + "/" + s.uploadFileNameFn(fileHeader.Filename)
+	if dirPath == "" {
+		filePath = s.uploadFileNameFn(fileHeader.Filename)
+	} else {
+		filePath = dirPath + "/" + s.uploadFileNameFn(fileHeader.Filename)
+	}
 	// 获取存储空间
 	var (
 		client *oss.Client
@@ -479,7 +483,11 @@ func (s *AliyunOSS) doUploadFromHttp(file multipart.File, fileHeader *multipart.
 // doUploadFromBytes 执行上传
 func (s *AliyunOSS) doUploadFromBytes(data []byte, fileName, dirPath string, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
-	filePath = dirPath + "/" + s.uploadFileNameFn(fileName)
+	if dirPath == "" {
+		filePath = s.uploadFileNameFn(fileName)
+	} else {
+		filePath = dirPath + "/" + s.uploadFileNameFn(fileName)
+	}
 	// 获取存储空间
 	var (
 		client *oss.Client
@@ -500,7 +508,11 @@ func (s *AliyunOSS) doUploadFromBytes(data []byte, fileName, dirPath string, opt
 // doUploadFromFile 执行上传
 func (s *AliyunOSS) doUploadFromFile(fileName, dirPath string, fileStat fs.FileInfo, opts ...Option) (filePath string, err error) {
 	// 构建文件完整路径
-	filePath = dirPath + "/" + s.uploadFileNameFn(fileStat.Name())
+	if dirPath == "" {
+		filePath = s.uploadFileNameFn(fileStat.Name())
+	} else {
+		filePath = dirPath + "/" + s.uploadFileNameFn(fileStat.Name())
+	}
 	// 获取存储空间
 	var (
 		client *oss.Client
