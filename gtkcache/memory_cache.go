@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-16 23:11:19
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-20 02:04:21
+ * @LastEditTime: 2026-01-15 19:40:44
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -94,6 +94,7 @@ func (mc *memoryCache) Get(ctx context.Context, key string, timeout ...time.Dura
 // GetMap 批量获取缓存
 //
 //	当`timeout > 0`且所有缓存都命中时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
+//	注意：如需为每个`key`设置/重置不同的过期时间，请使用`BatchGet`
 func (mc *memoryCache) GetMap(ctx context.Context, keys []string, timeout ...time.Duration) (data map[string]any, err error) {
 	dataMap := make(map[string]any)
 	if len(keys) == 0 {
@@ -139,6 +140,23 @@ func (mc *memoryCache) GetMap(ctx context.Context, keys []string, timeout ...tim
 		dataMap[key] = item.Object
 	}
 	return dataMap, nil
+}
+
+// BatchGet 创建批量获取构建器
+//
+//	支持为每个`key`设置/重置不同的过期时间
+//	当所有`key`使用相同过期时间时，可以使用更简洁的`GetMap`方法
+//	当`capacity > 0`时，预分配指定容量以优化性能
+//	返回构建器实例，支持链式调用
+func (mc *memoryCache) BatchGet(ctx context.Context, capacity ...int) (batchGetter IBatchGetter) {
+	cap := 0
+	if len(capacity) > 0 && capacity[0] > 0 {
+		cap = capacity[0]
+	}
+	return &memoryBatchGetter{
+		mc:    mc,
+		items: make([]batchGetItem, 0, cap),
+	}
 }
 
 // GetOrSet 检索并返回`key`的值，或者当`key`不存在时，则使用`newVal`设置`key`的值
@@ -262,9 +280,20 @@ func (mc *memoryCache) CustomGetOrSetFunc(ctx context.Context, keys []string, ar
 //
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 func (mc *memoryCache) Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) {
-	expiration := getExpiration(timeout...)
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
+
+	var expiration int64
+	if len(timeout) > 0 && timeout[0] > 0 {
+		// 设置新的过期时间
+		expiration = time.Now().Add(timeout[0]).UnixNano()
+	} else {
+		// 保持原有的过期时间（KEEPTTL 行为）
+		oldItem, found := mc.items[key]
+		if found && !oldItem.isExpired() {
+			expiration = oldItem.Expiration
+		}
+	}
 
 	mc.items[key] = &Item{
 		Object:     val,
@@ -276,22 +305,52 @@ func (mc *memoryCache) Set(ctx context.Context, key string, val any, timeout ...
 // SetMap 批量设置缓存，所有`key`的过期时间相同
 //
 //	当`timeout > 0`时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
+//	注意：如需为每个`key`设置不同的过期时间，请使用`BatchSet`
 func (mc *memoryCache) SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error) {
 	if len(data) == 0 {
 		return nil
 	}
 
-	expiration := getExpiration(timeout...)
+	now := time.Now()
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
 	for key, val := range data {
+		var expiration int64
+		if len(timeout) > 0 && timeout[0] > 0 {
+			// 设置新的过期时间
+			expiration = now.Add(timeout[0]).UnixNano()
+		} else {
+			// 保持原有的过期时间（KEEPTTL 行为）
+			oldItem, found := mc.items[key]
+			if found && !oldItem.isExpired() {
+				expiration = oldItem.Expiration
+			}
+		}
+
 		mc.items[key] = &Item{
 			Object:     val,
 			Expiration: expiration,
 		}
 	}
 	return nil
+}
+
+// BatchSet 创建批量设置构建器
+//
+//	支持为每个`key`设置不同的过期时间
+//	当所有`key`使用相同过期时间时，可以使用更简洁的`SetMap`方法
+//	当`capacity > 0`时，预分配指定容量以优化性能
+//	返回构建器实例，支持链式调用
+func (mc *memoryCache) BatchSet(ctx context.Context, capacity ...int) (batchSetter IBatchSetter) {
+	cap := 0
+	if len(capacity) > 0 && capacity[0] > 0 {
+		cap = capacity[0]
+	}
+	return &memoryBatchSetter{
+		mc:    mc,
+		items: make([]batchSetItem, 0, cap),
+	}
 }
 
 // SetIfNotExist 当`key`不存在时，则使用`val`设置`key`的值，返回是否设置成功

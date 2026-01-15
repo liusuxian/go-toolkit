@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-20 00:15:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-21 01:22:59
+ * @LastEditTime: 2026-01-15 17:07:15
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,6 +13,19 @@ import (
 	"encoding/json"
 	"time"
 )
+
+// batchGetItem 批量获取项
+type batchGetItem struct {
+	key     string
+	timeout *time.Duration
+}
+
+// batchSetItem 批量设置项
+type batchSetItem struct {
+	key     string
+	val     any
+	timeout *time.Duration
+}
 
 // singleflightValue singleflight 的值
 type singleflightValue struct {

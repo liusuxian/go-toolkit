@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-20 02:02:07
+ * @LastEditTime: 2026-01-15 18:22:16
  * @Description: 缓存接口
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -29,6 +29,45 @@ type ICustomCache interface {
 	Add(ctx context.Context, keys []string, args []any, newVal any, timeout ...time.Duration) (val any, err error)
 }
 
+// IBatchGetter 批量获取构建器接口
+type IBatchGetter interface {
+	// Add 添加一个 key 到批量获取队列
+	//   当`timeout > 0`且该`key`缓存命中时，设置/重置该`key`的过期时间（会覆盖默认过期时间）
+	//   当`timeout`未指定或`timeout <= 0`时，该`key`使用`SetDefaultTimeout`设置的默认过期时间
+	//   返回构建器自身，支持链式调用
+	Add(ctx context.Context, key string, timeout ...time.Duration) (batchGetter IBatchGetter)
+	// SetDefaultTimeout 设置默认过期时间（对所有未单独设置过期时间的 key 生效）
+	//   当`timeout > 0`且缓存命中时，所有未单独指定过期时间的`key`将使用此默认过期时间
+	//   当`timeout <= 0`时，所有未单独指定过期时间的`key`将保持原有的过期时间
+	//   返回构建器自身，支持链式调用
+	SetDefaultTimeout(ctx context.Context, timeout time.Duration) (batchGetter IBatchGetter)
+	// Execute 执行批量获取操作
+	//   返回 map[key]value，不存在或已过期的`key`不会出现在结果`map`中
+	//   执行成功后，自动清空构建器中的数据（不建议继续使用该构建器）
+	//   执行失败时，保留构建器中的数据，可以直接再次调用本方法进行重试
+	//   建议：为每次批量操作创建新的构建器实例
+	Execute(ctx context.Context) (values map[string]any, err error)
+}
+
+// IBatchSetter 批量设置构建器接口
+type IBatchSetter interface {
+	// Add 添加一个 key-value 对到批量设置队列
+	//   当`timeout > 0`时，设置该`key`的过期时间（会覆盖默认过期时间）
+	//   当`timeout`未指定或`timeout <= 0`时，该`key`使用`SetDefaultTimeout`设置的默认过期时间
+	//   返回构建器自身，支持链式调用
+	Add(ctx context.Context, key string, val any, timeout ...time.Duration) (batchSetter IBatchSetter)
+	// SetDefaultTimeout 设置默认过期时间（对所有未单独设置过期时间的 key 生效）
+	//   当`timeout > 0`时，所有未单独指定过期时间的`key`将使用此默认过期时间
+	//   当`timeout <= 0`时，所有未单独指定过期时间的`key`将保持原有的过期时间
+	//   返回构建器自身，支持链式调用
+	SetDefaultTimeout(ctx context.Context, timeout time.Duration) (batchSetter IBatchSetter)
+	// Execute 执行批量设置操作
+	//   执行成功后，自动清空构建器中的数据（不建议继续使用该构建器）
+	//   执行失败时，保留构建器中的数据，可以直接再次调用本方法进行重试
+	//   建议：为每次批量操作创建新的构建器实例
+	Execute(ctx context.Context) (err error)
+}
+
 // ICache 缓存接口
 type ICache interface {
 	// Get 获取缓存
@@ -36,7 +75,14 @@ type ICache interface {
 	Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error)
 	// GetMap 批量获取缓存
 	//   当`timeout > 0`且所有缓存都命中时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
+	//   注意：如需为每个`key`设置/重置不同的过期时间，请使用`BatchGet`
 	GetMap(ctx context.Context, keys []string, timeout ...time.Duration) (data map[string]any, err error)
+	// BatchGet 创建批量获取构建器
+	//   支持为每个`key`设置/重置不同的过期时间
+	//   当所有`key`使用相同过期时间时，可以使用更简洁的`GetMap`方法
+	//   当`capacity > 0`时，预分配指定容量以优化性能
+	//   返回构建器实例，支持链式调用
+	BatchGet(ctx context.Context, capacity ...int) (batchGetter IBatchGetter)
 	// GetOrSet 检索并返回`key`的值，或者当`key`不存在时，则使用`newVal`设置`key`的值
 	//   当`timeout > 0`时，设置/重置`key`的过期时间
 	GetOrSet(ctx context.Context, key string, newVal any, timeout ...time.Duration) (val any, err error)
@@ -55,7 +101,14 @@ type ICache interface {
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error)
 	// SetMap 批量设置缓存，所有`key`的过期时间相同
 	//   当`timeout > 0`时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
+	//   注意：如需为每个`key`设置不同的过期时间，请使用`BatchSet`
 	SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error)
+	// BatchSet 创建批量设置构建器
+	//   支持为每个`key`设置不同的过期时间
+	//   当所有`key`使用相同过期时间时，可以使用更简洁的`SetMap`方法
+	//   当`capacity > 0`时，预分配指定容量以优化性能
+	//   返回构建器实例，支持链式调用
+	BatchSet(ctx context.Context, capacity ...int) (batchSetter IBatchSetter)
 	// SetIfNotExist 当`key`不存在时，则使用`val`设置`key`的值，返回是否设置成功
 	//   当`timeout > 0`且`key`设置成功时，设置`key`的过期时间
 	SetIfNotExist(ctx context.Context, key string, val any, timeout ...time.Duration) (ok bool, err error)

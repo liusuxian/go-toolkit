@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-20 01:11:07
+ * @LastEditTime: 2026-01-15 19:15:44
  * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -67,6 +67,23 @@ var internalScriptMap = map[string]string{
 	return vals
 	`,
 
+	"BATCH_GET_EX": `
+	-- KEYS: [key1, key2, key3, ...]
+	-- ARGV: [timeout1, timeout2, timeout3, ...]
+	local result = {}
+	for i = 1, #KEYS do
+		local val = redis.call('GET', KEYS[i])
+		if val then
+			result[KEYS[i]] = val
+			local timeout = tonumber(ARGV[i], 10)
+			if timeout > 0 then
+				redis.call('PEXPIRE', KEYS[i], timeout)
+			end
+		end
+	end
+	return result
+	`,
+
 	"GETORSET": `
 	local val = redis.call('GET', KEYS[1])
 	if not val then
@@ -83,6 +100,15 @@ var internalScriptMap = map[string]string{
 	return val
 	`,
 
+	"MSET_KEEPTTL": `
+	-- KEYS: [key1, key2, key3, ...]
+	-- ARGV: [val1, val2, val3, ...]
+	for i = 1, #KEYS do
+		redis.call('SET', KEYS[i], ARGV[i], 'KEEPTTL')
+	end
+	return 'OK'
+	`,
+
 	"MSET_EX": `
 	for i = 1, #KEYS do
 		redis.call('PSETEX', KEYS[i], ARGV[#ARGV], ARGV[i])
@@ -90,20 +116,30 @@ var internalScriptMap = map[string]string{
 	return 'OK'
 	`,
 
+	"BATCH_SET_EX": `
+	-- KEYS: [key1, key2, key3, ...]
+	-- ARGV: [val1, timeout1, val2, timeout2, val3, timeout3, ...]
+	for i = 1, #KEYS do
+		local val = ARGV[(i-1)*2 + 1]
+		local timeout = tonumber(ARGV[(i-1)*2 + 2], 10)
+		if timeout > 0 then
+			redis.call('PSETEX', KEYS[i], timeout, val)
+		else
+			redis.call('SET', KEYS[i], val, 'KEEPTTL')
+		end
+	end
+	return 'OK'
+	`,
+
 	"UPDATE_VALUE_EX": `
-	local pttl = redis.call('PTTL', KEYS[1])
-	if pttl == -2 then
+	local oldVal = redis.call('GET', KEYS[1])
+	if not oldVal then
 		return nil
 	end
-	local oldVal = redis.call('GET', KEYS[1])
 	if tonumber(ARGV[2], 10) > 0 then
 		redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
 	else
-		if pttl == -1 then
-			redis.call('SET', KEYS[1], ARGV[1])
-		else
-			redis.call('PSETEX', KEYS[1], pttl, ARGV[1])
-		end
+		redis.call('SET', KEYS[1], ARGV[1], 'KEEPTTL')
 	end
 	return oldVal
 	`,
@@ -357,6 +393,7 @@ func (rc *RedisCache) Get(ctx context.Context, key string, timeout ...time.Durat
 // GetMap 批量获取缓存
 //
 //	当`timeout > 0`且所有缓存都命中时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
+//	注意：如需为每个`key`设置/重置不同的过期时间，请使用`BatchGet`
 func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time.Duration) (data map[string]any, err error) {
 	if len(keys) == 0 {
 		return
@@ -382,6 +419,23 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time
 		data[v] = resultList[k]
 	}
 	return
+}
+
+// BatchGet 创建批量获取构建器
+//
+//	支持为每个`key`设置/重置不同的过期时间
+//	当所有`key`使用相同过期时间时，可以使用更简洁的`GetMap`方法
+//	当`capacity > 0`时，预分配指定容量以优化性能
+//	返回构建器实例，支持链式调用
+func (rc *RedisCache) BatchGet(ctx context.Context, capacity ...int) (batchGetter IBatchGetter) {
+	cap := 0
+	if len(capacity) > 0 && capacity[0] > 0 {
+		cap = capacity[0]
+	}
+	return &redisBatchGetter{
+		rc:    rc,
+		items: make([]batchGetItem, 0, cap),
+	}
 }
 
 // GetOrSet 检索并返回`key`的值，或者当`key`不存在时，则使用`newVal`设置`key`的值
@@ -498,7 +552,7 @@ func (rc *RedisCache) CustomGetOrSetFunc(ctx context.Context, keys []string, arg
 //	当`timeout > 0`时，设置/重置`key`的过期时间
 func (rc *RedisCache) Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) {
 	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
-		_, err = rc.client.Do(ctx, "SET", key, val)
+		_, err = rc.client.Do(ctx, "SET", key, val, "KEEPTTL")
 	} else {
 		_, err = rc.client.Do(ctx, "PSETEX", key, timeout[0].Milliseconds(), val)
 	}
@@ -508,17 +562,20 @@ func (rc *RedisCache) Set(ctx context.Context, key string, val any, timeout ...t
 // SetMap 批量设置缓存，所有`key`的过期时间相同
 //
 //	当`timeout > 0`时，设置/重置所有`key`的过期时间，所有`key`过期时间相同
+//	注意：如需为每个`key`设置不同的过期时间，请使用`BatchSet`
 func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout ...time.Duration) (err error) {
 	if len(data) == 0 {
 		return
 	}
 
 	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
-		args := make([]any, 0, len(data)*2)
+		keys := make([]string, 0, len(data))
+		args := make([]any, 0, len(data))
 		for k, v := range data {
-			args = append(args, k, v)
+			keys = append(keys, k)
+			args = append(args, v)
 		}
-		_, err = rc.client.Do(ctx, "MSET", args...)
+		_, err = rc.client.EvalSha(ctx, "MSET_KEEPTTL", keys, args...)
 	} else {
 		keys := make([]string, 0, len(data))
 		args := make([]any, 0, len(data)+1)
@@ -530,6 +587,23 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 		_, err = rc.client.EvalSha(ctx, "MSET_EX", keys, args...)
 	}
 	return
+}
+
+// BatchSet 创建批量设置构建器
+//
+//	支持为每个`key`设置不同的过期时间
+//	当所有`key`使用相同过期时间时，可以使用更简洁的`SetMap`方法
+//	当`capacity > 0`时，预分配指定容量以优化性能
+//	返回构建器实例，支持链式调用
+func (rc *RedisCache) BatchSet(ctx context.Context, capacity ...int) (batchSetter IBatchSetter) {
+	cap := 0
+	if len(capacity) > 0 && capacity[0] > 0 {
+		cap = capacity[0]
+	}
+	return &redisBatchSetter{
+		rc:    rc,
+		items: make([]batchSetItem, 0, cap),
+	}
 }
 
 // SetIfNotExist 当`key`不存在时，则使用`val`设置`key`的值，返回是否设置成功
