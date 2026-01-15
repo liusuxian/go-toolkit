@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-15 19:15:44
+ * @LastEditTime: 2026-01-15 23:24:00
  * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -41,15 +41,6 @@ var internalScriptMap = map[string]string{
 	return val
 	`,
 
-	"GET_EX": `
-	local val = redis.call('GET', KEYS[1])
-	if not val then
-		return nil
-	end
-	redis.call('PEXPIRE', KEYS[1], ARGV[1])
-	return val
-	`,
-
 	"MGET_EX": `
 	local vals = redis.call('MGET', unpack(KEYS))
 	local allKeysExist = true
@@ -81,7 +72,11 @@ var internalScriptMap = map[string]string{
 			end
 		end
 	end
-	return result
+	local jsonStr = cjson.encode(result)
+	if jsonStr == "[]" then
+		return "{}"
+	end
+	return jsonStr
 	`,
 
 	"GETORSET": `
@@ -129,19 +124,6 @@ var internalScriptMap = map[string]string{
 		end
 	end
 	return 'OK'
-	`,
-
-	"UPDATE_VALUE_EX": `
-	local oldVal = redis.call('GET', KEYS[1])
-	if not oldVal then
-		return nil
-	end
-	if tonumber(ARGV[2], 10) > 0 then
-		redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
-	else
-		redis.call('SET', KEYS[1], ARGV[1], 'KEEPTTL')
-	end
-	return oldVal
 	`,
 
 	"UPDATE_EX": `
@@ -385,7 +367,7 @@ func (rc *RedisCache) Get(ctx context.Context, key string, timeout ...time.Durat
 	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
 		val, err = rc.client.Do(ctx, "GET", key)
 	} else {
-		val, err = rc.client.EvalSha(ctx, "GET_EX", []string{key}, timeout[0].Milliseconds())
+		val, err = rc.client.Do(ctx, "GETEX", key, "PX", timeout[0].Milliseconds())
 	}
 	return
 }
@@ -671,9 +653,9 @@ func (rc *RedisCache) SetIfNotExistFunc(ctx context.Context, key string, f Func,
 //	当`timeout > 0`且`key`更新成功时，更新`key`的过期时间
 func (rc *RedisCache) Update(ctx context.Context, key string, val any, timeout ...time.Duration) (oldVal any, isExist bool, err error) {
 	if len(timeout) == 0 || timeout[0].Milliseconds() <= 0 {
-		oldVal, err = rc.client.EvalSha(ctx, "UPDATE_VALUE_EX", []string{key}, val, 0)
+		oldVal, err = rc.client.Do(ctx, "SET", key, val, "XX", "GET", "KEEPTTL")
 	} else {
-		oldVal, err = rc.client.EvalSha(ctx, "UPDATE_VALUE_EX", []string{key}, val, timeout[0].Milliseconds())
+		oldVal, err = rc.client.Do(ctx, "SET", key, val, "XX", "GET", "PX", timeout[0].Milliseconds())
 	}
 	if err != nil {
 		return

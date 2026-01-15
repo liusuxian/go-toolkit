@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-08-29 17:06:47
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-25 11:39:36
+ * @LastEditTime: 2026-01-16 01:12:43
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -32,8 +32,8 @@ type OSSConfig struct {
 	MaxCount           int      `json:"max_count"`           // 单次上传文件的最大数量，默认10
 }
 
-// Cache 缓存
-type Cache interface {
+// ICache 缓存
+type ICache interface {
 	Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error) // 获取缓存
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) // 设置缓存
 }
@@ -51,7 +51,7 @@ const (
 type AliyunOSS struct {
 	config           OSSConfig                                  // 配置
 	uploadFileNameFn func(filename string) (newFilename string) // 上传文件时生成文件名的函数
-	cache            Cache                                      // 缓存器
+	cache            ICache                                     // 缓存器
 	ossClientOptions []oss.ClientOption                         // 阿里云OSS客户端选项
 	ossOptions       []oss.Option                               // 阿里云OSS操作选项
 	endpointType     EndpointType                               // 节点类型
@@ -68,7 +68,7 @@ func WithUploadFileNameFn(fn func(filename string) (newFilename string)) (opt Op
 }
 
 // WithCache 设置缓存器
-func WithCache(cache Cache) (opt Option) {
+func WithCache(cache ICache) (opt Option) {
 	return func(s *AliyunOSS) {
 		s.cache = cache
 	}

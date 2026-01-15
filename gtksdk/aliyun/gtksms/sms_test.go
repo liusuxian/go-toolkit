@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-13 10:50:22
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-13 19:07:36
+ * @LastEditTime: 2026-01-16 01:36:11
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -11,6 +11,7 @@ package gtksms_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/joho/godotenv"
@@ -53,6 +54,10 @@ func TestAliyunSendSms(t *testing.T) {
 	// 生成验证码
 	var verifyCode string
 	verifyCode, err = aliyunSMS.GenerateVerifyCode(ctx, gtkenv.Get("ALIYUN_SMS_PHONE_NUMBERS"))
+	if errors.Is(err, gtksms.ErrSendVerifyCodeTooOften) {
+		assert.ErrorIs(err, gtksms.ErrSendVerifyCodeTooOften)
+		return
+	}
 	assert.NoError(err)
 	assert.NotEmpty(verifyCode)
 	// 发送短信

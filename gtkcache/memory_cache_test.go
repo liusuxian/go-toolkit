@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-20 01:28:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-20 02:37:34
+ * @LastEditTime: 2026-01-16 00:08:38
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -400,4 +400,65 @@ func TestMemoryCacheCustomGetOrSetFunc(t *testing.T) {
 	wg.Wait()
 	finalCount := atomic.LoadInt32(&executeCount)
 	assert.Equal(int32(1), finalCount, "函数应该只执行1次，实际执行了%d次", finalCount)
+}
+
+func TestMemoryCacheBatchGetAndBatchSet(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		assert = assert.New(t)
+		cache  gtkcache.ICache
+	)
+	cache = gtkcache.NewMemoryCache()
+	assert.NotNil(cache)
+
+	var (
+		values map[string]any
+		err    error
+	)
+	values, err = cache.BatchGet(ctx, 3).
+		Add(ctx, "test_key_1", time.Second*10).
+		Add(ctx, "test_key_2", time.Second*20).
+		Add(ctx, "test_key_3").
+		SetDefaultTimeout(ctx, time.Second*30).
+		Execute(ctx)
+	assert.NoError(err)
+	assert.Equal(map[string]any{}, values)
+
+	var timeout time.Duration
+	timeout, err = cache.GetExpire(ctx, `test_key_1`)
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+	timeout, err = cache.GetExpire(ctx, `test_key_2`)
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+	timeout, err = cache.GetExpire(ctx, `test_key_3`)
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+
+	err = cache.BatchSet(ctx, 3).
+		Add(ctx, "test_key_1", "test_value_1", time.Second*10).
+		Add(ctx, "test_key_2", "test_value_2", time.Second*20).
+		Add(ctx, "test_key_3", "test_value_3").
+		SetDefaultTimeout(ctx, time.Second*10).
+		Execute(ctx)
+	assert.NoError(err)
+
+	values, err = cache.BatchGet(ctx, 3).
+		Add(ctx, "test_key_1", time.Second*10).
+		Add(ctx, "test_key_2", time.Second*20).
+		Add(ctx, "test_key_3").
+		SetDefaultTimeout(ctx, time.Second*30).
+		Execute(ctx)
+	assert.NoError(err)
+	assert.Equal(map[string]any{"test_key_1": "test_value_1", "test_key_2": "test_value_2", "test_key_3": "test_value_3"}, values)
+
+	timeout, err = cache.GetExpire(ctx, `test_key_1`)
+	assert.NoError(err)
+	assert.InDelta(int64(time.Second*10), int64(timeout), float64(time.Millisecond))
+	timeout, err = cache.GetExpire(ctx, `test_key_2`)
+	assert.NoError(err)
+	assert.InDelta(int64(time.Second*20), int64(timeout), float64(time.Millisecond))
+	timeout, err = cache.GetExpire(ctx, `test_key_3`)
+	assert.NoError(err)
+	assert.InDelta(int64(time.Second*30), int64(timeout), float64(time.Millisecond))
 }

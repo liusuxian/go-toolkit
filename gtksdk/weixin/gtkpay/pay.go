@@ -41,8 +41,8 @@ type CertFileManager interface {
 	GetCertFileContent(ctx context.Context, certType CertType) (b []byte, err error) // 获取证书文件内容
 }
 
-// Cache 缓存
-type Cache interface {
+// ICache 缓存
+type ICache interface {
 	Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error) // 获取缓存
 	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) // 设置缓存
 }
@@ -51,7 +51,7 @@ type Cache interface {
 type Option func(service *PaymentService)
 
 // WithCache 设置缓存
-func WithCache(cache Cache) (opt Option) {
+func WithCache(cache ICache) (opt Option) {
 	return func(s *PaymentService) {
 		s.cache = cache
 	}
@@ -73,7 +73,7 @@ func WithCertCacheTTL(ttl time.Duration) (opt Option) {
 
 // PaymentService 支付服务
 type PaymentService struct {
-	cache        Cache           // 缓存
+	cache        ICache          // 缓存
 	certManager  CertFileManager // 证书文件管理
 	certCacheTTL time.Duration   // 证书文件缓存时间
 }

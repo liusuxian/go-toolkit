@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-15 18:59:18
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-15 19:43:44
+ * @LastEditTime: 2026-01-16 00:27:29
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -82,7 +82,7 @@ func (bg *redisBatchGetter) Execute(ctx context.Context) (values map[string]any,
 	}
 
 	var result any
-	if result, err = bg.rc.client.EvalSha(ctx, "BATCH_GET_EX", keys, args); err != nil {
+	if result, err = bg.rc.client.EvalSha(ctx, "BATCH_GET_EX", keys, args...); err != nil {
 		return
 	}
 
@@ -91,7 +91,7 @@ func (bg *redisBatchGetter) Execute(ctx context.Context) (values map[string]any,
 	}
 	bg.items = nil
 	bg.defaultTimeout = nil
-
+	// 将 any 转换为 map[string]any 类型
 	values, err = gtkconv.ToStringMapE(result)
 	return
 }

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-15 15:07:27
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-15 18:29:12
+ * @LastEditTime: 2026-01-15 22:22:34
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -80,7 +80,7 @@ func (bs *redisBatchSetter) Execute(ctx context.Context) (err error) {
 		}
 	}
 
-	if _, err = bs.rc.client.EvalSha(ctx, "BATCH_SET_EX", keys, args); err != nil {
+	if _, err = bs.rc.client.EvalSha(ctx, "BATCH_SET_EX", keys, args...); err != nil {
 		return
 	}
 

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-20 02:49:51
+ * @LastEditTime: 2026-01-15 23:26:52
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -690,4 +690,69 @@ func TestRedisCacheCustomGetOrSetFunc(t *testing.T) {
 	wg.Wait()
 	finalCount := atomic.LoadInt32(&executeCount)
 	assert.Equal(int32(1), finalCount, "函数应该只执行1次，实际执行了%d次", finalCount)
+}
+
+func TestRedisCacheBatchGetAndBatchSet(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		r      = miniredis.RunT(t)
+		assert = assert.New(t)
+		cache  *gtkcache.RedisCache
+		err    error
+	)
+	cache, err = gtkcache.NewRedisCache(ctx, &gtkredis.ClientConfig{
+		Addr:     r.Addr(),
+		DB:       1,
+		Password: "",
+	})
+	assert.NoError(err)
+	assert.NotNil(cache)
+
+	var values map[string]any
+	values, err = cache.BatchGet(ctx, 3).
+		Add(ctx, "test_key_1", time.Second*10).
+		Add(ctx, "test_key_2", time.Second*20).
+		Add(ctx, "test_key_3").
+		SetDefaultTimeout(ctx, time.Second*30).
+		Execute(ctx)
+	assert.NoError(err)
+	assert.Equal(map[string]any{}, values)
+
+	var timeout time.Duration
+	timeout, err = cache.GetExpire(ctx, `test_key_1`)
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+	timeout, err = cache.GetExpire(ctx, `test_key_2`)
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+	timeout, err = cache.GetExpire(ctx, `test_key_3`)
+	assert.NoError(err)
+	assert.Equal(time.Duration(-1), timeout)
+
+	err = cache.BatchSet(ctx, 3).
+		Add(ctx, "test_key_1", "test_value_1", time.Second*10).
+		Add(ctx, "test_key_2", "test_value_2", time.Second*20).
+		Add(ctx, "test_key_3", "test_value_3").
+		SetDefaultTimeout(ctx, time.Second*10).
+		Execute(ctx)
+	assert.NoError(err)
+
+	values, err = cache.BatchGet(ctx, 3).
+		Add(ctx, "test_key_1", time.Second*10).
+		Add(ctx, "test_key_2", time.Second*20).
+		Add(ctx, "test_key_3").
+		SetDefaultTimeout(ctx, time.Second*30).
+		Execute(ctx)
+	assert.NoError(err)
+	assert.Equal(map[string]any{"test_key_1": "test_value_1", "test_key_2": "test_value_2", "test_key_3": "test_value_3"}, values)
+
+	timeout, err = cache.GetExpire(ctx, `test_key_1`)
+	assert.NoError(err)
+	assert.Equal(time.Second*10, timeout)
+	timeout, err = cache.GetExpire(ctx, `test_key_2`)
+	assert.NoError(err)
+	assert.Equal(time.Second*20, timeout)
+	timeout, err = cache.GetExpire(ctx, `test_key_3`)
+	assert.NoError(err)
+	assert.Equal(time.Second*30, timeout)
 }

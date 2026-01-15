@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-13 10:50:22
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-13 19:09:00
+ * @LastEditTime: 2026-01-16 01:35:00
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,6 +15,8 @@ import (
 	"fmt"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	dysmsapi "github.com/alibabacloud-go/dysmsapi-20170525/v5/client"
+	"github.com/liusuxian/go-toolkit/gtkcache"
+	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtktype"
 	"math/rand/v2"
 	"slices"
@@ -23,9 +25,9 @@ import (
 )
 
 var (
-	ErrVerifyCodeNotFound     = errors.New("verify code not found")      // 验证码不存在
-	ErrVerifyCodeInvalid      = errors.New("verify code is invalid")     // 验证码无效
-	ErrSendVerifyCodeTooOften = errors.New("send verify code too often") // 发送验证码过于频繁
+	ErrGenerateVerifyCodeFailed = errors.New("generate verify code failed") // 生成验证码失败
+	ErrVerifyCodeInvalid        = errors.New("verify code is invalid")      // 验证码无效
+	ErrSendVerifyCodeTooOften   = errors.New("send verify code too often")  // 发送验证码过于频繁
 )
 
 // Cache Key
@@ -36,10 +38,19 @@ const (
 	keySmsCooldown = "cooldown:%v"
 )
 
-// Cache 缓存
-type Cache interface {
-	Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error) // 获取缓存
-	Set(ctx context.Context, key string, val any, timeout ...time.Duration) (err error) // 设置缓存
+// ICache 缓存接口
+type ICache interface {
+	// Get 获取缓存
+	//   当`timeout > 0`且缓存命中时，设置/重置`key`的过期时间
+	Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error)
+	// BatchSet 创建批量设置构建器
+	//   支持为每个`key`设置不同的过期时间
+	//   当所有`key`使用相同过期时间时，可以使用更简洁的`SetMap`方法
+	//   当`capacity > 0`时，预分配指定容量以优化性能
+	//   返回构建器实例，支持链式调用
+	BatchSet(ctx context.Context, capacity ...int) (batchSetter gtkcache.IBatchSetter)
+	// Delete 删除缓存
+	Delete(ctx context.Context, keys ...string) (err error)
 }
 
 // SMSConfig 阿里云短信配置
@@ -55,13 +66,13 @@ type SMSConfig struct {
 // AliyunSMS 阿里云短信服务
 type AliyunSMS struct {
 	config         SMSConfig        // 配置
-	cache          Cache            // 缓存器
+	cache          ICache           // 缓存器
 	cacheKeyPrefix string           // 缓存键前缀
 	client         *dysmsapi.Client // 阿里云短信服务客户端
 }
 
 // NewAliyunSMS 创建阿里云短信服务
-func NewAliyunSMS(config SMSConfig, cache Cache, cacheKeyPrefix ...string) (s *AliyunSMS, err error) {
+func NewAliyunSMS(config SMSConfig, cache ICache, cacheKeyPrefix ...string) (s *AliyunSMS, err error) {
 	// 检查配置
 	if config.AccessKeyID == "" {
 		return nil, fmt.Errorf("access key id is not set")
@@ -130,42 +141,43 @@ func (s *AliyunSMS) SendSms(req *SendSmsRequest) (bizId string, err error) {
 }
 
 // GenerateVerifyCode 生成验证码
-func (s *AliyunSMS) GenerateVerifyCode(ctx context.Context, phoneNumbers string) (verifyCode string, err error) {
+func (s *AliyunSMS) GenerateVerifyCode(ctx context.Context, phoneNumbers string) (code string, err error) {
 	// 防止在极短时间内为同一手机号生成多个验证码
 	var (
 		cooldownKey = s.cacheKeyPrefix + fmt.Sprintf(keySmsCooldown, phoneNumbers)
 		cooldownVal any
 	)
 	if cooldownVal, err = s.cache.Get(ctx, cooldownKey); err != nil {
-		err = fmt.Errorf("generate verify code failed: %w", err)
+		err = errors.Join(ErrGenerateVerifyCodeFailed, err)
 		return
 	}
-	if cooldownVal != nil {
-		if v, ok := cooldownVal.(string); ok && v == "1" {
-			err = ErrSendVerifyCodeTooOften
-			return
-		}
+	// 将 any 转换为 bool 类型
+	var isCooldown bool
+	if isCooldown, err = gtkconv.ToBoolE(cooldownVal); err != nil {
+		err = errors.Join(ErrGenerateVerifyCodeFailed, err)
+		return
+	}
+	if isCooldown {
+		err = ErrSendVerifyCodeTooOften
+		return
 	}
 	// 生成验证码
-	verifyCode = fmt.Sprintf("%06d", rand.IntN(1000000))
-	// 设置冷却时间
-	if err = s.cache.Set(ctx, cooldownKey, 1, s.config.VerifyCodeCooldownTime); err != nil {
-		err = fmt.Errorf("generate verify code failed: %w", err)
-		return
-	}
-	// 设置验证码过期时间
-	verifyCodeKey := s.cacheKeyPrefix + fmt.Sprintf(keyVerifyCode, phoneNumbers)
-	if err = s.cache.Set(ctx, verifyCodeKey, verifyCode, s.config.VerifyCodeExpireTime); err != nil {
-		err = fmt.Errorf("generate verify code failed: %w", err)
+	code = fmt.Sprintf("%06d", rand.IntN(1000000))
+	// 设置冷却时间和验证码过期时间
+	if err = s.cache.BatchSet(ctx, 2).
+		Add(ctx, cooldownKey, 1, s.config.VerifyCodeCooldownTime).
+		Add(ctx, s.cacheKeyPrefix+fmt.Sprintf(keyVerifyCode, phoneNumbers), code, s.config.VerifyCodeExpireTime).
+		Execute(ctx); err != nil {
+		err = errors.Join(ErrGenerateVerifyCodeFailed, err)
 		return
 	}
 	return
 }
 
 // CheckVerifyCode 校验验证码
-func (s *AliyunSMS) CheckVerifyCode(ctx context.Context, phoneNumbers, verifyCode string) (err error) {
+func (s *AliyunSMS) CheckVerifyCode(ctx context.Context, phoneNumbers, code string) (err error) {
 	// 验证码白名单
-	if slices.Contains(s.config.VerifyCodeWhiteList, verifyCode) {
+	if slices.Contains(s.config.VerifyCodeWhiteList, code) {
 		return nil
 	}
 	// 检查验证码
@@ -176,15 +188,15 @@ func (s *AliyunSMS) CheckVerifyCode(ctx context.Context, phoneNumbers, verifyCod
 	if cacheVal, err = s.cache.Get(ctx, cacheKey); err != nil {
 		return fmt.Errorf("check verify code failed: %w", err)
 	}
-	if cacheVal == nil {
-		return ErrVerifyCodeNotFound
+	// 将 any 转换为 string 类型
+	var cacheCode string
+	if cacheCode, err = gtkconv.ToStringE(cacheVal); err != nil {
+		return fmt.Errorf("check verify code failed: %w", err)
 	}
-	cacheVerifyCode, ok := cacheVal.(string)
-	if !ok || cacheVerifyCode == "" {
-		return ErrVerifyCodeNotFound
-	}
-	if cacheVerifyCode != verifyCode {
+	if cacheCode != code {
 		return ErrVerifyCodeInvalid
 	}
+	// 验证成功后删除验证码
+	_ = s.cache.Delete(ctx, cacheKey)
 	return nil
 }
