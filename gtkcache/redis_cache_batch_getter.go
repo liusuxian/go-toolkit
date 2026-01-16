@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-15 18:59:18
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-16 00:27:29
+ * @LastEditTime: 2026-01-16 14:25:34
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -54,9 +54,6 @@ func (bg *redisBatchGetter) SetDefaultTimeout(ctx context.Context, timeout time.
 // Execute 执行批量获取操作
 //
 //	返回 map[key]value，不存在或已过期的`key`不会出现在结果`map`中
-//	执行成功后，自动清空构建器中的数据（不建议继续使用该构建器）
-//	执行失败时，保留构建器中的数据，可以直接再次调用本方法进行重试
-//	建议：为每次批量操作创建新的构建器实例
 func (bg *redisBatchGetter) Execute(ctx context.Context) (values map[string]any, err error) {
 	if len(bg.items) == 0 {
 		err = fmt.Errorf("no items to execute")
@@ -80,17 +77,11 @@ func (bg *redisBatchGetter) Execute(ctx context.Context) (values map[string]any,
 			args = append(args, 0) // 保持原有的过期时间
 		}
 	}
-
+	// 执行批量获取操作
 	var result any
 	if result, err = bg.rc.client.EvalSha(ctx, "BATCH_GET_EX", keys, args...); err != nil {
 		return
 	}
-
-	for i := range bg.items {
-		bg.items[i] = batchGetItem{}
-	}
-	bg.items = nil
-	bg.defaultTimeout = nil
 	// 将 any 转换为 map[string]any 类型
 	values, err = gtkconv.ToStringMapE(result)
 	return

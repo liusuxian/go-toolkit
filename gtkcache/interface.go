@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:46:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-16 12:59:51
+ * @LastEditTime: 2026-01-16 14:08:56
  * @Description: 缓存接口
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -43,9 +43,6 @@ type IBatchGetter interface {
 	SetDefaultTimeout(ctx context.Context, timeout time.Duration) (batchGetter IBatchGetter)
 	// Execute 执行批量获取操作
 	//   返回 map[key]value，不存在或已过期的`key`不会出现在结果`map`中
-	//   执行成功后，自动清空构建器中的数据（不建议继续使用该构建器）
-	//   执行失败时，保留构建器中的数据，可以直接再次调用本方法进行重试
-	//   建议：为每次批量操作创建新的构建器实例
 	Execute(ctx context.Context) (values map[string]any, err error)
 }
 
@@ -62,9 +59,6 @@ type IBatchSetter interface {
 	//   返回构建器自身，支持链式调用
 	SetDefaultTimeout(ctx context.Context, timeout time.Duration) (batchSetter IBatchSetter)
 	// Execute 执行批量设置操作
-	//   执行成功后，自动清空构建器中的数据（不建议继续使用该构建器）
-	//   执行失败时，保留构建器中的数据，可以直接再次调用本方法进行重试
-	//   建议：为每次批量操作创建新的构建器实例
 	Execute(ctx context.Context) (err error)
 }
 

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-15 19:21:24
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-15 19:39:45
+ * @LastEditTime: 2026-01-16 14:26:38
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -53,9 +53,6 @@ func (bg *memoryBatchGetter) SetDefaultTimeout(ctx context.Context, timeout time
 // Execute 执行批量获取操作
 //
 //	返回 map[key]value，不存在或已过期的`key`不会出现在结果`map`中
-//	执行成功后，自动清空构建器中的数据（不建议继续使用该构建器）
-//	执行失败时，保留构建器中的数据，可以直接再次调用本方法进行重试
-//	建议：为每次批量操作创建新的构建器实例
 func (bg *memoryBatchGetter) Execute(ctx context.Context) (values map[string]any, err error) {
 	if len(bg.items) == 0 {
 		err = fmt.Errorf("no items to execute")
@@ -94,12 +91,6 @@ func (bg *memoryBatchGetter) Execute(ctx context.Context) (values map[string]any
 			}
 		}
 	}
-
-	for i := range bg.items {
-		bg.items[i] = batchGetItem{}
-	}
-	bg.items = nil
-	bg.defaultTimeout = nil
 	return
 }
 

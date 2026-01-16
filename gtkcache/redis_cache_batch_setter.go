@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-15 15:07:27
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-15 22:22:34
+ * @LastEditTime: 2026-01-16 14:25:49
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -51,10 +51,6 @@ func (bs *redisBatchSetter) SetDefaultTimeout(ctx context.Context, timeout time.
 }
 
 // Execute 执行批量设置操作
-//
-//	执行成功后，自动清空构建器中的数据（不建议继续使用该构建器）
-//	执行失败时，保留构建器中的数据，可以直接再次调用本方法进行重试
-//	建议：为每次批量操作创建新的构建器实例
 func (bs *redisBatchSetter) Execute(ctx context.Context) (err error) {
 	if len(bs.items) == 0 {
 		err = fmt.Errorf("no items to execute")
@@ -79,15 +75,7 @@ func (bs *redisBatchSetter) Execute(ctx context.Context) (err error) {
 			args = append(args, 0) // 保持原有的过期时间
 		}
 	}
-
-	if _, err = bs.rc.client.EvalSha(ctx, "BATCH_SET_EX", keys, args...); err != nil {
-		return
-	}
-
-	for i := range bs.items {
-		bs.items[i] = batchSetItem{}
-	}
-	bs.items = nil
-	bs.defaultTimeout = nil
+	// 执行批量设置操作
+	_, err = bs.rc.client.EvalSha(ctx, "BATCH_SET_EX", keys, args...)
 	return
 }
