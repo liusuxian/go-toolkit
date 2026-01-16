@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2025-12-20 01:28:44
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-16 00:08:38
+ * @LastEditTime: 2026-01-16 13:04:06
  * @Description:
  *
  * Copyright (c) 2025 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -415,12 +415,11 @@ func TestMemoryCacheBatchGetAndBatchSet(t *testing.T) {
 		values map[string]any
 		err    error
 	)
-	values, err = cache.BatchGet(ctx, 3).
-		Add(ctx, "test_key_1", time.Second*10).
-		Add(ctx, "test_key_2", time.Second*20).
-		Add(ctx, "test_key_3").
-		SetDefaultTimeout(ctx, time.Second*30).
-		Execute(ctx)
+	values, err = cache.BatchGet(ctx, func(add func(key string, timeout ...time.Duration)) {
+		add("test_key_1", time.Second*10)
+		add("test_key_2", time.Second*20)
+		add("test_key_3")
+	}, time.Second*30)
 	assert.NoError(err)
 	assert.Equal(map[string]any{}, values)
 
@@ -435,20 +434,18 @@ func TestMemoryCacheBatchGetAndBatchSet(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(time.Duration(-1), timeout)
 
-	err = cache.BatchSet(ctx, 3).
-		Add(ctx, "test_key_1", "test_value_1", time.Second*10).
-		Add(ctx, "test_key_2", "test_value_2", time.Second*20).
-		Add(ctx, "test_key_3", "test_value_3").
-		SetDefaultTimeout(ctx, time.Second*10).
-		Execute(ctx)
+	err = cache.BatchSet(ctx, func(add func(key string, val any, timeout ...time.Duration)) {
+		add("test_key_1", "test_value_1", time.Second*10)
+		add("test_key_2", "test_value_2", time.Second*20)
+		add("test_key_3", "test_value_3")
+	}, time.Second*10)
 	assert.NoError(err)
 
-	values, err = cache.BatchGet(ctx, 3).
-		Add(ctx, "test_key_1", time.Second*10).
-		Add(ctx, "test_key_2", time.Second*20).
-		Add(ctx, "test_key_3").
-		SetDefaultTimeout(ctx, time.Second*30).
-		Execute(ctx)
+	values, err = cache.BatchGet(ctx, func(add func(key string, timeout ...time.Duration)) {
+		add("test_key_1", time.Second*10)
+		add("test_key_2", time.Second*20)
+		add("test_key_3")
+	}, time.Second*30)
 	assert.NoError(err)
 	assert.Equal(map[string]any{"test_key_1": "test_value_1", "test_key_2": "test_value_2", "test_key_3": "test_value_3"}, values)
 

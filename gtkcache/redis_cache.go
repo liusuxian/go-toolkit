@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-27 20:53:08
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-15 23:24:00
+ * @LastEditTime: 2026-01-16 13:00:17
  * @Description: IRedisCache 接口的实现
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -403,21 +403,31 @@ func (rc *RedisCache) GetMap(ctx context.Context, keys []string, timeout ...time
 	return
 }
 
-// BatchGet 创建批量获取构建器
+// BatchGet 批量获取缓存
 //
 //	支持为每个`key`设置/重置不同的过期时间
 //	当所有`key`使用相同过期时间时，可以使用更简洁的`GetMap`方法
-//	当`capacity > 0`时，预分配指定容量以优化性能
-//	返回构建器实例，支持链式调用
-func (rc *RedisCache) BatchGet(ctx context.Context, capacity ...int) (batchGetter IBatchGetter) {
-	cap := 0
-	if len(capacity) > 0 && capacity[0] > 0 {
-		cap = capacity[0]
-	}
-	return &redisBatchGetter{
+//	defaultTimeout: 可选参数，设置默认过期时间（对所有未单独设置过期时间的 key 生效）
+//	当`timeout > 0`且缓存命中时，所有未单独指定过期时间的`key`将使用此默认过期时间
+//	当`timeout <= 0`时，所有未单独指定过期时间的`key`将保持原有的过期时间
+func (rc *RedisCache) BatchGet(ctx context.Context, fn func(add func(key string, timeout ...time.Duration)), defaultTimeout ...time.Duration) (values map[string]any, err error) {
+	// 声明为接口类型
+	var getter IBatchGetter = &redisBatchGetter{
 		rc:    rc,
-		items: make([]batchGetItem, 0, cap),
+		items: make([]batchGetItem, 0),
 	}
+	// 设置默认过期时间（对所有未单独设置过期时间的 key 生效）
+	if len(defaultTimeout) > 0 && defaultTimeout[0] > 0 {
+		getter = getter.SetDefaultTimeout(ctx, defaultTimeout[0])
+	}
+	// 添加一个 key 到批量获取队列
+	addFunc := func(key string, timeout ...time.Duration) {
+		getter = getter.Add(ctx, key, timeout...)
+	}
+	// 执行用户提供的函数，将数据添加到批量设置队列中
+	fn(addFunc)
+	// 执行批量设置操作
+	return getter.Execute(ctx)
 }
 
 // GetOrSet 检索并返回`key`的值，或者当`key`不存在时，则使用`newVal`设置`key`的值
@@ -571,21 +581,31 @@ func (rc *RedisCache) SetMap(ctx context.Context, data map[string]any, timeout .
 	return
 }
 
-// BatchSet 创建批量设置构建器
+// BatchSet 批量设置缓存
 //
 //	支持为每个`key`设置不同的过期时间
 //	当所有`key`使用相同过期时间时，可以使用更简洁的`SetMap`方法
-//	当`capacity > 0`时，预分配指定容量以优化性能
-//	返回构建器实例，支持链式调用
-func (rc *RedisCache) BatchSet(ctx context.Context, capacity ...int) (batchSetter IBatchSetter) {
-	cap := 0
-	if len(capacity) > 0 && capacity[0] > 0 {
-		cap = capacity[0]
-	}
-	return &redisBatchSetter{
+//	defaultTimeout: 可选参数，设置默认过期时间（对所有未单独设置过期时间的 key 生效）
+//	当`defaultTimeout > 0`时，所有未单独指定过期时间的`key`将使用此默认过期时间
+//	当`defaultTimeout <= 0`时，所有未单独指定过期时间的`key`将保持原有的过期时间
+func (rc *RedisCache) BatchSet(ctx context.Context, fn func(add func(key string, val any, timeout ...time.Duration)), defaultTimeout ...time.Duration) (err error) {
+	// 声明为接口类型
+	var setter IBatchSetter = &redisBatchSetter{
 		rc:    rc,
-		items: make([]batchSetItem, 0, cap),
+		items: make([]batchSetItem, 0),
 	}
+	// 设置默认过期时间（对所有未单独设置过期时间的 key 生效）
+	if len(defaultTimeout) > 0 && defaultTimeout[0] > 0 {
+		setter = setter.SetDefaultTimeout(ctx, defaultTimeout[0])
+	}
+	// 添加一个 key-value 对到批量设置队列
+	addFunc := func(key string, val any, timeout ...time.Duration) {
+		setter = setter.Add(ctx, key, val, timeout...)
+	}
+	// 执行用户提供的函数，将数据添加到批量设置队列中
+	fn(addFunc)
+	// 执行批量设置操作
+	return setter.Execute(ctx)
 }
 
 // SetIfNotExist 当`key`不存在时，则使用`val`设置`key`的值，返回是否设置成功

@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2026-01-13 10:50:22
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-16 01:35:00
+ * @LastEditTime: 2026-01-16 13:06:28
  * @Description:
  *
  * Copyright (c) 2026 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -15,7 +15,6 @@ import (
 	"fmt"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	dysmsapi "github.com/alibabacloud-go/dysmsapi-20170525/v5/client"
-	"github.com/liusuxian/go-toolkit/gtkcache"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtktype"
 	"math/rand/v2"
@@ -43,12 +42,13 @@ type ICache interface {
 	// Get 获取缓存
 	//   当`timeout > 0`且缓存命中时，设置/重置`key`的过期时间
 	Get(ctx context.Context, key string, timeout ...time.Duration) (val any, err error)
-	// BatchSet 创建批量设置构建器
+	// BatchSet 批量设置缓存
 	//   支持为每个`key`设置不同的过期时间
 	//   当所有`key`使用相同过期时间时，可以使用更简洁的`SetMap`方法
-	//   当`capacity > 0`时，预分配指定容量以优化性能
-	//   返回构建器实例，支持链式调用
-	BatchSet(ctx context.Context, capacity ...int) (batchSetter gtkcache.IBatchSetter)
+	//   defaultTimeout: 可选参数，设置默认过期时间（对所有未单独设置过期时间的 key 生效）
+	//   当`defaultTimeout > 0`时，所有未单独指定过期时间的`key`将使用此默认过期时间
+	//   当`defaultTimeout <= 0`时，所有未单独指定过期时间的`key`将保持原有的过期时间
+	BatchSet(ctx context.Context, fn func(add func(key string, val any, timeout ...time.Duration)), defaultTimeout ...time.Duration) (err error)
 	// Delete 删除缓存
 	Delete(ctx context.Context, keys ...string) (err error)
 }
@@ -164,10 +164,10 @@ func (s *AliyunSMS) GenerateVerifyCode(ctx context.Context, phoneNumbers string)
 	// 生成验证码
 	code = fmt.Sprintf("%06d", rand.IntN(1000000))
 	// 设置冷却时间和验证码过期时间
-	if err = s.cache.BatchSet(ctx, 2).
-		Add(ctx, cooldownKey, 1, s.config.VerifyCodeCooldownTime).
-		Add(ctx, s.cacheKeyPrefix+fmt.Sprintf(keyVerifyCode, phoneNumbers), code, s.config.VerifyCodeExpireTime).
-		Execute(ctx); err != nil {
+	if err = s.cache.BatchSet(ctx, func(add func(key string, val any, timeout ...time.Duration)) {
+		add(cooldownKey, 1, s.config.VerifyCodeCooldownTime)
+		add(s.cacheKeyPrefix+fmt.Sprintf(keyVerifyCode, phoneNumbers), code, s.config.VerifyCodeExpireTime)
+	}); err != nil {
 		err = errors.Join(ErrGenerateVerifyCodeFailed, err)
 		return
 	}
