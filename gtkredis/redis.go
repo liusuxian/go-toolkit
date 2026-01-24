@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-23 21:58:47
+ * @LastEditTime: 2026-01-24 14:53:31
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -22,30 +22,30 @@ import (
 
 // ClientConfig redis 客户端配置
 type ClientConfig struct {
-	Addr            string        // 地址:端口
-	ClientName      string        // 执行 CLIENT SETNAME 命令所用的客户端名称
-	Protocol        int           // 设置与 Redis Server 通信的 RESP 协议版本，默认 3，可选 2 或 3
-	Username        string        // 访问授权用户
-	Password        string        // 访问授权密码
-	DB              int           // 数据库索引，默认 0
-	MaxRetries      int           // 最大重试次数，默认 3，-1 表示禁用重试
-	MinRetryBackoff time.Duration // 每次重试之间的最小退避时间，默认 8ms，-1 表示禁用退避
-	MaxRetryBackoff time.Duration // 每次重试之间的最大退避时间，默认 512ms，-1 表示禁用退避
-	DialTimeout     time.Duration // 连接的超时时间，默认 5s
-	ReadTimeout     time.Duration // Read 操作超时时间，默认 3s，-1 表示无超时，-2 表示完全禁用 SetReadDeadline 调用
-	WriteTimeout    time.Duration // Write 操作超时时间，默认 3s，-1 表示无超时，-2 表示完全禁用 SetWriteDeadline 调用
-	PoolFIFO        bool          // 连接池类型，true 表示 FIFO（先进先出），false 表示 LIFO（后进先出），默认 false，FIFO 相比 LIFO 有略高的开销，但它有助于更快地关闭空闲连接，减少池大小
-	PoolSize        int           // 连接池大小，默认每个可用 CPU 10 个连接，如果池中没有足够的连接，将分配超出 PoolSize 的新连接，您可以通过 MaxActiveConns 进行限制
-	PoolTimeout     time.Duration // 如果所有连接都忙，客户端在返回错误前等待连接的时间，默认为 ReadTimeout + 1s
-	MinIdleConns    int           // 允许闲置的最小连接数，默认 0
-	MaxIdleConns    int           // 允许闲置的最大连接数，默认 0，0 表示不限制
-	MaxActiveConns  int           // 最大连接数量限制，默认 0，0 表示不限制
-	ConnMaxIdleTime time.Duration // 连接最大空闲时间，默认 30m，-1 表示禁用空闲超时检查
-	ConnMaxLifetime time.Duration // 连接最长存活时间，默认 0 表示不关闭空闲连接
-	TLSConfig       *tls.Config   // tls 配置
-	DisableIdentity bool          // 用于在连接时禁用 CLIENT SETINFO 命令，默认 false
-	IdentitySuffix  string        // 添加客户端名称后缀
-	UnstableResp3   bool          // 为 Redis Search 模块启用 RESP3 的不稳定模式，默认 false
+	Addr            string        `json:"addr"`               // 地址:端口
+	ClientName      string        `json:"client_name"`        // 执行 CLIENT SETNAME 命令所用的客户端名称
+	Protocol        int           `json:"protocol"`           // 设置与 Redis Server 通信的 RESP 协议版本，默认 3，可选 2 或 3
+	Username        string        `json:"username"`           // 访问授权用户
+	Password        string        `json:"password"`           // 访问授权密码
+	DB              int           `json:"db"`                 // 数据库索引，默认 0
+	MaxRetries      int           `json:"max_retries"`        // 最大重试次数，默认 3，-1 表示禁用重试
+	MinRetryBackoff time.Duration `json:"min_retry_backoff"`  // 每次重试之间的最小退避时间，默认 8ms，-1 表示禁用退避
+	MaxRetryBackoff time.Duration `json:"max_retry_backoff"`  // 每次重试之间的最大退避时间，默认 512ms，-1 表示禁用退避
+	DialTimeout     time.Duration `json:"dial_timeout"`       // 连接的超时时间，默认 5s
+	ReadTimeout     time.Duration `json:"read_timeout"`       // Read 操作超时时间，默认 3s，-1 表示无超时，-2 表示完全禁用 SetReadDeadline 调用
+	WriteTimeout    time.Duration `json:"write_timeout"`      // Write 操作超时时间，默认 3s，-1 表示无超时，-2 表示完全禁用 SetWriteDeadline 调用
+	PoolFIFO        bool          `json:"pool_fifo"`          // 连接池类型，true 表示 FIFO（先进先出），false 表示 LIFO（后进先出），默认 false，FIFO 相比 LIFO 有略高的开销，但它有助于更快地关闭空闲连接，减少池大小
+	PoolSize        int           `json:"pool_size"`          // 连接池大小，默认每个可用 CPU 10 个连接，如果池中没有足够的连接，将分配超出 PoolSize 的新连接，您可以通过 MaxActiveConns 进行限制
+	PoolTimeout     time.Duration `json:"pool_timeout"`       // 如果所有连接都忙，客户端在返回错误前等待连接的时间，默认为 ReadTimeout + 1s
+	MinIdleConns    int           `json:"min_idle_conns"`     // 允许闲置的最小连接数，默认 0
+	MaxIdleConns    int           `json:"max_idle_conns"`     // 允许闲置的最大连接数，默认 0，0 表示不限制
+	MaxActiveConns  int           `json:"max_active_conns"`   // 最大连接数量限制，默认 0，0 表示不限制
+	ConnMaxIdleTime time.Duration `json:"conn_max_idle_time"` // 连接最大空闲时间，默认 30m，-1 表示禁用空闲超时检查
+	ConnMaxLifetime time.Duration `json:"conn_max_lifetime"`  // 连接最长存活时间，默认 0 表示不关闭空闲连接
+	TLSConfig       *tls.Config   `json:"-"`                  // tls 配置
+	DisableIdentity bool          `json:"disable_identity"`   // 用于在连接时禁用 CLIENT SETINFO 命令，默认 false
+	IdentitySuffix  string        `json:"identity_suffix"`    // 添加客户端名称后缀
+	UnstableResp3   bool          `json:"unstable_resp_3"`    // 为 Redis Search 模块启用 RESP3 的不稳定模式，默认 false
 }
 
 // RedisClient redis 客户端结构

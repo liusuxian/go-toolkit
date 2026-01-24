@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-29 16:14:57
+ * @LastEditTime: 2026-01-24 15:12:38
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -37,24 +37,24 @@ const (
 // TopicConfig topic 配置
 type TopicConfig struct {
 	// topic 分区数量，默认 12 个分区
-	PartitionNum uint32 `json:"partition_num,omitempty"`
+	PartitionNum uint32 `json:"partition_num"`
 	// 启动模式 0:不启动生产者或消费者 1:仅启动生产者 2:仅启动消费者 3:同时启动生产者和消费者
-	Mode ProducerConsumerStartMode `json:"mode,omitempty"`
+	Mode ProducerConsumerStartMode `json:"mode"`
 	// 指定消费者组名称列表。如果未指定，将使用默认格式："$consumerEnv_group_$topic"，其中`$consumerEnv_group_`是系统根据当前环境自动添加的前缀
 	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
 	Groups []string `json:"groups,omitempty"`
 	// 批量消费的条数，默认 200
-	BatchConsumeSize int `json:"batch_consume_size,omitempty"`
+	BatchConsumeSize int `json:"batch_consume_size"`
 	// 批量消费的间隔时间，默认 5s
-	BatchConsumeInterval time.Duration `json:"batch_consume_interval,omitempty"`
+	BatchConsumeInterval time.Duration `json:"batch_consume_interval"`
 	// 当消费失败时的重试配置，默认不重试
 	RetryConfig gtkretry.RetryConfig `json:"retry_config"`
 }
 
 // ProducerMessage 生产者消息
 type ProducerMessage struct {
-	Key       string `json:"key,omitempty"`  // 键
-	Data      any    `json:"data,omitempty"` // 数据
+	Key       string `json:"key,omitempty"` // 键
+	Data      any    `json:"data"`          // 数据
 	dataBytes []byte // 数据字节数组
 }
 
@@ -157,6 +157,25 @@ func NewClient(cfg *Config) (client *KafkaClient, err error) {
 	// 消费者服务环境，默认和 topic 服务环境一致
 	if client.config.ConsumerEnv == "" {
 		client.config.ConsumerEnv = client.config.Env
+	}
+	// 处理每个 topic 的默认配置
+	for topic, topicCfg := range client.config.TopicConfig {
+		// topic 分区数量，默认 12 个分区
+		if topicCfg.PartitionNum == 0 {
+			topicCfg.PartitionNum = defaultPartitionNum
+		}
+		// 批量消费的条数，默认 200
+		if topicCfg.BatchConsumeSize <= 0 {
+			topicCfg.BatchConsumeSize = 200
+		}
+		// 批量消费的间隔时间，默认 5s
+		if topicCfg.BatchConsumeInterval <= time.Duration(0) {
+			topicCfg.BatchConsumeInterval = time.Second * 5
+		}
+		// 填充重试配置的默认值
+		topicCfg.RetryConfig = gtkretry.WithDefaults(topicCfg.RetryConfig)
+		// 更新回配置（因为 map 中存的是值类型，需要重新赋值）
+		client.config.TopicConfig[topic] = topicCfg
 	}
 	return
 }
@@ -606,14 +625,7 @@ func (kc *KafkaClient) sendMessage(ctx context.Context, topic string, producerMe
 func (kc *KafkaClient) getProducerConfig(topic string) (isStart bool, topicConfig *TopicConfig, err error) {
 	if config, ok := kc.config.TopicConfig[topic]; ok {
 		isStart = (config.Mode == ModeBoth || config.Mode == ModeProducer)
-		topicConfig = &TopicConfig{}
-		// topic 分区数量，默认 12 个分区
-		if config.PartitionNum > 0 {
-			topicConfig.PartitionNum = config.PartitionNum
-		} else {
-			// 默认分区数
-			topicConfig.PartitionNum = defaultPartitionNum
-		}
+		topicConfig = &config
 		return
 	}
 	err = fmt.Errorf("topic `%s` Not Found", topic)
@@ -624,30 +636,7 @@ func (kc *KafkaClient) getProducerConfig(topic string) (isStart bool, topicConfi
 func (kc *KafkaClient) getConsumerConfig(topic string) (isStart bool, topicConfig *TopicConfig, err error) {
 	if config, ok := kc.config.TopicConfig[topic]; ok {
 		isStart = (config.Mode == ModeBoth || config.Mode == ModeConsumer)
-		topicConfig = &TopicConfig{}
-		// topic 分区数量，默认 12 个分区
-		if config.PartitionNum > 0 {
-			topicConfig.PartitionNum = config.PartitionNum
-		} else {
-			// 默认分区数
-			topicConfig.PartitionNum = defaultPartitionNum
-		}
-		// 指定消费者组名称列表
-		topicConfig.Groups = config.Groups
-		// 批量消费的条数，默认 200
-		if config.BatchConsumeSize <= 0 {
-			topicConfig.BatchConsumeSize = 200
-		} else {
-			topicConfig.BatchConsumeSize = config.BatchConsumeSize
-		}
-		// 批量消费的间隔时间，默认 5s
-		if config.BatchConsumeInterval <= time.Duration(0) {
-			topicConfig.BatchConsumeInterval = time.Second * 5
-		} else {
-			topicConfig.BatchConsumeInterval = config.BatchConsumeInterval
-		}
-		// 当消费失败时的重试配置，默认不重试
-		topicConfig.RetryConfig = config.RetryConfig
+		topicConfig = &config
 		return
 	}
 	err = fmt.Errorf("topic `%s` Not Found", topic)

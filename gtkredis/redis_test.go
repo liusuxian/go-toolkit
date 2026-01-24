@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-04 12:14:28
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2025-12-08 15:42:31
+ * @LastEditTime: 2026-01-24 14:22:44
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -112,16 +112,6 @@ func TestRedis(t *testing.T) {
 	actualObj, err = client.CD(ctx, "test_b")
 	if assert.NoError(err) {
 		assert.Equal(true, gtkconv.ToBool(actualObj))
-	}
-
-	rl := client.NewRedisLock("test_redis_lock")
-	err = rl.TryLock(ctx)
-	if assert.NoError(err) {
-		rl.Unlock(ctx)
-	}
-	err = rl.TryLock(ctx)
-	if assert.NoError(err) {
-		rl.Unlock(ctx)
 	}
 
 	err = client.ScriptLoadByPath(ctx, "lua_script/test1.lua")
