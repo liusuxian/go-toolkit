@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-04-15 02:58:43
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-24 14:53:31
+ * @LastEditTime: 2026-01-26 18:55:23
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -137,9 +137,7 @@ func (rc *RedisClient) Do(ctx context.Context, cmd string, args ...any) (value a
 	cmdArgs = append(cmdArgs, cmd)
 	cmdArgs = append(cmdArgs, args...)
 	value, err = rc.client.Do(ctx, cmdArgs...).Result()
-	if err == redis.Nil {
-		err = nil
-	}
+	err = noErrNil(err)
 	return
 }
 
@@ -164,10 +162,7 @@ func (rc *RedisClient) Pipeline(ctx context.Context, cmdArgsList ...[]any) (resu
 	}
 	var resList []redis.Cmder
 	resList, err = p.Exec(ctx)
-	if err == redis.Nil {
-		err = nil
-	}
-	if err != nil {
+	if err = noErrNil(err); err != nil {
 		return
 	}
 	// 处理返回结果
@@ -214,9 +209,7 @@ func (rc *RedisClient) Eval(ctx context.Context, script string, keys []string, a
 		return
 	}
 	value, err = rc.client.Eval(ctx, script, keys, args...).Result()
-	if err == redis.Nil {
-		err = nil
-	}
+	err = noErrNil(err)
 	return
 }
 
@@ -232,9 +225,7 @@ func (rc *RedisClient) EvalSha(ctx context.Context, name string, keys []string, 
 		return
 	}
 	value, err = rc.client.EvalSha(ctx, evalsha, keys, args...).Result()
-	if err == redis.Nil {
-		err = nil
-	}
+	err = noErrNil(err)
 	return
 }
 
@@ -260,7 +251,7 @@ func (rc *RedisClient) CD(ctx context.Context, key string) (ok bool, err error) 
 // SetCD 设置冷却时间
 func (rc *RedisClient) SetCD(ctx context.Context, key string, cd time.Duration) (ok bool, err error) {
 	var value any
-	if value, err = rc.Do(ctx, "SET", key, 1, "EX", cd.Seconds(), "NX"); err != nil {
+	if value, err = rc.Do(ctx, "SET", key, 1, "PX", cd.Milliseconds(), "NX"); err != nil {
 		return
 	}
 	ok = gtkconv.ToBool(value)
@@ -290,4 +281,12 @@ func (rc *RedisClient) Polling(ctx context.Context, key string, max int) (index 
 // Close 关闭 redis
 func (rc *RedisClient) Close() (err error) {
 	return rc.client.Close()
+}
+
+// noErrNil 处理 redis.Nil 错误
+func noErrNil(err error) error {
+	if err == redis.Nil {
+		return nil
+	}
+	return err
 }
