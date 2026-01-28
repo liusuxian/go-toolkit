@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:35:41
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-24 15:05:11
+ * @LastEditTime: 2026-01-28 14:42:06
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -35,9 +35,9 @@ type MQConfig struct {
 	// 可以配置多个消费者组名称，系统会自动在每个名称前添加"$consumerEnv_group_"前缀
 	Groups []string `json:"groups,omitempty"`
 	// 批量消费的条数，默认 200
-	BatchSize int `json:"batch_size"`
+	BatchConsumeSize int `json:"batch_consume_size"`
 	// 批量消费的间隔时间，默认 5s
-	BatchInterval time.Duration `json:"batch_interval"`
+	BatchConsumeInterval time.Duration `json:"batch_consume_interval"`
 	// 当消费失败时的重试配置，默认不重试
 	RetryConfig gtkretry.RetryConfig `json:"retry_config"`
 	// 是否开启延迟队列

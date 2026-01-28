@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-01-19 23:42:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-24 15:12:38
+ * @LastEditTime: 2026-01-28 16:38:25
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -547,6 +547,10 @@ func (kc *KafkaClient) handelData(ctx context.Context, topicConfig *TopicConfig,
 	}); err != nil {
 		kc.logger.Errorf(ctx, "handelData finished, consumer: %s %v, error: %+v, topic: %v, partition: %v, offset: %v, key: %s, content: %s, timestamp: %v", consumerName, consumer,
 			err, *lastMessage.TopicPartition.Topic, lastMessage.TopicPartition.Partition, lastMessage.TopicPartition.Offset, string(lastMessage.Key), string(lastMessage.Value), lastMessage.Timestamp)
+		// 检查是否是因为 context 被取消（退出信号）
+		if ctx.Err() != nil {
+			return
+		}
 	}
 	// 无论成功还是失败，重试结束后都应该恢复该分区的消费
 	if err := consumer.Resume([]kafka.TopicPartition{

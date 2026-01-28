@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-24 15:07:05
+ * @LastEditTime: 2026-01-28 16:45:40
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-redsync/redsync/v4"
 	"github.com/google/uuid"
 	"github.com/liusuxian/go-toolkit/gtkconv"
 	"github.com/liusuxian/go-toolkit/gtkjson"
@@ -673,73 +674,175 @@ func (mq *redisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 		count           = 1
 	)
 	if isBatch {
-		readWaitTimeout = mqConfig.BatchInterval
-		count = mqConfig.BatchSize
+		readWaitTimeout = mqConfig.BatchConsumeInterval
+		count = mqConfig.BatchConsumeSize
 	}
 	for i := int32(0); i < int32(mqConfig.PartitionNum); i++ {
 		go func(partition int32) {
 			var (
-				partitionGroupName    = mq.getPartitionGroupName(queue, partition)
-				partitionConsumerName = mq.getPartitionConsumerName(queue, partition)
-				partitionQueueName    = mq.getPartitionQueueName(queue, partition)
+				partitionGroupName       = mq.getPartitionGroupName(queue, partition)
+				partitionConsumerName    = mq.getPartitionConsumerName(queue, partition)
+				partitionQueueName       = mq.getPartitionQueueName(queue, partition)
+				partitionConsumerLockKey = mq.getPartitionConsumerLockKey(queue, partition)
 			)
 			if len(group) > 0 {
 				partitionGroupName = mq.getPartitionGroupName(group[0], partition)
 				partitionConsumerName = mq.getPartitionConsumerName(group[0], partition)
+				partitionConsumerLockKey = mq.getPartitionConsumerLockKey(group[0], partition)
 			}
+			var (
+				mutex    = mq.rc.NewMutex(partitionConsumerLockKey, redsync.WithExpiry(5*time.Second))
+				isLocked chan struct{}
+			)
 			// 添加对 panic 的处理
 			defer func() {
 				if r := recover(); r != nil {
 					mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, panic: %+v", partitionConsumerName, partitionQueueName, r)
+					// 尝试释放锁
+					mq.unlock(ctx, mutex, &isLocked, partitionConsumerName, partitionQueueName)
 				}
 			}()
-
+			// 统一处理批量和单条数据
+			readTicker := time.NewTicker(readWaitTimeout)
+			defer readTicker.Stop()
+			// 处理消息
 			for {
 				select {
 				case <-ctx.Done():
+					// 释放锁
+					mq.unlock(ctx, mutex, &isLocked, partitionConsumerName, partitionQueueName)
 					return
-				default:
-					// 读取数据
-					value, e := mq.rc.Do(ctx, "XREADGROUP", "GROUP", partitionGroupName, partitionConsumerName, "COUNT", count, "BLOCK", block, "STREAMS", partitionQueueName, ">")
+				case <-readTicker.C:
+					// 尝试获取分区锁
+					var e error
+					if e = mutex.LockContext(ctx); e != nil {
+						// 检查是否是因为 context 被取消（退出信号）
+						if ctx.Err() != nil {
+							return
+						}
+						continue
+					}
+					// 监听锁续期
+					isLocked = make(chan struct{})
+					mq.watchExtend(ctx, mutex, &isLocked, partitionConsumerName, partitionQueueName)
+					// 抢到锁，先读 pending（非阻塞）
+					var value any
+					value, e = mq.rc.Do(ctx, "XREADGROUP", "GROUP", partitionGroupName, partitionConsumerName, "COUNT", count, "BLOCK", 0, "STREAMS", partitionQueueName, "0")
+					// 没有 pending，读新消息（阻塞）
+					if !mq.hasPending(e, value, partitionQueueName) {
+						value, e = mq.rc.Do(ctx, "XREADGROUP", "GROUP", partitionGroupName, partitionConsumerName, "COUNT", count, "BLOCK", block, "STREAMS", partitionQueueName, ">")
+					}
+					// 处理读取结果
 					if e != nil {
 						mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, error: %+v", partitionConsumerName, partitionQueueName, e)
-						time.Sleep(readWaitTimeout)
-					} else if value != nil {
-						// 处理结果数据
-						valueMap := gtkconv.ToStringMap(value)
-						result := valueMap[partitionQueueName]
-						resultSliceSlice := gtkconv.ToSlice(result)
-						mqMessageList := make([]*MQMessage, 0, len(resultSliceSlice))
-						// 遍历结果数据
-						for _, resultSliceAny := range resultSliceSlice {
-							resultSlice := gtkconv.ToSlice(resultSliceAny)
-							dataSlice := gtkconv.ToSlice(resultSlice[1])
-							expireTime := gtkconv.ToInt64(dataSlice[7])
-							// 判断是否过期
-							if time.Now().Unix() < expireTime {
-								offset := gtkconv.ToString(resultSlice[0])
-								mqMessage := &MQMessage{
-									MQPartition: MQPartition{
-										Queue:         queue,
-										PartitionName: mq.getPartitionQueueName(queue, partition),
-										Partition:     partition,
-										Offset:        offset,
-									},
-									Key:        gtkconv.ToBytes(dataSlice[1]),
-									Value:      gtkconv.ToBytes(dataSlice[3]),
-									Timestamp:  time.UnixMilli(gtkconv.ToInt64(dataSlice[5])),
-									ExpireTime: time.Unix(gtkconv.ToInt64(dataSlice[7]), 0),
-								}
-								mqMessageList = append(mqMessageList, mqMessage)
+						// 释放锁
+						mq.unlock(ctx, mutex, &isLocked, partitionConsumerName, partitionQueueName)
+						continue
+					}
+					// 没有消息
+					if value == nil {
+						// 释放锁
+						mq.unlock(ctx, mutex, &isLocked, partitionConsumerName, partitionQueueName)
+						continue
+					}
+					// 处理结果数据
+					valueMap := gtkconv.ToStringMap(value)
+					result := valueMap[partitionQueueName]
+					resultSliceSlice := gtkconv.ToSlice(result)
+					mqMessageList := make([]*MQMessage, 0, len(resultSliceSlice))
+					// 遍历结果数据
+					for _, resultSliceAny := range resultSliceSlice {
+						resultSlice := gtkconv.ToSlice(resultSliceAny)
+						dataSlice := gtkconv.ToSlice(resultSlice[1])
+						expireTime := gtkconv.ToInt64(dataSlice[7])
+						// 判断是否过期
+						if time.Now().Unix() < expireTime {
+							offset := gtkconv.ToString(resultSlice[0])
+							mqMessage := &MQMessage{
+								MQPartition: MQPartition{
+									Queue:         queue,
+									PartitionName: mq.getPartitionQueueName(queue, partition),
+									Partition:     partition,
+									Offset:        offset,
+								},
+								Key:        gtkconv.ToBytes(dataSlice[1]),
+								Value:      gtkconv.ToBytes(dataSlice[3]),
+								Timestamp:  time.UnixMilli(gtkconv.ToInt64(dataSlice[5])),
+								ExpireTime: time.Unix(gtkconv.ToInt64(dataSlice[7]), 0),
 							}
-						}
-						if len(mqMessageList) > 0 {
-							mq.handelData(ctx, mqConfig, partitionConsumerName, partitionGroupName, mqMessageList, fn)
+							mqMessageList = append(mqMessageList, mqMessage)
 						}
 					}
+					if len(mqMessageList) > 0 {
+						mq.handelData(ctx, mqConfig, partitionConsumerName, partitionGroupName, mqMessageList, fn)
+					}
+					// 释放锁
+					mq.unlock(ctx, mutex, &isLocked, partitionConsumerName, partitionQueueName)
 				}
 			}
 		}(i)
+	}
+	return
+}
+
+// watchExtend 监听锁续期
+func (mq *redisMQClient) watchExtend(ctx context.Context, mutex *redsync.Mutex, isLocked *chan struct{}, partitionConsumerName, partitionQueueName string) {
+	if isLocked == nil {
+		return
+	}
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-*isLocked:
+				return
+			case <-ticker.C:
+				// 续期锁
+				if ok, err := mutex.ExtendContext(ctx); !ok || err != nil {
+					// 检查是否是因为 context 被取消（退出信号）
+					if ctx.Err() != nil {
+						return
+					}
+					mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, extend lock error: %+v", partitionConsumerName, partitionQueueName, err)
+				}
+			}
+		}
+	}()
+}
+
+// unlock 释放锁
+func (mq *redisMQClient) unlock(ctx context.Context, mutex *redsync.Mutex, isLocked *chan struct{}, partitionConsumerName, partitionQueueName string) {
+	if isLocked == nil || *isLocked == nil {
+		return
+	}
+	// 关闭通道
+	close(*isLocked)
+	// 释放锁
+	if ok, err := mutex.Unlock(); !ok || err != nil {
+		mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, unlock error: %+v", partitionConsumerName, partitionQueueName, err)
+	}
+	*isLocked = nil // 重置
+}
+
+// hasPending 判断是否有 pending
+func (mq *redisMQClient) hasPending(err error, value any, partitionQueueName string) (hasPending bool) {
+	if err == nil && value != nil {
+		if streams := gtkconv.ToStringMap(value); len(streams) > 0 {
+			if msgs := gtkconv.ToSlice(streams[partitionQueueName]); len(msgs) > 0 {
+				// 检查消息内容是否有效（消息格式：[[消息ID, 消息内容]]）
+				for _, msgAny := range msgs {
+					if msg := gtkconv.ToSlice(msgAny); len(msg) >= 2 && msg[1] != nil {
+						hasPending = true
+						return
+					}
+				}
+			}
+		}
 	}
 	return
 }
@@ -776,6 +879,10 @@ func (mq *redisMQClient) handelData(ctx context.Context, mqConfig *MQConfig, par
 	}); err != nil {
 		mq.logger.Errorf(ctx, "handelData finished, partition-consumer: %s, partition-queue: %s, partition: %d, offset: %v, key: %s, content: %s, timestamp: %v, error: %+v",
 			partitionConsumerName, partitionQueueName, partition, offset, key, content, timestamp, err)
+		// 检查是否是因为 context 被取消（退出信号）
+		if ctx.Err() != nil {
+			return
+		}
 	}
 	// 提交
 	var cmdArgs = make([]any, 0, length+2)
@@ -802,14 +909,50 @@ func (mq *redisMQClient) delExpiredMessages(ctx context.Context, messages map[in
 		return
 	}
 	// 组装命令参数
-	cmdArgsList := make([][]any, 0, len(messages))
+	cmdArgsList := make([][]any, 0, len(messages)*2)
 	for _, mqMessageList := range messages {
-		cmdArgs := make([]any, 0, len(mqMessageList)+2)
-		cmdArgs = append(cmdArgs, "XDEL", mqMessageList[0].MQPartition.PartitionName)
-		for _, mqMessage := range mqMessageList {
-			cmdArgs = append(cmdArgs, mqMessage.MQPartition.Offset)
+		// 获取队列和分区信息
+		var (
+			queue              = mqMessageList[0].MQPartition.Queue
+			partition          = mqMessageList[0].MQPartition.Partition
+			partitionQueueName = mqMessageList[0].MQPartition.PartitionName
+		)
+		// 先 XACK（清理 pending）
+		// 获取消费者配置
+		var (
+			isStart  bool
+			mqConfig *MQConfig
+		)
+		if isStart, mqConfig, err = mq.getConsumerConfig(queue); err != nil {
+			continue
 		}
-		cmdArgsList = append(cmdArgsList, cmdArgs)
+		if !isStart {
+			continue
+		}
+		// 获取分区消费者组名称
+		partitionGroupNameList := []string{mq.getPartitionGroupName(queue, partition)}
+		if len(mqConfig.Groups) > 0 {
+			partitionGroupNameList = make([]string, 0, len(mqConfig.Groups))
+			for _, g := range mqConfig.Groups {
+				partitionGroupNameList = append(partitionGroupNameList, mq.getPartitionGroupName(g, partition))
+			}
+		}
+		// 对每个消费者组执行 XACK
+		for _, partitionGroupName := range partitionGroupNameList {
+			xackArgs := make([]any, 0, len(mqMessageList)+3)
+			xackArgs = append(xackArgs, "XACK", partitionQueueName, partitionGroupName)
+			for _, mqMessage := range mqMessageList {
+				xackArgs = append(xackArgs, mqMessage.MQPartition.Offset)
+			}
+			cmdArgsList = append(cmdArgsList, xackArgs)
+		}
+		// 再 XDEL（删除消息内容）
+		xdelArgs := make([]any, 0, len(mqMessageList)+2)
+		xdelArgs = append(xdelArgs, "XDEL", partitionQueueName)
+		for _, mqMessage := range mqMessageList {
+			xdelArgs = append(xdelArgs, mqMessage.MQPartition.Offset)
+		}
+		cmdArgsList = append(cmdArgsList, xdelArgs)
 	}
 	// 执行 redis 管道命令
 	var results []*gtkredis.PipelineResult
@@ -897,6 +1040,11 @@ func (mq *redisMQClient) getPartitionConsumerName(queue string, partition int32)
 	return mq.getConsumerName(queue) + "@" + strconv.FormatInt(int64(partition), 10)
 }
 
+// getPartitionConsumerLockKey 获取分区消费者锁的Key
+func (mq *redisMQClient) getPartitionConsumerLockKey(queue string, partition int32) (partitionConsumerLockKey string) {
+	return "gtkmq:partition:lock:" + mq.getPartitionConsumerName(queue, partition)
+}
+
 // getDelayQueueKey 获取延迟队列 key
 func (mq *redisMQClient) getDelayQueueKey(queue string) (key string) {
 	return "gtkmq:delay:queue:" + mq.config.Env + "_" + queue
@@ -968,12 +1116,12 @@ func newRedisMQClient(ctx context.Context, redisConfig *gtkredis.ClientConfig, m
 			mqCfg.PartitionNum = defaultPartitionNum
 		}
 		// 批量消费的条数，默认 200
-		if mqCfg.BatchSize <= 0 {
-			mqCfg.BatchSize = 200
+		if mqCfg.BatchConsumeSize <= 0 {
+			mqCfg.BatchConsumeSize = 200
 		}
 		// 批量消费的间隔时间，默认 5s
-		if mqCfg.BatchInterval <= time.Duration(0) {
-			mqCfg.BatchInterval = time.Second * 5
+		if mqCfg.BatchConsumeInterval <= time.Duration(0) {
+			mqCfg.BatchConsumeInterval = time.Second * 5
 		}
 		// 延迟队列检查间隔，默认 10s
 		if mqCfg.EnableDelayQueue && mqCfg.DelayQueueCheckInterval <= time.Duration(0) {
