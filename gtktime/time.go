@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2023-08-26 10:51:39
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2023-08-26 11:20:24
+ * @LastEditTime: 2026-02-04 11:55:53
  * @Description:
  *
  * Copyright (c) 2023 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -19,4 +19,13 @@ func RemainingTimeUntilTomorrow(t time.Time) (remainingTime time.Duration) {
 	// 计算剩余时间
 	remainingTime = tomorrowDate.Sub(t)
 	return
+}
+
+// NextAligned 获取下一个对齐时间
+func NextAligned(t time.Time, d time.Duration) (nextAligned time.Time) {
+	truncated := t.Truncate(d)
+	if !truncated.After(t) {
+		truncated = truncated.Add(d)
+	}
+	return truncated
 }
