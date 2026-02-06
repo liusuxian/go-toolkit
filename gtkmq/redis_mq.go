@@ -2,7 +2,7 @@
  * @Author: liusuxian 382185882@qq.com
  * @Date: 2024-04-23 00:30:12
  * @LastEditors: liusuxian 382185882@qq.com
- * @LastEditTime: 2026-01-28 19:43:17
+ * @LastEditTime: 2026-02-06 11:47:25
  * @Description:
  *
  * Copyright (c) 2024 by liusuxian email: 382185882@qq.com, All Rights Reserved.
@@ -692,7 +692,8 @@ func (mq *redisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 				partitionConsumerLockKey = mq.getPartitionConsumerLockKey(group[0], partition)
 			}
 			var (
-				mutex    = mq.rc.NewMutex(partitionConsumerLockKey, redsync.WithExpiry(5*time.Second))
+				lockTTL  = 5 * time.Second
+				mutex    = mq.rc.NewMutex(partitionConsumerLockKey, redsync.WithExpiry(lockTTL))
 				isLocked chan struct{}
 				wg       sync.WaitGroup
 			)
@@ -711,9 +712,9 @@ func (mq *redisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 						defer func() {
 							if r := recover(); r != nil {
 								mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, panic: %+v", partitionConsumerName, partitionQueueName, r)
-								// 释放锁
-								mq.unlock(ctx, mutex, &isLocked, &wg, partitionConsumerName, partitionQueueName)
 							}
+							// 释放锁
+							mq.unlock(ctx, mutex, &isLocked, &wg, partitionConsumerName, partitionQueueName)
 						}()
 						// 尝试获取分区锁
 						var e error
@@ -722,7 +723,7 @@ func (mq *redisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 						}
 						// 监听锁续期
 						isLocked = make(chan struct{})
-						mq.watchExtend(ctx, mutex, &isLocked, &wg, partitionConsumerName, partitionQueueName)
+						mq.watchExtend(ctx, mutex, lockTTL, &isLocked, &wg, partitionConsumerName, partitionQueueName)
 						// 抢到锁，先读 pending（非阻塞）
 						var value any
 						value, e = mq.rc.Do(ctx, "XREADGROUP", "GROUP", partitionGroupName, partitionConsumerName, "COUNT", count, "BLOCK", 0, "STREAMS", partitionQueueName, "0")
@@ -733,14 +734,10 @@ func (mq *redisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 						// 处理读取结果
 						if e != nil {
 							mq.logger.Errorf(ctx, "partition-consumer: %s, partition-queue: %s, error: %+v", partitionConsumerName, partitionQueueName, e)
-							// 释放锁
-							mq.unlock(ctx, mutex, &isLocked, &wg, partitionConsumerName, partitionQueueName)
 							return
 						}
 						// 没有消息
 						if value == nil {
-							// 释放锁
-							mq.unlock(ctx, mutex, &isLocked, &wg, partitionConsumerName, partitionQueueName)
 							return
 						}
 						// 处理结果数据
@@ -774,8 +771,6 @@ func (mq *redisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 						if len(mqMessageList) > 0 {
 							mq.handelData(ctx, mqConfig, partitionConsumerName, partitionGroupName, mqMessageList, fn)
 						}
-						// 释放锁
-						mq.unlock(ctx, mutex, &isLocked, &wg, partitionConsumerName, partitionQueueName)
 					}()
 				}
 			}
@@ -785,13 +780,13 @@ func (mq *redisMQClient) handelSubscribe(ctx context.Context, queue string, isBa
 }
 
 // watchExtend 监听锁续期
-func (mq *redisMQClient) watchExtend(ctx context.Context, mutex *redsync.Mutex, isLocked *chan struct{}, wg *sync.WaitGroup, partitionConsumerName, partitionQueueName string) {
+func (mq *redisMQClient) watchExtend(ctx context.Context, mutex *redsync.Mutex, lockTTL time.Duration, isLocked *chan struct{}, wg *sync.WaitGroup, partitionConsumerName, partitionQueueName string) {
 	if isLocked == nil {
 		return
 	}
 
 	wg.Go(func() {
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(lockTTL / 2)
 		defer ticker.Stop()
 
 		for {
